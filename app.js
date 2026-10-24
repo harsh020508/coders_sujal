@@ -78,15 +78,12 @@ export const App = {
       }
     } catch (err) {
       console.error('App render fatal error:', err);
-      root.innerHTML = `<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Something went wrong rendering this view.</p><button onclick="localStorage.clear(); window.location.reload();" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1a3300; color: white; border: none; border-radius: 8px; cursor: pointer;">Reset & Reload App</button></div>`;
+      root.innerHTML = `<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Something went wrong rendering this view.</p><button onclick="localStorage.clear(); window.location.reload();" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #0284c7; color: white; border: none; border-radius: 8px; cursor: pointer;">Reset & Reload App</button></div>`;
     }
   },
 
   renderLandingPage() {
     const theme = StorageService.getTheme();
-    const profile = AuthService.getProfile();
-    const userName = profile ? (profile.full_name || profile.email || 'User') : null;
-
     return `
       <div class="flex flex-col w-full bg-[#fbf9f4] text-[#1b1c19] min-h-screen">
         <!-- STITCH STYLISH HEADER -->
@@ -95,7 +92,7 @@ export const App = {
             <div class="flex items-center gap-3 shrink-0 cursor-pointer" id="nav-home-logo">
               <div class="h-9 w-9 bg-[#1a3300] text-[#ffe95c] rounded-lg flex items-center justify-center font-extrabold text-lg shadow-sm">LK</div>
               <span class="font-extrabold text-xl tracking-tight text-[#1a3300] font-headline-sm">LocalKaam</span>
-              <span class="hidden lg:inline-block text-xs bg-[#ffe95c] text-[#1a3300] px-2 py-0.5 rounded uppercase tracking-wider font-mono">Hyperlocal Sketch</span>
+              <span class="hidden lg:inline-block text-xs bg-[#ffe95c] text-[#1a3300] px-2 py-0.5 rounded uppercase tracking-wider font-mono">Hyperlocal Services</span>
             </div>
             
             <nav class="hidden xl:flex items-center gap-2">
@@ -108,12 +105,7 @@ export const App = {
 
             <div class="flex items-center gap-3 shrink-0">
               <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️ Light' : '🌙 Dark'}</button>
-              ${userName ? `
-                <span class="text-sm font-bold text-[#1a3300] bg-[#d5f5c2] px-3 py-1.5 rounded border border-[#1a3300]">👤 ${esc(userName)}</span>
-                <button class="btn btn-primary btn-sm" id="get-started-btn">Dashboard →</button>
-              ` : `
-                <button class="btn btn-primary btn-sm shadow-[2px_2px_0px_#ffe95c]" id="get-started-btn">Get Started →</button>
-              `}
+              <button class="btn btn-primary btn-sm shadow-[2px_2px_0px_#ffe95c]" id="get-started-btn">Get Started →</button>
             </div>
           </div>
         </header>
@@ -336,35 +328,6 @@ export const App = {
                 <div class="text-3xl font-extrabold text-[#1a3300] mb-3">03</div>
                 <h3 class="font-bold text-lg mb-2 text-[#1a3300]">Track, Complete & Review</h3>
                 <p class="text-sm text-[#44483d]">Track job progress live from confirmed to completed, generate digital receipts, and leave ratings.</p>
-              </div>
-            </div>
-          </section>
-
-          <!-- TECHNOLOGY STACK -->
-          <section class="py-16" id="tech-stack">
-            <h2 class="text-4xl font-extrabold text-center mb-4 font-headline-lg">Production Technology Stack</h2>
-            <p class="text-center text-[#44483d] mb-12 max-w-xl mx-auto">Modern, lightweight, reliable architecture built for speed and production deployment.</p>
-            
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
-              <div class="bg-[#fcfaf5] border-2 border-[#c4c8b9] rounded-xl p-6 text-center shadow-[2px_2px_0px_#c4c8b9]">
-                <div class="text-3xl mb-2">🟢</div>
-                <h3 class="font-bold text-base text-[#1a3300]">Node.js & Express</h3>
-                <p class="text-xs text-[#44483d] mt-1">Unified backend</p>
-              </div>
-              <div class="bg-[#fcfaf5] border-2 border-[#c4c8b9] rounded-xl p-6 text-center shadow-[2px_2px_0px_#c4c8b9]">
-                <div class="text-3xl mb-2">🗄️</div>
-                <h3 class="font-bold text-base text-[#1a3300]">SQLite & Supabase</h3>
-                <p class="text-xs text-[#44483d] mt-1">Relational DB</p>
-              </div>
-              <div class="bg-[#fcfaf5] border-2 border-[#c4c8b9] rounded-xl p-6 text-center shadow-[2px_2px_0px_#c4c8b9]">
-                <div class="text-3xl mb-2">⚡</div>
-                <h3 class="font-bold text-base text-[#1a3300]">Server-Sent Events</h3>
-                <p class="text-xs text-[#44483d] mt-1">Real-time sync</p>
-              </div>
-              <div class="bg-[#fcfaf5] border-2 border-[#c4c8b9] rounded-xl p-6 text-center shadow-[2px_2px_0px_#c4c8b9]">
-                <div class="text-3xl mb-2">💻</div>
-                <h3 class="font-bold text-base text-[#1a3300]">Vanilla ES6+</h3>
-                <p class="text-xs text-[#44483d] mt-1">High-performance frontend</p>
               </div>
             </div>
           </section>
