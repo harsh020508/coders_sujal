@@ -40,8 +40,12 @@ export const BookingService = {
   },
 
   acceptBooking(booking, workerAcceptsOffer = true) {
-    if (booking.status !== 'Pending confirmation') return booking;
-    const agreed = (booking.customerOffer && workerAcceptsOffer) ? booking.customerOffer : (booking.basePrice + booking.visitingCharge);
+    if (!booking || !['Pending confirmation', 'Pending'].includes(booking.status)) return booking;
+    if (Array.isArray(booking.counterOfferHistory) && booking.counterOfferHistory.length > 0) {
+      const last = booking.counterOfferHistory[booking.counterOfferHistory.length - 1];
+      if (last && last.sender === 'worker') return booking;
+    }
+    const agreed = (booking.customerOffer && workerAcceptsOffer) ? booking.customerOffer : (booking.basePrice + booking.visitingCharge || booking.originalEstimate || 350);
     return {
       ...booking,
       status: 'Confirmed',
@@ -50,7 +54,7 @@ export const BookingService = {
   },
 
   rejectBooking(booking) {
-    if (booking.status !== 'Pending confirmation') return booking;
+    if (!booking || !['Pending confirmation', 'Pending'].includes(booking.status)) return booking;
     return {
       ...booking,
       status: 'Cancelled'
@@ -58,7 +62,7 @@ export const BookingService = {
   },
 
   cancelBooking(booking) {
-    if (['Job completed', 'Cancelled', 'Disputed'].includes(booking.status)) return booking;
+    if (!booking || ['Job completed', 'Cancelled', 'Disputed'].includes(booking.status)) return booking;
     return {
       ...booking,
       status: 'Cancelled'
@@ -66,8 +70,13 @@ export const BookingService = {
   },
 
   workerCounterOffer(booking, amount, note) {
-    if (booking.status !== 'Pending confirmation') return booking;
+    if (!booking || !['Pending confirmation', 'Pending'].includes(booking.status)) return booking;
     const newAmount = parseFloat(amount);
+    if (isNaN(newAmount) || newAmount <= 0) return booking;
+    if (Array.isArray(booking.counterOfferHistory) && booking.counterOfferHistory.length > 0) {
+      const last = booking.counterOfferHistory[booking.counterOfferHistory.length - 1];
+      if (last && last.sender === 'worker') return booking;
+    }
     const history = [...(booking.counterOfferHistory || []), { sender: 'worker', amount: newAmount, note: note || 'Worker counter-offer' }];
     return {
       ...booking,

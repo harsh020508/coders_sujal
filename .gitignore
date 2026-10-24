@@ -1,0 +1,18 @@
+# Database
+localkaam.db
+localkaam.db-journal
+localkaam.db-wal
+localkaam.db-shm
+
+# Logs
+*.log
+npm-debug.log*
+
+# Node modules (if any installed in future)
+node_modules/
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

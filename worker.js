@@ -2,11 +2,16 @@ import { StorageService } from './storage.js';
 import { BookingService } from './bookings.js';
 import { CATEGORIES, LOCALITIES } from './data.js';
 import { Toast } from './toast.js';
+<<<<<<< HEAD
 import { esc } from './utils.js';
+=======
+import { AuthService } from './authService.js';
+>>>>>>> 2a5b7cd1a958f6e1c5ca8669f090fbf9659ce296
 
 export const WorkerFrontend = {
   render(container) {
     const workers = StorageService.getWorkers();
+<<<<<<< HEAD
     let currentWorkerId = StorageService.getSelectedWorkerId();
     let worker = workers.find(w => w.id === currentWorkerId) || workers[0];
 
@@ -16,6 +21,20 @@ export const WorkerFrontend = {
       return;
     }
 
+=======
+    const authProfile = AuthService.getProfile();
+    let currentWorkerId = StorageService.getSelectedWorkerId();
+
+    if (authProfile && authProfile.role === 'worker') {
+      const myWorker = workers.find(w => (w.user_id && w.user_id === authProfile.id) || w.id === `w_${authProfile.id.substring(0, 8)}` || (authProfile.phone && w.phone === authProfile.phone));
+      if (myWorker) {
+        currentWorkerId = myWorker.id;
+        StorageService.setSelectedWorkerId(myWorker.id);
+      }
+    }
+
+    const worker = workers.find(w => w.id === currentWorkerId) || workers[0];
+>>>>>>> 2a5b7cd1a958f6e1c5ca8669f090fbf9659ce296
     const bookings = StorageService.getBookings().filter(b => b.workerId === worker.id);
 
     const pendingRequests = bookings.filter(b => b.status === 'Pending confirmation');

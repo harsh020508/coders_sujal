@@ -2,11 +2,35 @@ import { StorageService } from './storage.js';
 import { CATEGORIES } from './data.js';
 import { CustomerFrontend } from './customer.js';
 import { WorkerFrontend } from './worker.js';
+import { SupabaseService } from './supabaseClient.js';
+import { AuthService } from './authService.js';
+import { SupabaseSetupModal } from './supabaseSetupModal.js';
+import { Toast } from './toast.js';
 
 export const App = {
   init() {
     this.applyTheme(StorageService.getTheme());
     this.render();
+
+    // Initialize Supabase sync and realtime listeners
+    StorageService.init(() => {
+      this.render();
+    });
+
+    // Re-render when auth changes
+    AuthService.onAuthStateChange((event, session, user, profile) => {
+      this.render();
+    });
+
+    // Re-render when underlying storage/realtime data updates
+    StorageService.onChange((type) => {
+      if (type === 'sync' || type === 'bookings' || type === 'workers') {
+        const role = StorageService.getCurrentRole();
+        if (role === 'customer' || role === 'worker') {
+          this.render();
+        }
+      }
+    });
   },
 
   applyTheme(theme) {
@@ -14,6 +38,49 @@ export const App = {
       document.documentElement.setAttribute('data-theme', theme);
     }
     StorageService.setTheme(theme);
+  },
+
+  renderNavActions(extraButtons = '') {
+    const theme = StorageService.getTheme();
+    const isLive = SupabaseService.isConfigured();
+    const user = AuthService.getUser();
+    const profile = AuthService.getProfile();
+
+    const supabaseBtn = `
+      <button class="btn btn-outline btn-sm supabase-setup-btn" title="Supabase Database & Auth Settings" style="border-color: ${isLive ? 'var(--success)' : 'var(--warning)'}; color: ${isLive ? 'var(--success)' : 'var(--warning)'}; display: flex; align-items: center; gap: 0.35rem; font-weight: 600; font-size: 0.82rem;">
+        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${isLive ? 'var(--success)' : 'var(--warning)'}; box-shadow: 0 0 6px ${isLive ? 'var(--success)' : 'var(--warning)'};"></span>
+        ${isLive ? '⚡ Supabase Live' : '⚡ Connect Supabase'}
+      </button>
+    `;
+
+    let authPill = '';
+    if (user && profile) {
+      const displayName = profile.full_name || profile.name || (user.email ? user.email.split('@')[0] : 'User');
+      const displayRole = (profile.role || 'customer').toUpperCase();
+      authPill = `
+        <div class="user-auth-pill" style="display: flex; align-items: center; gap: 0.4rem; background: var(--accent-light); padding: 0.3rem 0.65rem; border-radius: 20px; border: 1px solid var(--border-color);">
+          <span style="font-size: 0.85rem;">👤</span>
+          <span style="font-size: 0.82rem; font-weight: 700; color: var(--accent-primary); max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${displayName}</span>
+          <span class="badge" style="font-size: 0.65rem; padding: 2px 6px; background: var(--bg-card); color: var(--text-primary);">${displayRole}</span>
+          <button class="btn btn-outline btn-sm auth-signout-btn" style="padding: 2px 6px; font-size: 0.72rem; line-height: 1; border: none; color: var(--danger); cursor: pointer;" title="Sign Out">✕</button>
+        </div>
+      `;
+    } else {
+      authPill = `
+        <button class="btn btn-outline btn-sm auth-open-modal-btn" style="font-weight: 600; font-size: 0.82rem;">
+          🔑 Sign In
+        </button>
+      `;
+    }
+
+    return `
+      <div class="nav-actions" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+        ${supabaseBtn}
+        ${authPill}
+        ${extraButtons}
+        <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️ Light' : '🌙 Dark'}</button>
+      </div>
+    `;
   },
 
   render() {
@@ -40,10 +107,16 @@ export const App = {
       if (viewContainer) WorkerFrontend.render(viewContainer);
       this.attachShellEvents(root);
     }
+
+    this.attachCommonNavEvents(root);
   },
 
   renderLandingPage() {
-    const theme = StorageService.getTheme();
+    const extraButtons = `
+      <button class="btn btn-primary" id="get-started-btn">Get Started</button>
+      <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Demo Data">🔄 Reset</button>
+    `;
+
     return `
       <div class="app-container">
         <!-- Navigation Bar -->
@@ -56,13 +129,9 @@ export const App = {
             <a class="nav-link" href="#services">Services</a>
             <a class="nav-link" href="#how-it-works">How It Works</a>
             <a class="nav-link" href="#differentiators">Why Us</a>
-            <a class="nav-link" href="#impact">Social Impact</a>
+            <a class="nav-link" href="#supabase-banner">Supabase Integration</a>
           </nav>
-          <div class="nav-actions">
-            <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️ Light' : '🌙 Dark'}</button>
-            <button class="btn btn-primary" id="get-started-btn">Get Started</button>
-            <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Demo Data">🔄 Reset</button>
-          </div>
+          ${this.renderNavActions(extraButtons)}
         </header>
 
         <!-- Hero Section -->
@@ -99,6 +168,29 @@ export const App = {
           </div>
         </section>
 
+        <!-- Supabase Feature Highlight Banner -->
+        <section class="section-container" id="supabase-banner" style="padding-top: 1rem; padding-bottom: 1rem;">
+          <div style="background: linear-gradient(135deg, rgba(2, 132, 199, 0.1), rgba(16, 185, 129, 0.1)); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem 2rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
+            <div style="flex: 1; min-width: 280px;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                <span style="font-size: 1.3rem;">⚡</span>
+                <span style="font-weight: 800; font-size: 1.15rem; color: var(--text-primary);">Integrated with Supabase Auth &amp; PostgreSQL</span>
+                <span class="badge ${SupabaseService.isConfigured() ? 'badge-verified' : 'badge-pending'}" style="font-size: 0.75rem;">
+                  ${SupabaseService.isConfigured() ? 'Active & Synced' : 'Ready to Connect'}
+                </span>
+              </div>
+              <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
+                Real-time booking updates, role-based authorization (Customer vs Worker), PostgreSQL persistence, and secure Row Level Security (RLS).
+              </p>
+            </div>
+            <div>
+              <button class="btn btn-outline btn-sm supabase-setup-btn" style="padding: 0.6rem 1.25rem; font-weight: 600;">
+                ⚙️ Open Supabase Settings &amp; Schema
+              </button>
+            </div>
+          </div>
+        </section>
+
         <!-- Service Categories -->
         <section class="section-container" id="services">
           <h2 class="section-title">Essential Home Services</h2>
@@ -126,13 +218,13 @@ export const App = {
             </div>
             <div style="background: var(--bg-card); padding: 2rem; border-radius: var(--radius); border: 1px solid var(--border-color);">
               <div style="font-size: 2rem; font-weight: 800; color: var(--accent-primary); margin-bottom: 1rem;">02</div>
-              <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem;">Compare & Agree Fair Price</h3>
+              <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem;">Compare &amp; Agree Fair Price</h3>
               <p style="color: var(--text-secondary); font-size: 0.95rem;">Compare rates side by side, review skills, and propose your price or accept standard hourly estimates before booking.</p>
             </div>
             <div style="background: var(--bg-card); padding: 2rem; border-radius: var(--radius); border: 1px solid var(--border-color);">
               <div style="font-size: 2rem; font-weight: 800; color: var(--accent-primary); margin-bottom: 1rem;">03</div>
-              <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem;">Book, Track & Review</h3>
-              <p style="color: var(--text-secondary); font-size: 0.95rem;">Track job status live, complete work seamlessly, leave ratings, and report issues with complete transparency.</p>
+              <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem;">Book, Track &amp; Review</h3>
+              <p style="color: var(--text-secondary); font-size: 0.95rem;">Track job status live via Supabase Realtime, complete work seamlessly, leave ratings, and report issues with complete transparency.</p>
             </div>
           </div>
         </section>
@@ -152,7 +244,7 @@ export const App = {
             </div>
             <div style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border-color);">
               <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--accent-primary);">Verified Trust</h4>
-              <p style="color: var(--text-secondary); font-size: 0.9rem;">Simulated verification badges and authentic post-completion ratings to ensure safety and reliability.</p>
+              <p style="color: var(--text-secondary); font-size: 0.9rem;">Verified credentials and authentic post-completion ratings stored directly in Supabase PostgreSQL.</p>
             </div>
             <div style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border-color);">
               <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--accent-primary);">Worker Empowerment</h4>
@@ -168,7 +260,7 @@ export const App = {
               <div class="nav-logo" style="width: 28px; height: 28px; font-size: 0.9rem;">LK</div>
               <span style="font-weight: 700; font-size: 1.1rem;">LocalKaam</span>
             </div>
-            <p>© 2026 LocalKaam Inc. Hyperlocal Blue-Collar Services Marketplace MVP. Built for hackathon demonstration.</p>
+            <p>© 2026 LocalKaam Inc. Hyperlocal Marketplace powered by Supabase Auth &amp; PostgreSQL Database.</p>
           </div>
         </footer>
       </div>
@@ -176,7 +268,6 @@ export const App = {
   },
 
   renderRoleSelectionPage() {
-    const theme = StorageService.getTheme();
     return `
       <div class="app-container">
         <header class="navbar">
@@ -184,14 +275,12 @@ export const App = {
             <div class="nav-logo">LK</div>
             <div class="nav-title">Local<span>Kaam</span></div>
           </div>
-          <div class="nav-actions">
-            <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️ Light' : '🌙 Dark'}</button>
-          </div>
+          ${this.renderNavActions()}
         </header>
 
         <div class="role-selection-wrapper">
           <h1 style="font-size: 2.5rem; font-weight: 800; text-align: center; margin-bottom: 0.5rem;">How would you like to use LocalKaam?</h1>
-          <p style="color: var(--text-secondary); font-size: 1.1rem; text-align: center;">Choose the experience that works for you. You can switch roles anytime in this demo.</p>
+          <p style="color: var(--text-secondary); font-size: 1.1rem; text-align: center;">Choose the experience that works for you. You can switch roles anytime or sign in with your account.</p>
 
           <div class="role-cards">
             <!-- Customer Card -->
@@ -220,7 +309,11 @@ export const App = {
   },
 
   renderAppShell(activeRole) {
-    const theme = StorageService.getTheme();
+    const extraButtons = `
+      <button class="btn btn-outline btn-sm" id="switch-role-btn">Switch Role</button>
+      <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Demo Data">🔄 Reset</button>
+    `;
+
     return `
       <div class="app-container">
         <header class="navbar">
@@ -233,16 +326,68 @@ export const App = {
               Role: ${activeRole === 'customer' ? '🏠 Customer Frontend' : '🛠️ Worker Frontend'}
             </span>
           </div>
-          <div class="nav-actions">
-            <button class="btn btn-outline btn-sm" id="switch-role-btn">Switch Role</button>
-            <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️ Light' : '🌙 Dark'}</button>
-            <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Demo Data">🔄 Reset</button>
-          </div>
+          ${this.renderNavActions(extraButtons)}
         </header>
 
         <div id="app-view-container" style="flex: 1; display: flex; flex-direction: column;"></div>
       </div>
     `;
+  },
+
+  attachCommonNavEvents(root) {
+    // Supabase Setup modal opener
+    root.querySelectorAll('.supabase-setup-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        SupabaseSetupModal.show(() => this.render());
+      });
+    });
+
+    // Auth modal opener
+    root.querySelectorAll('.auth-open-modal-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        AuthService.showAuthModal(() => {
+          const profile = AuthService.getProfile();
+          if (profile && profile.role === 'worker') {
+            StorageService.setCurrentRole('worker');
+          } else if (profile && profile.role === 'customer') {
+            StorageService.setCurrentRole('customer');
+          }
+          this.render();
+        });
+      });
+    });
+
+    // Sign out button
+    root.querySelectorAll('.auth-signout-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await AuthService.signOut();
+        Toast.show('Signed out successfully.', 'info');
+        this.render();
+      });
+    });
+
+    // Theme toggle
+    const themeBtn = root.querySelector('#theme-toggle-btn');
+    if (themeBtn) {
+      themeBtn.addEventListener('click', () => {
+        const cur = StorageService.getTheme();
+        this.applyTheme(cur === 'dark' ? 'light' : 'dark');
+        this.render();
+      });
+    }
+
+    // Reset demo button
+    const resetBtn = root.querySelector('#reset-demo-btn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        if (confirm('Reset all demo data and restore initial seeded state?')) {
+          StorageService.resetDemoData();
+        }
+      });
+    }
   },
 
   attachLandingEvents(root) {
@@ -262,24 +407,6 @@ export const App = {
       StorageService.setCurrentRole('role-select');
       this.render();
     });
-
-    const themeBtn = root.querySelector('#theme-toggle-btn');
-    if (themeBtn) {
-      themeBtn.addEventListener('click', () => {
-        const cur = StorageService.getTheme();
-        this.applyTheme(cur === 'dark' ? 'light' : 'dark');
-        this.render();
-      });
-    }
-
-    const resetBtn = root.querySelector('#reset-demo-btn');
-    if (resetBtn) {
-      resetBtn.addEventListener('click', () => {
-        if (confirm('Reset all demo data and restore initial seeded state?')) {
-          StorageService.resetDemoData();
-        }
-      });
-    }
 
     root.querySelectorAll('.category-card').forEach(card => {
       card.addEventListener('click', () => {
@@ -307,15 +434,6 @@ export const App = {
       StorageService.setCurrentRole('worker');
       this.render();
     });
-
-    const themeBtn = root.querySelector('#theme-toggle-btn');
-    if (themeBtn) {
-      themeBtn.addEventListener('click', () => {
-        const cur = StorageService.getTheme();
-        this.applyTheme(cur === 'dark' ? 'light' : 'dark');
-        this.render();
-      });
-    }
   },
 
   attachShellEvents(root) {
@@ -327,23 +445,5 @@ export const App = {
       StorageService.setCurrentRole('role-select');
       this.render();
     });
-
-    const themeBtn = root.querySelector('#theme-toggle-btn');
-    if (themeBtn) {
-      themeBtn.addEventListener('click', () => {
-        const cur = StorageService.getTheme();
-        this.applyTheme(cur === 'dark' ? 'light' : 'dark');
-        this.render();
-      });
-    }
-
-    const resetBtn = root.querySelector('#reset-demo-btn');
-    if (resetBtn) {
-      resetBtn.addEventListener('click', () => {
-        if (confirm('Reset all demo data and restore initial seeded state?')) {
-          StorageService.resetDemoData();
-        }
-      });
-    }
   }
 };

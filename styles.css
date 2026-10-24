@@ -824,3 +824,36 @@ body {
     white-space: nowrap;
   }
 }
+
+
+/* Supabase & Authentication Component Styles */
+.user-auth-pill {
+  transition: all 0.2s ease;
+}
+
+.user-auth-pill:hover {
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.supabase-setup-btn {
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.supabase-setup-btn:hover {
+  transform: translateY(-1px);
+}
+
+.auth-tab-btn {
+  transition: all 0.2s ease;
+}
+
+.auth-tab-btn:hover {
+  color: var(--accent-primary);
+}
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}

@@ -3,6 +3,8 @@ import { MatchingService } from './matching.js';
 import { BookingService } from './bookings.js';
 import { CATEGORIES, LOCALITIES } from './data.js';
 import { Toast } from './toast.js';
+import { AuthService } from './authService.js';
+import { esc } from './utils.js';
 
 export const CustomerFrontend = {
   currentCategory: 'all',
@@ -33,7 +35,7 @@ export const CustomerFrontend = {
           <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color);">
             <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Current Service Location:</div>
             <select id="locality-select" class="form-select" style="font-size: 0.85rem; padding: 0.5rem;">
-              ${LOCALITIES.map(l => `<option value="${l.id}" ${l.id === customerLocality ? 'selected' : ''}>${l.name} (${l.zone})</option>`).join('')}
+              ${LOCALITIES.map(l => `<option value="${esc(l.id)}" ${l.id === customerLocality ? 'selected' : ''}>${esc(l.name)} (${esc(l.zone)})</option>`).join('')}
             </select>
           </div>
         </div>
@@ -76,7 +78,7 @@ export const CustomerFrontend = {
         <div style="display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem;">
           <button class="btn ${this.currentCategory === 'all' ? 'btn-primary' : 'btn-outline'} btn-sm cat-shortcut-btn" data-cat="all">🌟 All Categories</button>
           ${CATEGORIES.map(c => `
-            <button class="btn ${this.currentCategory === c.id ? 'btn-primary' : 'btn-outline'} btn-sm cat-shortcut-btn" data-cat="${c.id}">${c.icon} ${c.name}</button>
+            <button class="btn ${this.currentCategory === c.id ? 'btn-primary' : 'btn-outline'} btn-sm cat-shortcut-btn" data-cat="${esc(c.id)}">${esc(c.icon)} ${esc(c.name)}</button>
           `).join('')}
         </div>
       </div>
@@ -84,7 +86,7 @@ export const CustomerFrontend = {
       <!-- Search & Filters -->
       <div class="search-filter-bar">
         <div class="search-input-group">
-          <input type="text" id="service-search-input" placeholder="Search tasks like 'Wiring repair', 'Leaking tap', 'AC servicing'..." value="${this.searchQuery}">
+          <input type="text" id="service-search-input" placeholder="Search tasks like 'Wiring repair', 'Leaking tap', 'AC servicing'..." value="${esc(this.searchQuery)}">
         </div>
         <select id="sort-by-select" class="form-select" style="max-width: 180px;">
           <option value="match" ${this.sortBy === 'match' ? 'selected' : ''}>✨ Best Match</option>
@@ -103,8 +105,8 @@ export const CustomerFrontend = {
       ${eligibleWorkers.length === 0 ? `
         <div style="text-align: center; padding: 4rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius);">
           <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
-          <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">No registered professionals found for this category or location</h3>
-          <p style="color: var(--text-secondary); font-size: 0.95rem;">Try selecting another service category, choosing a different location, or switching roles to register a worker!</p>
+          <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">No online professionals found for this category or location</h3>
+          <p style="color: var(--text-secondary); font-size: 0.95rem;">Try selecting another service category, choosing a different location, or turning a worker online!</p>
         </div>
       ` : `
         <div class="workers-grid">
@@ -117,14 +119,14 @@ export const CustomerFrontend = {
             return `
               <div class="worker-card">
                 <div class="worker-header">
-                  <img src="${w.avatar}" alt="${w.name}" class="worker-avatar">
+                  <img src="${esc(w.avatar)}" alt="${esc(w.name)}" class="worker-avatar">
                   <div class="worker-info" style="flex: 1;">
-                    <h3>${w.name} ${w.verificationStatus === 'Verified' ? '<span title="Verified Professional" style="color: #10b981; font-size: 0.9rem;">✓</span>' : ''}</h3>
-                    <span class="worker-cat-badge">${catObj.name}</span>
+                    <h3>${esc(w.name)} ${w.verificationStatus === 'Verified' ? '<span title="Verified Professional" style="color: #10b981; font-size: 0.9rem;">✓</span>' : ''}</h3>
+                    <span class="worker-cat-badge">${esc(catObj.name)}</span>
                   </div>
                   <div>
                     <label style="font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
-                      <input type="checkbox" class="compare-checkbox" data-id="${w.id}" ${this.comparedWorkers.includes(w.id) ? 'checked' : ''}> Compare
+                      <input type="checkbox" class="compare-checkbox" data-id="${esc(w.id)}" ${this.comparedWorkers.includes(w.id) ? 'checked' : ''}> Compare
                     </label>
                   </div>
                 </div>
@@ -144,12 +146,12 @@ export const CustomerFrontend = {
                   </div>
                   <div class="worker-meta-item">
                     <span>Status</span>
-                    <span style="color: ${w.available && !w.pauseNewBookings ? 'var(--success)' : 'var(--danger)'};">${w.available && !w.pauseNewBookings ? '🟢 Online' : '🔴 Offline'}</span>
+                    <span style="color: var(--success);">🟢 Online</span>
                   </div>
                 </div>
 
                 <div class="worker-skills">
-                  ${(specInfo.tasks || []).slice(0, 3).map(t => `<span class="skill-tag">${t}</span>`).join('')}
+                  ${(specInfo.tasks || []).slice(0, 3).map(t => `<span class="skill-tag">${esc(t)}</span>`).join('')}
                 </div>
 
                 <div class="worker-footer">
@@ -157,8 +159,8 @@ export const CustomerFrontend = {
                     ₹${specInfo.startingPrice} <span>${specInfo.pricingMethod === 'fixed' ? 'fixed' : '/ hr'}</span>
                   </div>
                   <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-outline btn-sm view-worker-profile-btn" data-id="${w.id}">Profile</button>
-                    <button class="btn btn-primary btn-sm book-worker-btn" data-id="${w.id}">Book Now</button>
+                    <button class="btn btn-outline btn-sm view-worker-profile-btn" data-id="${esc(w.id)}">Profile</button>
+                    <button class="btn btn-primary btn-sm book-worker-btn" data-id="${esc(w.id)}">Book Now</button>
                   </div>
                 </div>
               </div>
@@ -211,20 +213,20 @@ export const CustomerFrontend = {
 
               return `
                 <tr>
-                  <td><strong>${b.id}</strong><br><small style="color: var(--text-secondary);">${new Date(b.createdAt).toLocaleDateString()}</small></td>
+                  <td><strong>${esc(b.id)}</strong><br><small style="color: var(--text-secondary);">${new Date(b.createdAt).toLocaleDateString()}</small></td>
                   <td>
-                    <strong>${b.serviceTask}</strong><br>
-                    <span style="color: var(--accent-primary); font-weight: 500;">${worker.name}</span>
+                    <strong>${esc(b.serviceTask)}</strong><br>
+                    <span style="color: var(--accent-primary); font-weight: 500;">${esc(worker.name)}</span>
                   </td>
-                  <td>${b.appointmentDate} @ ${b.appointmentTime}</td>
+                  <td>${esc(b.appointmentDate)} @ ${esc(b.appointmentTime)}</td>
                   <td><strong>₹${b.agreedPrice}</strong></td>
-                  <td><span class="badge ${statusBadgeClass}">${b.status}</span></td>
+                  <td><span class="badge ${statusBadgeClass}">${esc(b.status)}</span></td>
                   <td>
-                    <button class="btn btn-outline btn-sm view-booking-details-btn" data-id="${b.id}">Details</button>
-                    ${['Pending confirmation', 'Confirmed'].includes(b.status) ? `<button class="btn btn-danger btn-sm cancel-booking-btn" data-id="${b.id}">Cancel</button>` : ''}
+                    <button class="btn btn-outline btn-sm view-booking-details-btn" data-id="${esc(b.id)}">Details</button>
+                    ${['Pending confirmation', 'Confirmed'].includes(b.status) ? `<button class="btn btn-danger btn-sm cancel-booking-btn" data-id="${esc(b.id)}">Cancel</button>` : ''}
                     ${b.status === 'Job completed' ? `
-                      <button class="btn btn-primary btn-sm invoice-btn" data-id="${b.id}">Invoice</button>
-                      ${!b.reviewId ? `<button class="btn btn-outline btn-sm review-booking-btn" data-id="${b.id}">Review</button>` : ''}
+                      <button class="btn btn-primary btn-sm invoice-btn" data-id="${esc(b.id)}">Invoice</button>
+                      ${!b.reviewId ? `<button class="btn btn-outline btn-sm review-booking-btn" data-id="${esc(b.id)}">Review</button>` : ''}
                     ` : ''}
                   </td>
                 </tr>
@@ -400,14 +402,14 @@ export const CustomerFrontend = {
       <div class="modal-card" style="max-width: 700px;">
         <button class="modal-close" id="close-modal">×</button>
         <div style="display: flex; gap: 1.5rem; align-items: center; margin-bottom: 1.5rem;">
-          <img src="${worker.avatar}" alt="${worker.name}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-primary);">
+          <img src="${esc(worker.avatar)}" alt="${esc(worker.name)}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-primary);">
           <div>
-            <h2 style="font-size: 1.5rem; font-weight: 700;">${worker.name} ${worker.verificationStatus === 'Verified' ? '<span style="color: #10b981;">✓ Verified</span>' : ''}</h2>
-            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">📍 Base: ${worker.baseLocality?.toUpperCase()} • Service Area: ${worker.serviceArea} • 🏆 ${worker.experience} Years Exp</p>
+            <h2 style="font-size: 1.5rem; font-weight: 700;">${esc(worker.name)} ${worker.verificationStatus === 'Verified' ? '<span style="color: #10b981;">✓ Verified</span>' : ''}</h2>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">📍 Base: ${esc(worker.baseLocality?.toUpperCase())} • Service Area: ${esc(worker.serviceArea)} • 🏆 ${worker.experience} Years Exp</p>
           </div>
         </div>
 
-        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.5;">${worker.bio}</p>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.5;">${esc(worker.bio)}</p>
 
         <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;">Services & Service-Specific Pricing</h3>
         <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
@@ -417,12 +419,12 @@ export const CustomerFrontend = {
             return `
               <div style="background: var(--bg-primary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                  <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--accent-primary);">${catObj.name}</h4>
-                  <span style="font-size: 1.1rem; font-weight: 800;">₹${info.startingPrice} <small style="font-weight: normal; font-size: 0.8rem;">(${info.pricingMethod})</small></span>
+                  <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--accent-primary);">${esc(catObj.name)}</h4>
+                  <span style="font-size: 1.1rem; font-weight: 800;">₹${info.startingPrice} <small style="font-weight: normal; font-size: 0.8rem;">(${esc(info.pricingMethod)})</small></span>
                 </div>
-                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Visiting charge: ₹${info.visitingCharge} • Est. Duration: ${info.estDuration}</p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Visiting charge: ₹${info.visitingCharge} • Est. Duration: ${esc(info.estDuration)}</p>
                 <div class="worker-skills">
-                  ${(info.tasks || []).map(t => `<span class="skill-tag">${t}</span>`).join('')}
+                  ${(info.tasks || []).map(t => `<span class="skill-tag">${esc(t)}</span>`).join('')}
                 </div>
               </div>
             `;
@@ -431,7 +433,7 @@ export const CustomerFrontend = {
 
         <div style="display: flex; justify-content: flex-end; gap: 1rem;">
           <button class="btn btn-outline" id="close-btn">Close</button>
-          <button class="btn btn-primary" id="modal-book-btn" data-id="${worker.id}">Book Appointment Now</button>
+          <button class="btn btn-primary" id="modal-book-btn" data-id="${esc(worker.id)}">Book Appointment Now</button>
         </div>
       </div>
     `;
@@ -454,12 +456,16 @@ export const CustomerFrontend = {
     const firstSpecKey = Object.keys(specialities)[0] || 'general';
     const firstInfo = specialities[firstSpecKey] || { startingPrice: 350, visitingCharge: 100, tasks: ['General Repair'] };
 
+    const profile = AuthService.getProfile();
+    const customerName = profile ? (profile.full_name || profile.name || 'Aarav Mehta') : 'Aarav Mehta';
+    const customerPhone = profile ? (profile.phone || '+91 98765 43210') : '+91 98765 43210';
+
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
       <div class="modal-card" style="max-width: 650px;">
         <button class="modal-close" id="close-modal">×</button>
-        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Book Appointment with ${worker.name}</h2>
+        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Book Appointment with ${esc(worker.name)}</h2>
         <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">Select exact service task, appointment slot, and confirm transparent pricing.</p>
 
         <form id="booking-form" style="display: flex; flex-direction: column; gap: 1.25rem;">
@@ -469,14 +475,14 @@ export const CustomerFrontend = {
               <select id="book-category" class="form-select">
                 ${Object.keys(specialities).map(sk => {
                   const catObj = CATEGORIES.find(c => c.id === sk) || { name: sk };
-                  return `<option value="${sk}">${catObj.name}</option>`;
+                  return `<option value="${esc(sk)}">${esc(catObj.name)}</option>`;
                 }).join('')}
               </select>
             </div>
             <div>
               <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Specific Task</label>
               <select id="book-task" class="form-select">
-                ${(firstInfo.tasks || []).map(t => `<option value="${t}">${t}</option>`).join('')}
+                ${(firstInfo.tasks || []).map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
               </select>
             </div>
           </div>
@@ -544,7 +550,7 @@ export const CustomerFrontend = {
     catSelect.onchange = () => {
       const sk = catSelect.value;
       const info = specialities[sk] || { startingPrice: 350, visitingCharge: 100, tasks: ['General Repair'] };
-      taskSelect.innerHTML = (info.tasks || []).map(t => `<option value="${t}">${t}</option>`).join('');
+      taskSelect.innerHTML = (info.tasks || []).map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
       priceBase.textContent = `₹${info.startingPrice}`;
       priceVisit.textContent = `₹${info.visitingCharge}`;
       priceTotal.textContent = `₹${info.startingPrice + info.visitingCharge}`;
@@ -556,8 +562,8 @@ export const CustomerFrontend = {
       const info = specialities[sk] || { startingPrice: 350, visitingCharge: 100 };
 
       const customerData = {
-        name: 'Aarav Mehta',
-        phone: '+91 98765 43210',
+        name: customerName,
+        phone: customerPhone,
         address: modal.querySelector('#cust-address').value,
         locality: StorageService.getCustomerLocality()
       };
@@ -574,6 +580,9 @@ export const CustomerFrontend = {
       };
 
       const newBooking = BookingService.createBooking(worker, customerData, bookingDetails);
+      if (profile && profile.id) {
+        newBooking.customerId = profile.id;
+      }
       const bookings = StorageService.getBookings();
       bookings.push(newBooking);
       StorageService.saveBookings(bookings);
@@ -604,16 +613,16 @@ export const CustomerFrontend = {
               const info = w.specialities[specKeys[0]] || { startingPrice: 350 };
               return `
                 <div style="background: var(--bg-primary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                  <img src="${w.avatar}" alt="${w.name}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin-bottom: 0.75rem;">
-                  <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem;">${w.name}</h3>
+                  <img src="${esc(w.avatar)}" alt="${esc(w.name)}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin-bottom: 0.75rem;">
+                  <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem;">${esc(w.name)}</h3>
                   <div style="margin-top: 1rem; font-size: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem;">
                     <div><strong>Starting Price:</strong> ₹${info.startingPrice}</div>
                     <div><strong>Rating:</strong> ⭐ ${w.ratingAverage} (${w.ratingCount})</div>
                     <div><strong>Experience:</strong> ${w.experience} yrs</div>
-                    <div><strong>Locality:</strong> ${w.baseLocality?.toUpperCase()}</div>
-                    <div><strong>Status:</strong> <span style="color: ${w.available && !w.pauseNewBookings ? 'var(--success)' : 'var(--danger)'};">${w.available && !w.pauseNewBookings ? 'Online' : 'Offline'}</span></div>
+                    <div><strong>Locality:</strong> ${esc(w.baseLocality?.toUpperCase())}</div>
+                    <div><strong>Status:</strong> <span style="color: var(--success);">Online</span></div>
                   </div>
-                  <button class="btn btn-primary btn-sm book-worker-from-compare" data-id="${w.id}" style="width: 100%; margin-top: 1rem;">Book Now</button>
+                  <button class="btn btn-primary btn-sm book-worker-from-compare" data-id="${esc(w.id)}" style="width: 100%; margin-top: 1rem;">Book Now</button>
                 </div>
               `;
             }).join('')}
@@ -645,16 +654,16 @@ export const CustomerFrontend = {
     modal.innerHTML = `
       <div class="modal-card">
         <button class="modal-close" id="close-modal">×</button>
-        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Booking Details: ${booking.id}</h2>
-        <span class="badge badge-accepted">${booking.status}</span>
+        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Booking Details: ${esc(booking.id)}</h2>
+        <span class="badge badge-accepted">${esc(booking.status)}</span>
 
         <div style="margin-top: 1.5rem; background: var(--bg-primary); padding: 1.25rem; border-radius: 8px; font-size: 0.95rem; display: flex; flex-direction: column; gap: 0.75rem;">
-          <div><strong>Professional:</strong> ${worker.name} (${worker.phone || '+91 98211 44551'})</div>
-          <div><strong>Service Task:</strong> ${booking.serviceTask}</div>
-          <div><strong>Problem Description:</strong> ${booking.jobDescription}</div>
-          <div><strong>Address:</strong> ${booking.address} (${booking.locality.toUpperCase()})</div>
-          <div><strong>Appointment Slot:</strong> ${booking.appointmentDate} @ ${booking.appointmentTime}</div>
-          <div><strong>Agreed Price:</strong> ₹<strong>${booking.agreedPrice}</strong> (Base ₹${booking.basePrice} + Visiting ₹${booking.visitingCharge})</div>
+          <div><strong>Professional:</strong> ${esc(worker.name)} (${esc(worker.phone || '+91 98211 44551')})</div>
+          <div><strong>Service Task:</strong> ${esc(booking.serviceTask)}</div>
+          <div><strong>Problem Description:</strong> ${esc(booking.jobDescription)}</div>
+          <div><strong>Address:</strong> ${esc(booking.address)} (${esc(booking.locality.toUpperCase())})</div>
+          <div><strong>Appointment Slot:</strong> ${esc(booking.appointmentDate)} @ ${esc(booking.appointmentTime)}</div>
+          <div><strong>Agreed Price:</strong> ₹<strong>${booking.agreedPrice}</strong></div>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
@@ -686,7 +695,7 @@ export const CustomerFrontend = {
             <p style="color: var(--text-secondary); font-size: 0.85rem;">Official Service Transaction Receipt</p>
           </div>
           <div style="text-align: right;">
-            <strong>Invoice ID:</strong> INV-${booking.id}<br>
+            <strong>Invoice ID:</strong> INV-${esc(booking.id)}<br>
             <small style="color: var(--text-secondary);">Date: ${new Date(booking.completedAt || booking.createdAt).toLocaleDateString()}</small>
           </div>
         </div>
@@ -702,8 +711,8 @@ export const CustomerFrontend = {
           </thead>
           <tbody>
             <tr>
-              <td>${booking.serviceTask} — ${booking.jobDescription}</td>
-              <td>${booking.appointmentDate}</td>
+              <td>${esc(booking.serviceTask)} — ${esc(booking.jobDescription)}</td>
+              <td>${esc(booking.appointmentDate)}</td>
               <td>₹${booking.visitingCharge}</td>
               <td><strong>₹${booking.agreedPrice}</strong></td>
             </tr>
@@ -753,6 +762,8 @@ export const CustomerFrontend = {
     modal.querySelector('#review-form').onsubmit = (e) => {
       e.preventDefault();
       const rating = parseInt(modal.querySelector('#rev-rating').value);
+      const comment = modal.querySelector('#rev-comment').value;
+
       const bookings = StorageService.getBookings();
       const booking = bookings.find(b => b.id === bookingId);
       if (booking) {
@@ -761,13 +772,14 @@ export const CustomerFrontend = {
         const workers = StorageService.getWorkers();
         const worker = workers.find(w => w.id === booking.workerId);
         if (worker) {
+          const totalRating = ((worker.ratingAverage || 5) * (worker.ratingCount || 0)) + rating;
           worker.ratingCount = (worker.ratingCount || 0) + 1;
-          worker.ratingAverage = Math.round((((worker.ratingAverage || 5) * (worker.ratingCount - 1)) + rating) / worker.ratingCount * 10) / 10;
+          worker.ratingAverage = Math.round((totalRating / worker.ratingCount) * 10) / 10;
           StorageService.saveWorkers(workers);
         }
       }
       modal.remove();
-      Toast.show('Review submitted!', 'success');
+      Toast.show('Review submitted successfully!', 'success');
       container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
       this.attachBookingsEvents(container);
     };

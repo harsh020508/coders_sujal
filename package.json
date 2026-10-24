@@ -2,10 +2,11 @@
   "name": "localkaam",
   "version": "1.0.0",
   "type": "module",
-  "description": "Hyperlocal blue-collar services marketplace",
-  "main": "app.js",
+  "description": "Hyperlocal blue-collar services marketplace with Supabase and SQLite backend integration",
+  "main": "server.js",
   "scripts": {
-    "start": "python3 -m http.server 8080"
+    "start": "node server.js",
+    "serve": "python3 -m http.server 8080"
   },
   "engines": {
     "node": ">=22.13"
@@ -14,7 +15,8 @@
     "marketplace",
     "hyperlocal",
     "services",
-    "mumbai"
+    "mumbai",
+    "supabase"
   ],
   "author": "LocalKaam Team",
   "license": "MIT"
