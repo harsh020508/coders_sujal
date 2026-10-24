@@ -1,27 +1,34 @@
 export const BookingService = {
   createBooking(worker, customerData, bookingDetails) {
-    const originalEstimate = worker.hourlyRate * bookingDetails.estimatedHours;
-    const customerOffer = bookingDetails.customerOffer ? parseFloat(bookingDetails.customerOffer) : null;
+    const selectedServiceKey = bookingDetails.serviceKey || Object.keys(worker.specialities || {})[0] || 'general';
+    const specialtyInfo = worker.specialities?.[selectedServiceKey] || { startingPrice: worker.hourlyRate || 300, visitingCharge: 100 };
     
+    const basePrice = bookingDetails.agreedPrice || specialtyInfo.startingPrice || 350;
+    const visitingCharge = specialtyInfo.visitingCharge || 100;
+    const finalAmount = basePrice + visitingCharge;
+
     const newBooking = {
       id: `BK-${Math.floor(1000 + Math.random() * 9000)}`,
       workerId: worker.id,
       customerName: customerData.name || 'Aarav Mehta',
       customerPhone: customerData.phone || '+91 98765 43210',
-      service: bookingDetails.service || worker.skills[0] || 'General Service',
+      serviceCategory: selectedServiceKey,
+      serviceTask: bookingDetails.serviceTask || bookingDetails.service || 'General Service',
       locality: customerData.locality || worker.baseLocality,
       address: customerData.address || 'Standard Address, Mumbai',
       jobDescription: bookingDetails.jobDescription || 'Service required',
       bookingType: bookingDetails.bookingType || 'instant',
-      dateTime: bookingDetails.dateTime || new Date().toISOString(),
-      estimatedHours: parseFloat(bookingDetails.estimatedHours) || 1,
-      originalEstimate,
-      customerOffer,
-      counterOfferHistory: customerOffer ? [
-        { sender: 'customer', amount: customerOffer, note: bookingDetails.offerNote || 'Initial customer offer' }
+      appointmentDate: bookingDetails.appointmentDate || new Date().toISOString().split('T')[0],
+      appointmentTime: bookingDetails.appointmentTime || '10:00 AM',
+      estimatedHours: parseFloat(bookingDetails.estimatedHours) || 2,
+      basePrice,
+      visitingCharge,
+      customerOffer: bookingDetails.customerOffer ? parseFloat(bookingDetails.customerOffer) : null,
+      counterOfferHistory: bookingDetails.customerOffer ? [
+        { sender: 'customer', amount: bookingDetails.customerOffer, note: 'Initial customer offer' }
       ] : [],
-      agreedPrice: customerOffer || originalEstimate,
-      status: 'Pending',
+      agreedPrice: bookingDetails.customerOffer || finalAmount,
+      status: 'Pending confirmation', // Pending confirmation, Accepted, Confirmed, Worker en route, Worker arrived, Job in progress, Job completed, Cancelled, Disputed
       reviewId: null,
       complaintId: null,
       createdAt: new Date().toISOString(),
@@ -31,26 +38,25 @@ export const BookingService = {
   },
 
   acceptBooking(booking, workerAcceptsOffer = true) {
-    if (booking.status !== 'Pending') return booking;
-    // If there's a customer offer and worker accepts it, agreed price is customerOffer, else originalEstimate
-    const agreed = (booking.customerOffer && workerAcceptsOffer) ? booking.customerOffer : booking.originalEstimate;
+    if (booking.status !== 'Pending confirmation') return booking;
+    const agreed = (booking.customerOffer && workerAcceptsOffer) ? booking.customerOffer : (booking.basePrice + booking.visitingCharge);
     return {
       ...booking,
-      status: 'Accepted',
+      status: 'Confirmed',
       agreedPrice: agreed
     };
   },
 
   rejectBooking(booking) {
-    if (booking.status !== 'Pending') return booking;
+    if (booking.status !== 'Pending confirmation') return booking;
     return {
       ...booking,
-      status: 'Rejected'
+      status: 'Cancelled'
     };
   },
 
   cancelBooking(booking) {
-    if (booking.status !== 'Pending' && booking.status !== 'Accepted') return booking;
+    if (['Job completed', 'Cancelled', 'Disputed'].includes(booking.status)) return booking;
     return {
       ...booking,
       status: 'Cancelled'
@@ -58,13 +64,13 @@ export const BookingService = {
   },
 
   workerCounterOffer(booking, amount, note) {
-    if (booking.status !== 'Pending') return booking;
+    if (booking.status !== 'Pending confirmation') return booking;
     const newAmount = parseFloat(amount);
     const history = [...(booking.counterOfferHistory || []), { sender: 'worker', amount: newAmount, note: note || 'Worker counter-offer' }];
     return {
       ...booking,
       counterOfferHistory: history,
-      agreedPrice: newAmount // proposed agreed price awaiting customer acceptance
+      agreedPrice: newAmount
     };
   },
 
@@ -74,7 +80,7 @@ export const BookingService = {
     const history = [...booking.counterOfferHistory, { sender: 'customer', amount: agreed, note: 'Customer accepted counter-offer' }];
     return {
       ...booking,
-      status: 'Accepted',
+      status: 'Confirmed',
       agreedPrice: agreed,
       counterOfferHistory: history
     };
@@ -89,19 +95,26 @@ export const BookingService = {
     };
   },
 
+  setEnRoute(booking) {
+    if (!['Confirmed', 'Accepted'].includes(booking.status)) return booking;
+    return { ...booking, status: 'Worker en route' };
+  },
+
+  setArrived(booking) {
+    if (booking.status !== 'Worker en route') return booking;
+    return { ...booking, status: 'Worker arrived' };
+  },
+
   startJob(booking) {
-    if (booking.status !== 'Accepted') return booking;
-    return {
-      ...booking,
-      status: 'In Progress'
-    };
+    if (!['Confirmed', 'Accepted', 'Worker arrived'].includes(booking.status)) return booking;
+    return { ...booking, status: 'Job in progress' };
   },
 
   completeJob(booking) {
-    if (booking.status !== 'In Progress') return booking;
+    if (booking.status !== 'Job in progress') return booking;
     return {
       ...booking,
-      status: 'Completed',
+      status: 'Job completed',
       completedAt: new Date().toISOString()
     };
   }
