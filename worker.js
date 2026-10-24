@@ -2,26 +2,12 @@ import { StorageService } from './storage.js';
 import { BookingService } from './bookings.js';
 import { CATEGORIES, LOCALITIES } from './data.js';
 import { Toast } from './toast.js';
-<<<<<<< HEAD
-import { esc } from './utils.js';
-=======
 import { AuthService } from './authService.js';
->>>>>>> 2a5b7cd1a958f6e1c5ca8669f090fbf9659ce296
+import { esc } from './utils.js';
 
 export const WorkerFrontend = {
   render(container) {
     const workers = StorageService.getWorkers();
-<<<<<<< HEAD
-    let currentWorkerId = StorageService.getSelectedWorkerId();
-    let worker = workers.find(w => w.id === currentWorkerId) || workers[0];
-
-    // If profile is incomplete, force onboarding
-    if (!worker || !worker.profileCompleted) {
-      this.renderOnboarding(container, worker);
-      return;
-    }
-
-=======
     const authProfile = AuthService.getProfile();
     let currentWorkerId = StorageService.getSelectedWorkerId();
 
@@ -33,8 +19,14 @@ export const WorkerFrontend = {
       }
     }
 
-    const worker = workers.find(w => w.id === currentWorkerId) || workers[0];
->>>>>>> 2a5b7cd1a958f6e1c5ca8669f090fbf9659ce296
+    let worker = workers.find(w => w.id === currentWorkerId) || workers[0];
+
+    // If profile is incomplete, force onboarding
+    if (!worker || !worker.profileCompleted) {
+      this.renderOnboarding(container, worker);
+      return;
+    }
+
     const bookings = StorageService.getBookings().filter(b => b.workerId === worker.id);
 
     const pendingRequests = bookings.filter(b => b.status === 'Pending confirmation');
@@ -776,7 +768,7 @@ export const WorkerFrontend = {
 
         let workers = StorageService.getWorkers();
         workers = workers.map(w => w.id === worker.id ? worker : w);
-        StorageService.saveStorageWorkers ? StorageService.saveWorkers(workers) : StorageService.saveWorkers(workers);
+        StorageService.saveWorkers(workers);
         Toast.show('Profile updated successfully!', 'success');
         this.render(container);
       };
