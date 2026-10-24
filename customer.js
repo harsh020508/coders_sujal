@@ -3,6 +3,7 @@ import { MatchingService } from './matching.js';
 import { BookingService } from './bookings.js';
 import { CATEGORIES, LOCALITIES } from './data.js';
 import { Toast } from './toast.js';
+import { AuthService } from './authService.js';
 
 export const CustomerFrontend = {
   currentCategory: 'all',
@@ -540,6 +541,10 @@ export const CustomerFrontend = {
     const worker = workers.find(w => w.id === workerId);
     if (!worker) return;
 
+    const profile = AuthService.getProfile();
+    const customerName = profile ? (profile.full_name || profile.name || 'Aarav Mehta') : 'Aarav Mehta';
+    const customerPhone = profile ? (profile.phone || '+91 98765 43210') : '+91 98765 43210';
+
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
@@ -551,7 +556,7 @@ export const CustomerFrontend = {
         <form id="booking-form" style="display: flex; flex-direction: column; gap: 1rem;">
           <div>
             <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Your Name</label>
-            <input type="text" id="cust-name" class="form-control" value="Aarav Mehta" required>
+            <input type="text" id="cust-name" class="form-control" value="${customerName}" required>
           </div>
           <div>
             <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Problem Description & Work Scope</label>
@@ -603,7 +608,7 @@ export const CustomerFrontend = {
       e.preventDefault();
       const customerData = {
         name: modal.querySelector('#cust-name').value,
-        phone: '+91 98765 43210',
+        phone: customerPhone,
         address: modal.querySelector('#cust-address').value,
         locality: StorageService.getCustomerLocality()
       };
@@ -616,6 +621,9 @@ export const CustomerFrontend = {
       };
 
       const newBooking = BookingService.createBooking(worker, customerData, bookingDetails);
+      if (profile && profile.id) {
+        newBooking.customerId = profile.id;
+      }
       const bookings = StorageService.getBookings();
       bookings.push(newBooking);
       StorageService.saveBookings(bookings);
@@ -804,11 +812,13 @@ export const CustomerFrontend = {
       if (!booking) return;
 
       const reviews = StorageService.getReviews();
+      const profile = AuthService.getProfile();
       const newReview = {
         id: `REV-${Date.now()}`,
         bookingId,
         workerId: booking.workerId,
-        customerName: booking.customerName,
+        customerId: profile ? profile.id : (booking.customerId || null),
+        customerName: profile ? (profile.full_name || booking.customerName) : booking.customerName,
         rating,
         comment,
         timestamp: new Date().toISOString()
@@ -870,10 +880,15 @@ export const CustomerFrontend = {
       if (!booking) return;
 
       const complaints = StorageService.getComplaints();
+      const profile = AuthService.getProfile();
       const newComplaint = {
         id: `CMP-${Date.now()}`,
         bookingId,
         workerId: booking.workerId,
+        customerId: profile ? profile.id : (booking.customerId || null),
+        customerName: profile ? (profile.full_name || booking.customerName) : booking.customerName,
+        issue: 'Service Issue',
+        details: complaintText,
         complaintText,
         status: 'Open',
         timestamp: new Date().toISOString()

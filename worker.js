@@ -2,11 +2,22 @@ import { StorageService } from './storage.js';
 import { BookingService } from './bookings.js';
 import { CATEGORIES, LOCALITIES } from './data.js';
 import { Toast } from './toast.js';
+import { AuthService } from './authService.js';
 
 export const WorkerFrontend = {
   render(container) {
     const workers = StorageService.getWorkers();
-    const currentWorkerId = StorageService.getSelectedWorkerId();
+    const authProfile = AuthService.getProfile();
+    let currentWorkerId = StorageService.getSelectedWorkerId();
+
+    if (authProfile && authProfile.role === 'worker') {
+      const myWorker = workers.find(w => (w.user_id && w.user_id === authProfile.id) || w.id === `w_${authProfile.id.substring(0, 8)}` || (authProfile.phone && w.phone === authProfile.phone));
+      if (myWorker) {
+        currentWorkerId = myWorker.id;
+        StorageService.setSelectedWorkerId(myWorker.id);
+      }
+    }
+
     const worker = workers.find(w => w.id === currentWorkerId) || workers[0];
     const bookings = StorageService.getBookings().filter(b => b.workerId === worker.id);
 

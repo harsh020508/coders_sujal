@@ -8,13 +8,53 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Supabase Client JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div id="app"></div>
 
   <script type="module">
     import { App } from './app.js';
-    window.addEventListener('DOMContentLoaded', () => {
+    import { SupabaseService } from './supabaseClient.js';
+    import { AuthService } from './authService.js';
+    import { Toast } from './toast.js';
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Handle OAuth redirect — Supabase puts tokens in URL hash after Google sign-in
+      const hash = window.location.hash;
+      if (hash && (hash.includes('access_token') || hash.includes('error'))) {
+        // Show loading state while processing OAuth callback
+        const appDiv = document.getElementById('app');
+        if (appDiv) {
+          appDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;"><div style="font-size:2rem;margin-bottom:1rem;">⏳</div><p style="font-size:1.1rem;font-weight:600;color:#333;">Completing Google Sign-In...</p><p style="color:#666;font-size:0.9rem;margin-top:0.5rem;">Please wait while we verify your account.</p></div>';
+        }
+
+        try {
+          const client = await SupabaseService.getClient();
+          if (client) {
+            // Let Supabase SDK extract session from URL hash
+            const { data, error } = await client.auth.getSession();
+            if (error) {
+              console.error('OAuth session error:', error);
+              Toast.show('Sign-in error: ' + (error.message || 'Unknown error'), 'error');
+            } else if (data.session) {
+              console.log('[Auth] Google OAuth session established for:', data.session.user.email);
+              // Sync profile (gracefully handles missing profiles table)
+              await AuthService.syncUserProfile(data.session.user);
+              Toast.show('Signed in with Google as ' + (data.session.user.email || 'User') + '!', 'success');
+            }
+          }
+        } catch (err) {
+          console.error('OAuth callback processing error:', err);
+        }
+
+        // Clean the URL hash to avoid re-processing on refresh
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      }
+
       App.init();
     });
   </script>
