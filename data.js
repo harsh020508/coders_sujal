@@ -1,4 +1,4 @@
-// LocalKaam Seed Data & Localities
+// LocalKaam Clean Production Data
 export const LOCALITIES = [
   { id: 'andheri', name: 'Andheri West', lat: 19.1136, lng: 72.8258, zone: 'Western Suburbs' },
   { id: 'bandra', name: 'Bandra West', lat: 19.0596, lng: 72.8295, zone: 'Western Suburbs' },
@@ -29,7 +29,7 @@ export const INITIAL_WORKERS = [
     experience: 8,
     hourlyRate: 300,
     baseLocality: 'andheri',
-    serviceRadius: 10, // km
+    serviceRadius: 10,
     workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     workingHours: { start: '08:00', end: '20:00' },
     available: true,
@@ -175,44 +175,6 @@ export const INITIAL_WORKERS = [
   }
 ];
 
-export const INITIAL_BOOKINGS = [
-  {
-    id: 'BK-1001',
-    workerId: 'w1',
-    customerName: 'Aarav Mehta',
-    customerPhone: '+91 98765 43210',
-    service: 'Leaking Tap Repair',
-    locality: 'andheri',
-    address: 'Flat 402, Titanium Heights, Andheri West',
-    jobDescription: 'Kitchen sink tap has continuous leakage causing water wastage.',
-    bookingType: 'instant',
-    dateTime: new Date(Date.now() - 3600000).toISOString(),
-    estimatedHours: 2,
-    originalEstimate: 600,
-    customerOffer: 500,
-    counterOfferHistory: [
-      { sender: 'customer', amount: 500, note: 'Can we do 500 for 2 hours?' },
-      { sender: 'worker', amount: 550, note: 'Parts cost extra, 550 is best.' }
-    ],
-    agreedPrice: 550,
-    status: 'Accepted', // Pending, Accepted, In Progress, Completed, Rejected, Cancelled
-    reviewId: null,
-    complaintId: null,
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-    completedAt: null
-  }
-];
-
-export const INITIAL_REVIEWS = [
-  {
-    id: 'REV-1',
-    bookingId: 'BK-999',
-    workerId: 'w1',
-    customerName: 'Neha Kapoor',
-    rating: 5,
-    comment: 'Ramesh came within 20 minutes and fixed our bathroom pipe leak cleanly. Highly professional!',
-    timestamp: new Date(Date.now() - 86400000 * 2).toISOString()
-  }
-];
-
+export const INITIAL_BOOKINGS = []; // Clean state: zero fake pre-existing bookings
+export const INITIAL_REVIEWS = [];
 export const INITIAL_COMPLAINTS = [];
