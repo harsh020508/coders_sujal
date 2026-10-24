@@ -2,18 +2,22 @@ import { StorageService } from './storage.js';
 import { MatchingService } from './matching.js';
 import { BookingService } from './bookings.js';
 import { CATEGORIES, LOCALITIES } from './data.js';
+import { Toast } from './toast.js';
 
 export const CustomerFrontend = {
   currentCategory: 'all',
   searchQuery: '',
   comparedWorkers: [],
+  sortBy: 'match', // match, rating, price_low, distance
 
   render(container) {
     const workers = StorageService.getWorkers();
     const bookings = StorageService.getBookings();
     const customerLocality = StorageService.getCustomerLocality();
-    const currentLocalityObj = MatchingService.getLocality(customerLocality);
-    const eligibleWorkers = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+    let eligibleWorkers = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+
+    // Apply sorting
+    eligibleWorkers = this.sortWorkers(eligibleWorkers);
 
     container.innerHTML = `
       <div class="dashboard-layout">
@@ -38,7 +42,7 @@ export const CustomerFrontend = {
 
         <!-- Main Content Area -->
         <div class="main-content" id="customer-main-content">
-          ${this.renderDiscoverView(eligibleWorkers, categoriesListHtml())}
+          ${this.renderDiscoverView(eligibleWorkers)}
         </div>
       </div>
     `;
@@ -46,7 +50,16 @@ export const CustomerFrontend = {
     this.attachEvents(container);
   },
 
-  renderDiscoverView(eligibleWorkers, categoriesHtml) {
+  sortWorkers(workers) {
+    return [...workers].sort((a, b) => {
+      if (this.sortBy === 'rating') return b.ratingAverage - a.ratingAverage;
+      if (this.sortBy === 'price_low') return a.hourlyRate - b.hourlyRate;
+      if (this.sortBy === 'distance') return a.distance - b.distance;
+      return a.matchScore - b.matchScore; // default match
+    });
+  },
+
+  renderDiscoverView(eligibleWorkers) {
     return `
       <div class="dashboard-header">
         <div>
@@ -60,9 +73,15 @@ export const CustomerFrontend = {
         <div class="search-input-group">
           <input type="text" id="service-search-input" placeholder="Search 'Leaking tap', 'Wiring', 'Deep cleaning'..." value="${this.searchQuery}">
         </div>
-        <select id="category-filter-select" class="form-select" style="max-width: 200px;">
+        <select id="category-filter-select" class="form-select" style="max-width: 180px;">
           <option value="all">All Categories</option>
           ${CATEGORIES.map(c => `<option value="${c.id}" ${this.currentCategory === c.id ? 'selected' : ''}>${c.icon} ${c.name}</option>`).join('')}
+        </select>
+        <select id="sort-by-select" class="form-select" style="max-width: 170px;">
+          <option value="match" ${this.sortBy === 'match' ? 'selected' : ''}>✨ Best Match</option>
+          <option value="rating" ${this.sortBy === 'rating' ? 'selected' : ''}>⭐ Highest Rated</option>
+          <option value="price_low" ${this.sortBy === 'price_low' ? 'selected' : ''}>💵 Lowest Price</option>
+          <option value="distance" ${this.sortBy === 'distance' ? 'selected' : ''}>📍 Nearest First</option>
         </select>
       </div>
 
@@ -196,7 +215,10 @@ export const CustomerFrontend = {
                   <td>
                     <button class="btn btn-outline btn-sm view-booking-details-btn" data-id="${b.id}">Details</button>
                     ${b.status === 'Pending' || b.status === 'Accepted' ? `<button class="btn btn-danger btn-sm cancel-booking-btn" data-id="${b.id}">Cancel</button>` : ''}
-                    ${b.status === 'Completed' && !b.reviewId ? `<button class="btn btn-primary btn-sm review-booking-btn" data-id="${b.id}">Review</button>` : ''}
+                    ${b.status === 'Completed' ? `
+                      <button class="btn btn-primary btn-sm invoice-btn" data-id="${b.id}">Invoice</button>
+                      ${!b.reviewId ? `<button class="btn btn-outline btn-sm review-booking-btn" data-id="${b.id}">Review</button>` : ''}
+                    ` : ''}
                     <button class="btn btn-outline btn-sm complaint-booking-btn" data-id="${b.id}" style="margin-top: 2px;">Report Issue</button>
                   </td>
                 </tr>
@@ -209,18 +231,17 @@ export const CustomerFrontend = {
   },
 
   attachEvents(container) {
-    // Locality change
     const localitySelect = container.querySelector('#locality-select');
     if (localitySelect) {
       localitySelect.addEventListener('change', (e) => {
         StorageService.setCustomerLocality(e.target.value);
+        Toast.show(`Locality switched to ${e.target.options[e.target.selectedIndex].text}`, 'info');
         this.render(container);
       });
     }
 
-    // Sidebar navigation
     container.querySelectorAll('.sidebar-item').forEach(item => {
-      item.addEventListener('click', (e) => {
+      item.addEventListener('click', () => {
         const view = item.getAttribute('data-view');
         container.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
@@ -229,7 +250,8 @@ export const CustomerFrontend = {
         if (view === 'discover') {
           const workers = StorageService.getWorkers();
           const customerLocality = StorageService.getCustomerLocality();
-          const eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+          let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+          eligible = this.sortWorkers(eligible);
           mainContent.innerHTML = this.renderDiscoverView(eligible);
           this.attachDiscoverEvents(container);
         } else if (view === 'bookings') {
@@ -251,7 +273,8 @@ export const CustomerFrontend = {
         this.searchQuery = e.target.value;
         const workers = StorageService.getWorkers();
         const customerLocality = StorageService.getCustomerLocality();
-        const eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+        let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+        eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
       });
@@ -263,7 +286,21 @@ export const CustomerFrontend = {
         this.currentCategory = e.target.value;
         const workers = StorageService.getWorkers();
         const customerLocality = StorageService.getCustomerLocality();
-        const eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+        let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+        eligible = this.sortWorkers(eligible);
+        container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
+        this.attachDiscoverEvents(container);
+      });
+    }
+
+    const sortSelect = container.querySelector('#sort-by-select');
+    if (sortSelect) {
+      sortSelect.addEventListener('change', (e) => {
+        this.sortBy = e.target.value;
+        const workers = StorageService.getWorkers();
+        const customerLocality = StorageService.getCustomerLocality();
+        let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+        eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
       });
@@ -274,27 +311,27 @@ export const CustomerFrontend = {
         this.currentCategory = btn.getAttribute('data-cat');
         const workers = StorageService.getWorkers();
         const customerLocality = StorageService.getCustomerLocality();
-        const eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+        let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+        eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
       });
     });
 
-    // Compare checkboxes
     container.querySelectorAll('.compare-checkbox').forEach(chk => {
       chk.addEventListener('change', (e) => {
         const id = chk.getAttribute('data-id');
         if (chk.checked) {
           if (this.comparedWorkers.length >= 3) {
-            alert('You can compare a maximum of 3 workers side by side.');
+            Toast.show('You can compare a maximum of 3 workers side by side.', 'warning');
             chk.checked = false;
             return;
           }
           if (!this.comparedWorkers.includes(id)) this.comparedWorkers.push(id);
+          Toast.show('Worker added to comparison', 'info');
         } else {
           this.comparedWorkers = this.comparedWorkers.filter(wid => wid !== id);
         }
-        // update compare button on sidebar
         const compareBtn = container.querySelector('#compare-sidebar-btn');
         if (compareBtn) compareBtn.innerHTML = `<span>⚖️</span> Compare Workers (${this.comparedWorkers.length}/3)`;
       });
@@ -305,7 +342,6 @@ export const CustomerFrontend = {
       openCompareModalBtn.addEventListener('click', () => this.showComparisonModal(container));
     }
 
-    // View worker details
     container.querySelectorAll('.view-worker-profile-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const workerId = btn.getAttribute('data-id');
@@ -313,7 +349,6 @@ export const CustomerFrontend = {
       });
     });
 
-    // Book worker
     container.querySelectorAll('.book-worker-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const workerId = btn.getAttribute('data-id');
@@ -337,9 +372,17 @@ export const CustomerFrontend = {
           let bookings = StorageService.getBookings();
           bookings = bookings.map(b => b.id === bookingId ? BookingService.cancelBooking(b) : b);
           StorageService.saveBookings(bookings);
+          Toast.show('Booking cancelled successfully', 'info');
           container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
           this.attachBookingsEvents(container);
         }
+      });
+    });
+
+    container.querySelectorAll('.invoice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const bookingId = btn.getAttribute('data-id');
+        this.showInvoiceModal(bookingId);
       });
     });
 
@@ -356,6 +399,89 @@ export const CustomerFrontend = {
         this.showComplaintModal(bookingId, container);
       });
     });
+  },
+
+  showInvoiceModal(bookingId) {
+    const bookings = StorageService.getBookings();
+    const workers = StorageService.getWorkers();
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+    const worker = workers.find(w => w.id === booking.workerId) || {};
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-card" style="max-width: 650px;">
+        <button class="modal-close" id="close-modal">×</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+          <div>
+            <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--accent-primary);">LocalKaam Invoice</h2>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">Official Service Transaction Receipt</p>
+          </div>
+          <div style="text-align: right;">
+            <strong>Invoice ID:</strong> INV-${booking.id}<br>
+            <small style="color: var(--text-secondary);">Date: ${new Date(booking.completedAt || booking.createdAt).toLocaleDateString()}</small>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 1.5rem; font-size: 0.95rem;">
+          <div>
+            <strong>Customer Details:</strong><br>
+            ${booking.customerName}<br>
+            ${booking.customerPhone}<br>
+            ${booking.address} (${booking.locality.toUpperCase()})
+          </div>
+          <div>
+            <strong>Professional Details:</strong><br>
+            ${worker.name} (${worker.phone || '+91 98000 11223'})<br>
+            Category: ${worker.category?.toUpperCase()}<br>
+            Verification: ${worker.verificationStatus}
+          </div>
+        </div>
+
+        <table class="data-table" style="margin-bottom: 1.5rem;">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Hours</th>
+              <th>Rate</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${booking.service} — ${booking.jobDescription}</td>
+              <td>${booking.estimatedHours} hrs</td>
+              <td>₹${worker.hourlyRate}/hr</td>
+              <td><strong>₹${booking.agreedPrice}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-primary); padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem;">
+          <div>
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">Payment Status</span>
+            <div style="font-weight: 700; color: var(--success);">🟢 Paid Directly to Professional</div>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">Total Amount</span>
+            <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-primary);">₹${booking.agreedPrice}</div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+          <button class="btn btn-outline" id="print-invoice-btn">🖨️ Print / Download</button>
+          <button class="btn btn-primary" id="close-inv-btn">Close</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    modal.querySelector('#close-modal').onclick = () => modal.remove();
+    modal.querySelector('#close-inv-btn').onclick = () => modal.remove();
+    modal.querySelector('#print-invoice-btn').onclick = () => {
+      window.print();
+    };
   },
 
   showWorkerDetailsModal(workerId, container) {
@@ -495,7 +621,7 @@ export const CustomerFrontend = {
       StorageService.saveBookings(bookings);
 
       modal.remove();
-      alert(`Booking request ${newBooking.id} submitted successfully to ${worker.name}! Check 'My Bookings'.`);
+      Toast.show(`Booking request ${newBooking.id} submitted successfully!`, 'success');
       this.render(container);
     };
   },
@@ -585,7 +711,6 @@ export const CustomerFrontend = {
           </div>
         ` : ''}
 
-        <!-- If worker countered and awaiting customer acceptance -->
         ${booking.status === 'Pending' && booking.counterOfferHistory.length > 0 && booking.counterOfferHistory[booking.counterOfferHistory.length - 1].sender === 'worker' ? `
           <div style="margin-top: 1.5rem; background: var(--accent-light); padding: 1rem; border-radius: 8px; text-align: center;">
             <p style="font-weight: 600; margin-bottom: 0.75rem; color: var(--accent-primary);">Worker countered at ₹${booking.agreedPrice}. Do you accept?</p>
@@ -613,7 +738,7 @@ export const CustomerFrontend = {
         bookings = bookings.map(b => b.id === booking.id ? BookingService.customerAcceptCounter(b) : b);
         StorageService.saveBookings(bookings);
         modal.remove();
-        alert('Counter-offer accepted! Booking is now Accepted.');
+        Toast.show('Counter-offer accepted! Booking is now Accepted.', 'success');
         container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
         this.attachBookingsEvents(container);
       };
@@ -626,7 +751,7 @@ export const CustomerFrontend = {
         bookings = bookings.map(b => b.id === booking.id ? BookingService.customerDeclineCounter(b) : b);
         StorageService.saveBookings(bookings);
         modal.remove();
-        alert('Counter-offer declined. Booking cancelled.');
+        Toast.show('Counter-offer declined. Booking cancelled.', 'info');
         container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
         this.attachBookingsEvents(container);
       };
@@ -691,11 +816,9 @@ export const CustomerFrontend = {
       reviews.push(newReview);
       StorageService.saveReviews(reviews);
 
-      // Update booking reviewId
       booking.reviewId = newReview.id;
       StorageService.saveBookings(bookings);
 
-      // Update worker average rating
       const workers = StorageService.getWorkers();
       const worker = workers.find(w => w.id === booking.workerId);
       if (worker) {
@@ -706,7 +829,7 @@ export const CustomerFrontend = {
       }
 
       modal.remove();
-      alert('Review submitted successfully! Thank you.');
+      Toast.show('Review submitted successfully!', 'success');
       container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
       this.attachBookingsEvents(container);
     };
@@ -762,13 +885,9 @@ export const CustomerFrontend = {
       StorageService.saveBookings(bookings);
 
       modal.remove();
-      alert('Complaint registered successfully. Support team will review shortly.');
+      Toast.show('Complaint registered successfully.', 'info');
       container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
       this.attachBookingsEvents(container);
     };
   }
 };
-
-function categoriesListHtml() {
-  return '';
-}

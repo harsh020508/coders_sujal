@@ -1,6 +1,7 @@
 import { StorageService } from './storage.js';
 import { BookingService } from './bookings.js';
 import { CATEGORIES, LOCALITIES } from './data.js';
+import { Toast } from './toast.js';
 
 export const WorkerFrontend = {
   render(container) {
@@ -325,6 +326,7 @@ export const WorkerFrontend = {
     if (profileSelect) {
       profileSelect.addEventListener('change', (e) => {
         StorageService.setSelectedWorkerId(e.target.value);
+        Toast.show(`Switched worker profile`, 'info');
         this.render(container);
       });
     }
@@ -367,31 +369,28 @@ export const WorkerFrontend = {
   },
 
   attachActionEvents(container) {
-    // Accept Request
     container.querySelectorAll('.accept-request-btn').forEach(btn => {
       btn.onclick = () => {
         const bookingId = btn.getAttribute('data-id');
         let bookings = StorageService.getBookings();
         bookings = bookings.map(b => b.id === bookingId ? BookingService.acceptBooking(b, true) : b);
         StorageService.saveBookings(bookings);
-        alert(`Booking ${bookingId} accepted successfully!`);
+        Toast.show(`Booking ${bookingId} accepted successfully!`, 'success');
         this.render(container);
       };
     });
 
-    // Reject Request
     container.querySelectorAll('.reject-request-btn').forEach(btn => {
       btn.onclick = () => {
         const bookingId = btn.getAttribute('data-id');
         let bookings = StorageService.getBookings();
         bookings = bookings.map(b => b.id === bookingId ? BookingService.rejectBooking(b) : b);
         StorageService.saveBookings(bookings);
-        alert(`Booking ${bookingId} rejected.`);
+        Toast.show(`Booking ${bookingId} rejected.`, 'info');
         this.render(container);
       };
     });
 
-    // Counter Offer
     container.querySelectorAll('.counter-request-btn').forEach(btn => {
       btn.onclick = () => {
         const bookingId = btn.getAttribute('data-id');
@@ -402,31 +401,29 @@ export const WorkerFrontend = {
         let bookings = StorageService.getBookings();
         bookings = bookings.map(b => b.id === bookingId ? BookingService.workerCounterOffer(b, amount, note) : b);
         StorageService.saveBookings(bookings);
-        alert(`Counter offer of ₹${amount} sent to customer! Awaiting customer acceptance.`);
+        Toast.show(`Counter offer of ₹${amount} sent to customer!`, 'success');
         this.render(container);
       };
     });
 
-    // Start Job
     container.querySelectorAll('.start-job-btn').forEach(btn => {
       btn.onclick = () => {
         const bookingId = btn.getAttribute('data-id');
         let bookings = StorageService.getBookings();
         bookings = bookings.map(b => b.id === bookingId ? BookingService.startJob(b) : b);
         StorageService.saveBookings(bookings);
-        alert(`Job ${bookingId} started! Status is now In Progress.`);
+        Toast.show(`Job ${bookingId} started! Status is now In Progress.`, 'info');
         this.render(container);
       };
     });
 
-    // Complete Job
     container.querySelectorAll('.complete-job-btn').forEach(btn => {
       btn.onclick = () => {
         const bookingId = btn.getAttribute('data-id');
         let bookings = StorageService.getBookings();
         bookings = bookings.map(b => b.id === bookingId ? BookingService.completeJob(b) : b);
         StorageService.saveBookings(bookings);
-        alert(`Job ${bookingId} marked Completed! Earnings updated.`);
+        Toast.show(`Job ${bookingId} marked Completed! Earnings updated.`, 'success');
         this.render(container);
       };
     });
@@ -440,6 +437,7 @@ export const WorkerFrontend = {
         let workers = StorageService.getWorkers();
         workers = workers.map(w => w.id === worker.id ? worker : w);
         StorageService.saveWorkers(workers);
+        Toast.show(`Availability status updated to ${worker.available ? 'Available' : 'Unavailable'}`, 'info');
         this.render(container);
       };
     }
@@ -454,7 +452,7 @@ export const WorkerFrontend = {
         let workers = StorageService.getWorkers();
         workers = workers.map(w => w.id === worker.id ? worker : w);
         StorageService.saveWorkers(workers);
-        alert('Schedule settings saved successfully!');
+        Toast.show('Schedule settings saved successfully!', 'success');
       };
     }
   },
@@ -474,7 +472,7 @@ export const WorkerFrontend = {
         let workers = StorageService.getWorkers();
         workers = workers.map(w => w.id === worker.id ? worker : w);
         StorageService.saveWorkers(workers);
-        alert('Worker profile updated successfully!');
+        Toast.show('Worker profile updated successfully!', 'success');
         this.render(container);
       };
     }
