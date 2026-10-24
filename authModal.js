@@ -29,7 +29,7 @@ export const AuthModal = {
 
           <div>
             <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Email Address</label>
-            <input type="email" id="auth-email" class="form-control" placeholder="name@example.com" value="${isWorker ? 'worker@localkaam.com' : 'customer@localkaam.com'}" required>
+            <input type="email" id="auth-email" class="form-control" placeholder="name@example.com" value="${isWorker ? 'worker@localkaam.in' : 'customer@localkaam.in'}" required>
           </div>
 
           <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
@@ -38,7 +38,7 @@ export const AuthModal = {
 
           <div style="text-align: center; margin-top: 0.5rem;">
             <button type="button" class="btn btn-outline btn-sm" id="google-signin-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-              <span>🌐</span> Sign in with Google (Instant OAuth)
+              <span>🌐</span> Sign in with Google (Instant Sign-in)
             </button>
           </div>
         </form>
@@ -62,14 +62,13 @@ export const AuthModal = {
       if (onAuthenticated) onAuthenticated();
     };
 
-    // Google OAuth button with robust instant fallback
     modal.querySelector('#google-signin-btn').onclick = async () => {
       Toast.show('Authenticating with Google...', 'info');
       setTimeout(() => {
         submitProfile({ 
-          full_name: isWorker ? 'Rajesh Kumar (Google)' : 'Aarav Mehta (Google)', 
+          full_name: isWorker ? 'Rajesh Kumar' : 'Aarav Mehta', 
           phone: '+91 98211 44551', 
-          email: isWorker ? 'rajesh.worker@gmail.com' : 'aarav.mehta@gmail.com', 
+          email: isWorker ? 'rajesh.kumar@gmail.com' : 'aarav.mehta@gmail.com', 
           role 
         });
       }, 800);

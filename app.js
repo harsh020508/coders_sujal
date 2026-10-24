@@ -5,6 +5,7 @@ import { WorkerFrontend } from './worker.js';
 import { Toast } from './toast.js';
 import { AuthModal } from './authModal.js';
 import { AuthService } from './authService.js';
+import { esc } from './utils.js';
 
 export const App = {
   init() {
@@ -101,7 +102,7 @@ export const App = {
           </nav>
           <div class="nav-actions">
             <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️ Light' : '🌙 Dark'}</button>
-            <button class="btn btn-primary" id="get-started-btn">Try Demo</button>
+            <button class="btn btn-primary" id="get-started-btn">Get Started</button>
           </div>
         </header>
 
@@ -109,12 +110,12 @@ export const App = {
         <section class="landing-hero">
           <div class="hero-content">
             <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent-light); color: var(--accent-primary); padding: 0.35rem 0.85rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 1.25rem;">
-              <span>🏆 Hackathon MVP Winner</span> • Hyperlocal Services Marketplace
+              <span>⭐ Verified Local Experts</span> • Hyperlocal Services Marketplace
             </div>
             <h1>Local help.<br>Fair prices.<br><span>Right around the corner.</span></h1>
             <p>Traditional home-service aggregators charge exorbitant commissions, inflate prices, and disconnect households from neighborhood experts. LocalKaam connects you directly with vetted local plumbers, electricians, carpenters, and cleaners with transparent pricing and real-time appointment booking.</p>
             <div class="hero-cta">
-              <button class="btn btn-primary" id="hero-find-pro-btn" style="padding: 0.85rem 1.75rem; font-size: 1.05rem;">Try Demo (Customer & Worker)</button>
+              <button class="btn btn-primary" id="hero-find-pro-btn" style="padding: 0.85rem 1.75rem; font-size: 1.05rem;">Get Started (Customer & Worker)</button>
               <button class="btn btn-outline" id="hero-explore-btn" style="padding: 0.85rem 1.75rem; font-size: 1.05rem;">Explore Features</button>
             </div>
           </div>
@@ -300,7 +301,7 @@ export const App = {
         <!-- 8. Technology Stack -->
         <section class="section-container" id="tech-stack">
           <h2 class="section-title">Production Technology Stack</h2>
-          <p class="section-subtitle">Modern, lightweight, reliable architecture built for speed and hackathon demonstration.</p>
+          <p class="section-subtitle">Modern, lightweight, reliable architecture built for speed and production deployment.</p>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; max-width: 1000px; margin: 0 auto;">
             <div style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border-color); text-align: center;">
               <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🟢</div>
@@ -332,7 +333,7 @@ export const App = {
               <div class="nav-logo" style="width: 28px; height: 28px; font-size: 0.9rem;">LK</div>
               <span style="font-weight: 700; font-size: 1.1rem;">LocalKaam</span>
             </div>
-            <p>© 2026 LocalKaam Inc. Hyperlocal Blue-Collar Services Marketplace MVP. Built for hackathon demonstration.</p>
+            <p>© 2026 LocalKaam Inc. Hyperlocal Blue-Collar Services Marketplace. All rights reserved.</p>
           </div>
         </footer>
       </div>
@@ -355,7 +356,7 @@ export const App = {
 
         <div class="role-selection-wrapper">
           <h1 style="font-size: 2.5rem; font-weight: 800; text-align: center; margin-bottom: 0.5rem;">How would you like to use LocalKaam?</h1>
-          <p style="color: var(--text-secondary); font-size: 1.1rem; text-align: center;">Choose the experience that works for you. You can switch roles anytime in this demo.</p>
+          <p style="color: var(--text-secondary); font-size: 1.1rem; text-align: center;">Choose the experience that works for you. You can switch roles anytime.</p>
 
           <div class="role-cards">
             <!-- Customer Card -->
@@ -386,7 +387,7 @@ export const App = {
   renderAppShell(activeRole) {
     const theme = StorageService.getTheme();
     const profile = AuthService.getProfile();
-    const userName = profile ? (profile.full_name || profile.email || 'User') : 'Demo User';
+    const userName = profile ? (profile.full_name || profile.email || 'User') : 'User';
 
     return `
       <div class="app-container">
@@ -403,7 +404,7 @@ export const App = {
           <div class="nav-actions">
             <button class="btn btn-outline btn-sm" id="switch-role-btn">Switch Role</button>
             <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️ Light' : '🌙 Dark'}</button>
-            <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Demo Data">🔄 Reset</button>
+            <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Data">🔄 Reset</button>
           </div>
         </header>
 
@@ -442,7 +443,7 @@ export const App = {
     const resetBtn = root.querySelector('#reset-demo-btn');
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
-        if (confirm('Reset all demo data and restore initial seeded state?')) {
+        if (confirm('Reset all app data and restore initial seeded state?')) {
           StorageService.resetDemoData();
         }
       });
@@ -532,7 +533,7 @@ export const App = {
     const resetBtn = root.querySelector('#reset-demo-btn');
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
-        if (confirm('Reset all demo data and restore initial seeded state?')) {
+        if (confirm('Reset all app data and restore initial seeded state?')) {
           StorageService.resetDemoData();
         }
       });
