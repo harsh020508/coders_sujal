@@ -776,6 +776,28 @@ body {
   font-size: 0.9rem;
 }
 
+/* Print Styles for Receipts / Invoices */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .navbar, .sidebar, .modal-close, .btn, .search-filter-bar {
+    display: none !important;
+  }
+  .modal-overlay {
+    position: static !important;
+    background: none !important;
+    backdrop-filter: none !important;
+  }
+  .modal-card {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+}
+
 /* Responsive adjustments */
 @media (max-width: 900px) {
   .landing-hero {

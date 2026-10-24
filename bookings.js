@@ -1,23 +1,25 @@
 export const BookingService = {
   createBooking(worker, customerData, bookingDetails) {
     const selectedServiceKey = bookingDetails.serviceKey || Object.keys(worker.specialities || {})[0] || 'general';
-    const specialtyInfo = worker.specialities?.[selectedServiceKey] || { startingPrice: worker.hourlyRate || 300, visitingCharge: 100 };
+    const specialtyInfo = worker.specialities?.[selectedServiceKey] || { startingPrice: worker.hourlyRate || 350, visitingCharge: 100 };
     
     const basePrice = bookingDetails.agreedPrice || specialtyInfo.startingPrice || 350;
     const visitingCharge = specialtyInfo.visitingCharge || 100;
     const finalAmount = basePrice + visitingCharge;
 
+    const uniqueId = `BK-${(crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 9)).toUpperCase()}`;
+
     const newBooking = {
-      id: `BK-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: uniqueId,
       workerId: worker.id,
-      customerName: customerData.name || 'Aarav Mehta',
+      customerName: customerData.name || 'Customer',
       customerPhone: customerData.phone || '+91 98765 43210',
       serviceCategory: selectedServiceKey,
       serviceTask: bookingDetails.serviceTask || bookingDetails.service || 'General Service',
       locality: customerData.locality || worker.baseLocality,
-      address: customerData.address || 'Standard Address, Mumbai',
+      address: customerData.address || 'Mumbai Address',
       jobDescription: bookingDetails.jobDescription || 'Service required',
-      bookingType: bookingDetails.bookingType || 'instant',
+      bookingType: bookingDetails.bookingType || 'scheduled',
       appointmentDate: bookingDetails.appointmentDate || new Date().toISOString().split('T')[0],
       appointmentTime: bookingDetails.appointmentTime || '10:00 AM',
       estimatedHours: parseFloat(bookingDetails.estimatedHours) || 2,
@@ -28,7 +30,7 @@ export const BookingService = {
         { sender: 'customer', amount: bookingDetails.customerOffer, note: 'Initial customer offer' }
       ] : [],
       agreedPrice: bookingDetails.customerOffer || finalAmount,
-      status: 'Pending confirmation', // Pending confirmation, Accepted, Confirmed, Worker en route, Worker arrived, Job in progress, Job completed, Cancelled, Disputed
+      status: 'Pending confirmation',
       reviewId: null,
       complaintId: null,
       createdAt: new Date().toISOString(),

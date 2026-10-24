@@ -42,11 +42,16 @@ export const Toast = {
       backdrop-filter: blur(8px);
     `;
 
-    toast.innerHTML = `
-      <span>${message}</span>
-      <button style="background:transparent; border:none; color:white; font-size:1.2rem; cursor:pointer; opacity:0.8;" onclick="this.parentElement.remove()">×</button>
-    `;
+    const msgSpan = document.createElement('span');
+    msgSpan.textContent = message; // Safe textContent against XSS
 
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '×';
+    closeBtn.style.cssText = 'background:transparent; border:none; color:white; font-size:1.2rem; cursor:pointer; opacity:0.8;';
+    closeBtn.addEventListener('click', () => toast.remove());
+
+    toast.appendChild(msgSpan);
+    toast.appendChild(closeBtn);
     container.appendChild(toast);
 
     setTimeout(() => {

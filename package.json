@@ -1,0 +1,21 @@
+{
+  "name": "localkaam",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Hyperlocal blue-collar services marketplace",
+  "main": "app.js",
+  "scripts": {
+    "start": "python3 -m http.server 8080"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "keywords": [
+    "marketplace",
+    "hyperlocal",
+    "services",
+    "mumbai"
+  ],
+  "author": "LocalKaam Team",
+  "license": "MIT"
+}
