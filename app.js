@@ -11,6 +11,13 @@ export const App = {
     this.applyTheme(StorageService.getTheme());
     this.render();
 
+    // Handle browser back/forward navigation
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', () => {
+        this.render();
+      });
+    }
+
     // Initialize backend / Supabase storage sync in background
     StorageService.init(() => {
       this.render();
@@ -51,7 +58,7 @@ export const App = {
             CustomerFrontend.render(viewContainer);
           } catch (custErr) {
             console.error('Customer frontend render error:', custErr);
-            viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: red;">Error loading customer view: ${custErr.message}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset & Reload</button></div>`;
+            viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: red;">Error loading customer view: ${esc(custErr.message)}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset & Reload</button></div>`;
           }
         }
         this.attachShellEvents(root);
@@ -63,7 +70,7 @@ export const App = {
             WorkerFrontend.render(viewContainer);
           } catch (workErr) {
             console.error('Worker frontend render error:', workErr);
-            viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: red;">Error loading worker view: ${workErr.message}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset & Reload</button></div>`;
+            viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: red;">Error loading worker view: ${esc(workErr.message)}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset & Reload</button></div>`;
           }
         }
         this.attachShellEvents(root);
