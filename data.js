@@ -1,0 +1,218 @@
+// LocalKaam Seed Data & Localities
+export const LOCALITIES = [
+  { id: 'andheri', name: 'Andheri West', lat: 19.1136, lng: 72.8258, zone: 'Western Suburbs' },
+  { id: 'bandra', name: 'Bandra West', lat: 19.0596, lng: 72.8295, zone: 'Western Suburbs' },
+  { id: 'powai', name: 'Powai', lat: 19.1176, lng: 72.9060, zone: 'Central Suburbs' },
+  { id: 'juhu', name: 'Juhu', lat: 19.1075, lng: 72.8263, zone: 'Western Suburbs' },
+  { id: 'malad', name: 'Malad West', lat: 19.1874, lng: 72.8484, zone: 'Western Suburbs' },
+  { id: 'colaba', name: 'Colaba', lat: 18.9067, lng: 72.8147, zone: 'South Mumbai' },
+  { id: 'dadar', name: 'Dadar West', lat: 19.0178, lng: 72.8478, zone: 'Central Mumbai' },
+  { id: 'thane', name: 'Thane West', lat: 19.2183, lng: 72.9781, zone: 'Thane Region' }
+];
+
+export const CATEGORIES = [
+  { id: 'plumber', name: 'Plumber', icon: '🔧', description: 'Leaking taps, pipe fittings, water tanks & bathroom fixes.' },
+  { id: 'electrician', name: 'Electrician', icon: '⚡', description: 'Wiring, switches, appliance installation & fuse repairs.' },
+  { id: 'carpenter', name: 'Carpenter', icon: '🪚', description: 'Furniture repair, door locks, custom cabinets & assembly.' },
+  { id: 'painter', name: 'Painter', icon: '🎨', description: 'Wall painting, touch-ups, waterproofing & polish.' },
+  { id: 'cleaner', name: 'Cleaner', icon: '🧹', description: 'Deep home cleaning, sofa & mattress shampooing.' },
+  { id: 'cook', name: 'Cook', icon: '🍳', description: 'Daily home-cooked meals, special occasion cooking.' },
+  { id: 'maid', name: 'Maid', icon: '🧹', description: 'Household chores, sweeping, mopping & dishwashing.' }
+];
+
+export const INITIAL_WORKERS = [
+  {
+    id: 'w1',
+    name: 'Ramesh Kumar',
+    category: 'plumber',
+    skills: ['Leaking Tap', 'Pipe Fitting', 'Water Tank', 'Geyser Repair'],
+    experience: 8,
+    hourlyRate: 300,
+    baseLocality: 'andheri',
+    serviceRadius: 10, // km
+    workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    workingHours: { start: '08:00', end: '20:00' },
+    available: true,
+    verificationStatus: 'Verified',
+    ratingAverage: 4.8,
+    ratingCount: 42,
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    phone: '+91 98211 44551',
+    bio: 'Expert plumber with 8+ years experience fixing residential leaks, sanitaryware and pressure pumps in Andheri & Bandra.'
+  },
+  {
+    id: 'w2',
+    name: 'Suresh Sharma',
+    category: 'electrician',
+    skills: ['Wiring', 'Switchboard', 'Fan Installation', 'MCB Tripping'],
+    experience: 6,
+    hourlyRate: 350,
+    baseLocality: 'bandra',
+    serviceRadius: 8,
+    workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    workingHours: { start: '09:00', end: '19:00' },
+    available: true,
+    verificationStatus: 'Verified',
+    ratingAverage: 4.9,
+    ratingCount: 38,
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    phone: '+91 98332 11223',
+    bio: 'Licensed electrical contractor specializing in safe home wiring, smart home fixtures, and emergency power restoration.'
+  },
+  {
+    id: 'w3',
+    name: 'Vijay Patil',
+    category: 'carpenter',
+    skills: ['Door Locks', 'Bed Repair', 'Wardrobe Hinges', 'Custom Shelves'],
+    experience: 10,
+    hourlyRate: 400,
+    baseLocality: 'powai',
+    serviceRadius: 12,
+    workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    workingHours: { start: '09:00', end: '18:00' },
+    available: true,
+    verificationStatus: 'Verified',
+    ratingAverage: 4.7,
+    ratingCount: 29,
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+    phone: '+91 98922 33445',
+    bio: 'Master carpenter proficient in modular furniture assembly, sleek woodwork, and precision lock replacements.'
+  },
+  {
+    id: 'w4',
+    name: 'Sunita Gawde',
+    category: 'cleaner',
+    skills: ['Deep Cleaning', 'Bathroom Scrub', 'Kitchen Degreasing', 'Sofa Shampoo'],
+    experience: 5,
+    hourlyRate: 250,
+    baseLocality: 'juhu',
+    serviceRadius: 10,
+    workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    workingHours: { start: '08:00', end: '18:00' },
+    available: true,
+    verificationStatus: 'Verified',
+    ratingAverage: 4.9,
+    ratingCount: 56,
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    phone: '+91 97001 22334',
+    bio: 'Professional deep cleaning specialist equipped with eco-friendly solutions and advanced sanitization gear.'
+  },
+  {
+    id: 'w5',
+    name: 'Manoj Verma',
+    category: 'painter',
+    skills: ['Wall Painting', 'Waterproofing', 'Texture Design', 'Wood Polish'],
+    experience: 7,
+    hourlyRate: 350,
+    baseLocality: 'malad',
+    serviceRadius: 15,
+    workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    workingHours: { start: '09:00', end: '19:00' },
+    available: false,
+    verificationStatus: 'Pending',
+    ratingAverage: 4.6,
+    ratingCount: 19,
+    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
+    phone: '+91 99201 88990',
+    bio: 'Skilled wall artist and painter offering spotless finish, damp-proof coatings, and premium interior makeovers.'
+  },
+  {
+    id: 'w6',
+    name: 'Anita Joshi',
+    category: 'cook',
+    skills: ['North Indian', 'Maharashtrian', 'Healthy Meals', 'Snacks'],
+    experience: 9,
+    hourlyRate: 300,
+    baseLocality: 'colaba',
+    serviceRadius: 10,
+    workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    workingHours: { start: '07:00', end: '21:00' },
+    available: true,
+    verificationStatus: 'Verified',
+    ratingAverage: 5.0,
+    ratingCount: 64,
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    phone: '+91 98112 55667',
+    bio: 'Experienced home chef preparing hygienic, delicious, customized daily meals keeping dietary preferences in mind.'
+  },
+  {
+    id: 'w7',
+    name: 'Deepak Shinde',
+    category: 'plumber',
+    skills: ['Drain Unclogging', 'Tap Leak', 'Flush Tank', 'Shower Valve'],
+    experience: 4,
+    hourlyRate: 280,
+    baseLocality: 'dadar',
+    serviceRadius: 8,
+    workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    workingHours: { start: '08:30', end: '19:30' },
+    available: true,
+    verificationStatus: 'Verified',
+    ratingAverage: 4.5,
+    ratingCount: 22,
+    avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
+    phone: '+91 98200 77889',
+    bio: 'Prompt and reliable plumbing technician serving Dadar and central Mumbai.'
+  },
+  {
+    id: 'w8',
+    name: 'Pooja Kulkarni',
+    category: 'maid',
+    skills: ['Dusting', 'Mopping', 'Utensils', 'Ironing'],
+    experience: 6,
+    hourlyRate: 200,
+    baseLocality: 'thane',
+    serviceRadius: 10,
+    workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    workingHours: { start: '07:00', end: '19:00' },
+    available: true,
+    verificationStatus: 'Verified',
+    ratingAverage: 4.8,
+    ratingCount: 45,
+    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+    phone: '+91 97688 44332',
+    bio: 'Reliable and punctual househelp offering meticulous cleaning and organizing.'
+  }
+];
+
+export const INITIAL_BOOKINGS = [
+  {
+    id: 'BK-1001',
+    workerId: 'w1',
+    customerName: 'Aarav Mehta',
+    customerPhone: '+91 98765 43210',
+    service: 'Leaking Tap Repair',
+    locality: 'andheri',
+    address: 'Flat 402, Titanium Heights, Andheri West',
+    jobDescription: 'Kitchen sink tap has continuous leakage causing water wastage.',
+    bookingType: 'instant',
+    dateTime: new Date(Date.now() - 3600000).toISOString(),
+    estimatedHours: 2,
+    originalEstimate: 600,
+    customerOffer: 500,
+    counterOfferHistory: [
+      { sender: 'customer', amount: 500, note: 'Can we do 500 for 2 hours?' },
+      { sender: 'worker', amount: 550, note: 'Parts cost extra, 550 is best.' }
+    ],
+    agreedPrice: 550,
+    status: 'Accepted', // Pending, Accepted, In Progress, Completed, Rejected, Cancelled
+    reviewId: null,
+    complaintId: null,
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+    completedAt: null
+  }
+];
+
+export const INITIAL_REVIEWS = [
+  {
+    id: 'REV-1',
+    bookingId: 'BK-999',
+    workerId: 'w1',
+    customerName: 'Neha Kapoor',
+    rating: 5,
+    comment: 'Ramesh came within 20 minutes and fixed our bathroom pipe leak cleanly. Highly professional!',
+    timestamp: new Date(Date.now() - 86400000 * 2).toISOString()
+  }
+];
+
+export const INITIAL_COMPLAINTS = [];
