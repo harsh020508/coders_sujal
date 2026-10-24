@@ -131,23 +131,23 @@ export const App = {
         </header>
 
         <!-- Hero Section -->
-        <section class="landing-hero" style="padding: 80px 24px; max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center;">
-          <div class="hero-content" style="text-align: left; align-items: flex-start;">
+        <section class="landing-hero" style="padding: 80px 24px; max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; width: 100%;">
+          <div class="hero-content" style="text-align: left; align-items: flex-start; width: 100%;">
             <div style="display: inline-flex; align-items: center; gap: 8px; background: var(--color-highlighter-yellow); color: var(--color-forest-ink); padding: 6px 16px; border-radius: 9999px; font-size: 13px; font-weight: 600; margin-bottom: 24px; border: 1px solid var(--border-color);">
               <span>⭐ Verified Local Experts</span> • Hyperlocal Marketplace
             </div>
-            <h1 style="font-size: 60px; font-weight: 800; line-height: 1.05; letter-spacing: 0.03em; font-family: 'Bricolage Grotesque', sans-serif; margin-bottom: 24px; color: var(--text-primary);">
+            <h1 style="font-size: 52px; font-weight: 800; line-height: 1.05; letter-spacing: 0.03em; font-family: 'Bricolage Grotesque', sans-serif; margin-bottom: 24px; color: var(--text-primary);">
               Local help.<br>Fair prices.<br><span style="background-color: var(--color-highlighter-yellow); color: #1a3300; padding: 0 8px; border-radius: 4px;">Right around</span> the corner.
             </h1>
-            <p style="font-size: 18px; color: var(--text-secondary); margin-bottom: 32px; line-height: 1.6;">
+            <p style="font-size: 17px; color: var(--text-secondary); margin-bottom: 32px; line-height: 1.6;">
               Traditional home-service aggregators charge exorbitant commissions and squeeze workers. LocalKaam connects you directly with vetted local plumbers, electricians, carpenters, and cleaners with transparent pricing.
             </p>
-            <div class="hero-cta" style="display: flex; gap: 16px;">
+            <div class="hero-cta" style="display: flex; gap: 16px; flex-wrap: wrap;">
               <button class="btn btn-primary" id="hero-find-pro-btn">Get Started (Customer & Worker) →</button>
               <button class="btn btn-outline" id="hero-explore-btn">Explore Features</button>
             </div>
           </div>
-          <div class="hero-visual" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 32px; box-shadow: var(--shadow-subtle-2);">
+          <div class="hero-visual" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 32px; box-shadow: var(--shadow-subtle-2); text-align: left; width: 100%;">
             <div style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
               <span>⚡ Live Ecosystem Preview</span>
             </div>
