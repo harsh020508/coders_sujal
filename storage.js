@@ -67,15 +67,28 @@ export const StorageService = {
     if (this.initialized) return;
     this.initialized = true;
 
-    // Set up Realtime listener from Supabase
-    SupabaseDataService.subscribeRealtime((table, payload) => {
-      this.handleRealtimeEvent(table, payload);
-    });
+    // Set up Realtime listener from Supabase (non-blocking)
+    try {
+      SupabaseDataService.subscribeRealtime((table, payload) => {
+        this.handleRealtimeEvent(table, payload);
+      });
+    } catch (e) {
+      console.warn('Realtime subscription skipped:', e);
+    }
 
-    // If Supabase is configured, pull latest live database state
+    // If Supabase is configured, try syncing in background with 3s timeout so it never hangs
     if (SupabaseService.isConfigured()) {
-      await this.syncFromSupabase();
-      if (onDataReady) onDataReady();
+      try {
+        await Promise.race([
+          this.syncFromSupabase(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout')), 3000))
+        ]);
+      } catch (e) {
+        console.warn('Supabase background sync skipped or timed out, using local/server state:', e);
+      }
+    }
+    if (onDataReady) {
+      try { onDataReady(); } catch(e) {}
     }
   },
 
@@ -158,7 +171,6 @@ export const StorageService = {
     safeSet(STORAGE_KEYS.WORKERS, workers);
     this.notifyChange('workers', workers);
 
-    // Background sync to Supabase
     if (SupabaseService.isConfigured()) {
       workers.forEach(w => {
         SupabaseDataService.upsertWorker(w).catch(err => console.warn('Supabase worker sync error:', err));
@@ -174,7 +186,6 @@ export const StorageService = {
     safeSet(STORAGE_KEYS.BOOKINGS, bookings);
     this.notifyChange('bookings', bookings);
 
-    // Background sync to Supabase
     if (SupabaseService.isConfigured()) {
       bookings.forEach(b => {
         SupabaseDataService.upsertBooking(b).catch(err => console.warn('Supabase booking sync error:', err));
@@ -190,7 +201,6 @@ export const StorageService = {
     safeSet(STORAGE_KEYS.REVIEWS, reviews);
     this.notifyChange('reviews', reviews);
 
-    // Background sync to Supabase
     if (SupabaseService.isConfigured()) {
       reviews.forEach(r => {
         SupabaseDataService.upsertReview(r).catch(err => console.warn('Supabase review sync error:', err));
@@ -206,7 +216,6 @@ export const StorageService = {
     safeSet(STORAGE_KEYS.COMPLAINTS, complaints);
     this.notifyChange('complaints', complaints);
 
-    // Background sync to Supabase
     if (SupabaseService.isConfigured()) {
       complaints.forEach(c => {
         SupabaseDataService.upsertComplaint(c).catch(err => console.warn('Supabase complaint sync error:', err));
