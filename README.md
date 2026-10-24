@@ -1,6 +1,13 @@
 # LocalKaam — Hyperlocal Blue-Collar Services Marketplace
 
+[![Live Demo](https://img.shields.io/badge/Live-Deployment-brightgreen?style=for-the-badge)](https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing)
+
 LocalKaam is a production-ready, highly polished hyperlocal services marketplace connecting households with trustworthy neighborhood blue-collar professionals (plumbers, electricians, carpenters, cleaners, AC technicians, and more) across Mumbai with transparent pricing, direct pay, multi-step worker onboarding, and real-time appointment tracking.
+
+---
+
+## 🌐 Live Deployment
+Experience the live application here: [https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing](https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing)
 
 ---
 
@@ -88,7 +95,7 @@ LocalKaam is a production-ready, highly polished hyperlocal services marketplace
 
 ## 👥 Demo Sequence (3-Minute Presentation)
 
-1. **Landing Page:** Open `http://localhost:3000`. Admire the Stitch editorial design, problem/solution, and features.
+1. **Landing Page:** Open [Live App](https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing). Admire the Stitch editorial design, problem/solution, and features.
 2. **Customer Journey:** Click **Get Started** → **Continue as Customer**. Sign in with your name and phone. Search for `"leaking tap"` or select **Plumber**. Compare nearby experts, view profiles, and book an appointment with transparent pricing.
 3. **Worker Journey:** Open a separate tab as **Worker** (or switch role). Complete the multi-step onboarding (or view Ramesh Kumar's profile). Set status to **Online**.
 4. **Live Synchronization:** Accept the customer's incoming appointment request. Watch the status transition live to `Confirmed`, then progress through `En Route`, `Arrived`, `In Progress`, and `Job Completed`.
