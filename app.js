@@ -4,6 +4,7 @@ import { CustomerFrontend } from './customer.js';
 import { WorkerFrontend } from './worker.js';
 import { Toast } from './toast.js';
 import { AuthModal } from './authModal.js';
+import { AuthService } from './authService.js';
 
 export const App = {
   init() {
@@ -35,22 +36,41 @@ export const App = {
 
     const role = StorageService.getCurrentRole();
 
-    if (role === 'landing') {
-      root.innerHTML = this.renderLandingPage();
-      this.attachLandingEvents(root);
-    } else if (role === 'role-select') {
-      root.innerHTML = this.renderRoleSelectionPage();
-      this.attachRoleSelectionEvents(root);
-    } else if (role === 'customer') {
-      root.innerHTML = this.renderAppShell('customer');
-      const viewContainer = root.querySelector('#app-view-container');
-      if (viewContainer) CustomerFrontend.render(viewContainer);
-      this.attachShellEvents(root);
-    } else if (role === 'worker') {
-      root.innerHTML = this.renderAppShell('worker');
-      const viewContainer = root.querySelector('#app-view-container');
-      if (viewContainer) WorkerFrontend.render(viewContainer);
-      this.attachShellEvents(root);
+    try {
+      if (role === 'landing') {
+        root.innerHTML = this.renderLandingPage();
+        this.attachLandingEvents(root);
+      } else if (role === 'role-select') {
+        root.innerHTML = this.renderRoleSelectionPage();
+        this.attachRoleSelectionEvents(root);
+      } else if (role === 'customer') {
+        root.innerHTML = this.renderAppShell('customer');
+        const viewContainer = root.querySelector('#app-view-container');
+        if (viewContainer) {
+          try {
+            CustomerFrontend.render(viewContainer);
+          } catch (custErr) {
+            console.error('Customer frontend render error:', custErr);
+            viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: red;">Error loading customer view: ${custErr.message}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset & Reload</button></div>`;
+          }
+        }
+        this.attachShellEvents(root);
+      } else if (role === 'worker') {
+        root.innerHTML = this.renderAppShell('worker');
+        const viewContainer = root.querySelector('#app-view-container');
+        if (viewContainer) {
+          try {
+            WorkerFrontend.render(viewContainer);
+          } catch (workErr) {
+            console.error('Worker frontend render error:', workErr);
+            viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: red;">Error loading worker view: ${workErr.message}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset & Reload</button></div>`;
+          }
+        }
+        this.attachShellEvents(root);
+      }
+    } catch (err) {
+      console.error('App render fatal error:', err);
+      root.innerHTML = `<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Something went wrong rendering this view.</p><button onclick="localStorage.clear(); window.location.reload();" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #0284c7; color: white; border: none; border-radius: 8px; cursor: pointer;">Reset & Reload App</button></div>`;
     }
   },
 
@@ -358,6 +378,9 @@ export const App = {
 
   renderAppShell(activeRole) {
     const theme = StorageService.getTheme();
+    const profile = AuthService.getProfile();
+    const userName = profile ? (profile.full_name || profile.email || 'User') : 'Demo User';
+
     return `
       <div class="app-container">
         <header class="navbar">
@@ -367,7 +390,7 @@ export const App = {
           </div>
           <div class="nav-links">
             <span class="role-badge" style="background: var(--accent-light); color: var(--accent-primary); font-weight: 600;">
-              Role: ${activeRole === 'customer' ? '🏠 Customer Frontend' : '🛠️ Worker Frontend'}
+              Role: ${activeRole === 'customer' ? '🏠 Customer' : '🛠️ Worker'} (${userName})
             </span>
           </div>
           <div class="nav-actions">
@@ -420,11 +443,18 @@ export const App = {
 
     root.querySelectorAll('.category-card').forEach(card => {
       card.addEventListener('click', () => {
-        AuthModal.show('customer', () => {
+        const profile = AuthService.getProfile();
+        if (profile && profile.role === 'customer') {
           StorageService.setCurrentRole('customer');
           CustomerFrontend.currentCategory = card.getAttribute('data-category');
           this.render();
-        });
+        } else {
+          AuthModal.show('customer', () => {
+            StorageService.setCurrentRole('customer');
+            CustomerFrontend.currentCategory = card.getAttribute('data-category');
+            this.render();
+          });
+        }
       });
     });
   },
@@ -439,16 +469,28 @@ export const App = {
       this.render();
     });
     root.querySelector('#select-customer-role')?.addEventListener('click', () => {
-      AuthModal.show('customer', () => {
+      const profile = AuthService.getProfile();
+      if (profile && profile.role === 'customer') {
         StorageService.setCurrentRole('customer');
         this.render();
-      });
+      } else {
+        AuthModal.show('customer', () => {
+          StorageService.setCurrentRole('customer');
+          this.render();
+        });
+      }
     });
     root.querySelector('#select-worker-role')?.addEventListener('click', () => {
-      AuthModal.show('worker', () => {
+      const profile = AuthService.getProfile();
+      if (profile && profile.role === 'worker') {
         StorageService.setCurrentRole('worker');
         this.render();
-      });
+      } else {
+        AuthModal.show('worker', () => {
+          StorageService.setCurrentRole('worker');
+          this.render();
+        });
+      }
     });
 
     const themeBtn = root.querySelector('#theme-toggle-btn');
@@ -474,8 +516,8 @@ export const App = {
     const themeBtn = root.querySelector('#theme-toggle-btn');
     if (themeBtn) {
       themeBtn.addEventListener('click', () => {
-        const cur = StorageService.getTheme();
-        this.applyTheme(cur === 'dark' ? 'light' : 'dark');
+        const curTheme = StorageService.getTheme();
+        this.applyTheme(curTheme === 'dark' ? 'light' : 'dark');
         this.render();
       });
     }
