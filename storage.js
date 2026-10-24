@@ -13,7 +13,6 @@ const STORAGE_KEYS = {
   THEME: 'localkaam_theme'
 };
 
-// In-memory fallback if localStorage is unavailable
 const memoryStore = {};
 const changeListeners = [];
 
@@ -23,9 +22,7 @@ function safeGet(key, fallback) {
       const data = localStorage.getItem(key);
       return data ? JSON.parse(data) : fallback;
     }
-  } catch (e) {
-    console.warn('localStorage read error for key:', key, e);
-  }
+  } catch (e) {}
   return memoryStore[key] !== undefined ? memoryStore[key] : fallback;
 }
 
@@ -35,23 +32,30 @@ function safeSet(key, value) {
       localStorage.setItem(key, JSON.stringify(value));
       return;
     }
-  } catch (e) {
-    console.warn('localStorage write error for key:', key, e);
-  }
+  } catch (e) {}
   memoryStore[key] = value;
 }
 
-function safeGetItem(key, fallback) {
+// Use sessionStorage for tab-specific state (role, selected worker) so two tabs (Customer & Worker) don't overwrite each other!
+function sessionGetItem(key, fallback) {
   try {
+    if (typeof sessionStorage !== 'undefined') {
+      const val = sessionStorage.getItem(key);
+      if (val !== null) return val;
+    }
     if (typeof localStorage !== 'undefined') {
-      return localStorage.getItem(key) || fallback;
+      const val = localStorage.getItem(key);
+      if (val !== null) return val;
     }
   } catch (e) {}
   return memoryStore[key] !== undefined ? memoryStore[key] : fallback;
 }
 
-function safeSetItem(key, value) {
+function sessionSetItem(key, value) {
   try {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(key, value);
+    }
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(key, value);
       return;
@@ -67,25 +71,19 @@ export const StorageService = {
     if (this.initialized) return;
     this.initialized = true;
 
-    // Set up Realtime listener from Supabase (non-blocking)
     try {
       SupabaseDataService.subscribeRealtime((table, payload) => {
         this.handleRealtimeEvent(table, payload);
       });
-    } catch (e) {
-      console.warn('Realtime subscription skipped:', e);
-    }
+    } catch (e) {}
 
-    // If Supabase is configured, try syncing in background with 3s timeout so it never hangs
     if (SupabaseService.isConfigured()) {
       try {
         await Promise.race([
           this.syncFromSupabase(),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout')), 3000))
         ]);
-      } catch (e) {
-        console.warn('Supabase background sync skipped or timed out, using local/server state:', e);
-      }
+      } catch (e) {}
     }
     if (onDataReady) {
       try { onDataReady(); } catch(e) {}
@@ -102,13 +100,12 @@ export const StorageService = {
 
   notifyChange(dataType, data) {
     changeListeners.forEach(fn => {
-      try { fn(dataType, data); } catch (e) { console.error(e); }
+      try { fn(dataType, data); } catch (e) {}
     });
   },
 
   async syncFromSupabase() {
     if (!SupabaseService.isConfigured()) return false;
-
     try {
       const results = await Promise.allSettled([
         SupabaseDataService.fetchWorkers(),
@@ -116,139 +113,88 @@ export const StorageService = {
         SupabaseDataService.fetchReviews(),
         SupabaseDataService.fetchComplaints()
       ]);
-
-      const [workersResult, bookingsResult, reviewsResult, complaintsResult] = results;
-
-      const remoteWorkers = workersResult.status === 'fulfilled' ? workersResult.value : null;
-      const remoteBookings = bookingsResult.status === 'fulfilled' ? bookingsResult.value : null;
-      const remoteReviews = reviewsResult.status === 'fulfilled' ? reviewsResult.value : null;
-      const remoteComplaints = complaintsResult.status === 'fulfilled' ? complaintsResult.value : null;
-
-      if (remoteWorkers && remoteWorkers.length > 0) {
-        safeSet(STORAGE_KEYS.WORKERS, remoteWorkers);
-      }
-      if (remoteBookings) {
-        safeSet(STORAGE_KEYS.BOOKINGS, remoteBookings);
-      }
-      if (remoteReviews) {
-        safeSet(STORAGE_KEYS.REVIEWS, remoteReviews);
-      }
-      if (remoteComplaints) {
-        safeSet(STORAGE_KEYS.COMPLAINTS, remoteComplaints);
-      }
-
-      this.notifyChange('sync', { remoteWorkers, remoteBookings });
+      const [wRes, bRes, rRes, cRes] = results;
+      if (wRes.status === 'fulfilled' && wRes.value?.length) safeSet(STORAGE_KEYS.WORKERS, wRes.value);
+      if (bRes.status === 'fulfilled' && bRes.value) safeSet(STORAGE_KEYS.BOOKINGS, bRes.value);
+      if (rRes.status === 'fulfilled' && rRes.value) safeSet(STORAGE_KEYS.REVIEWS, rRes.value);
+      if (cRes.status === 'fulfilled' && cRes.value) safeSet(STORAGE_KEYS.COMPLAINTS, cRes.value);
+      this.notifyChange('sync', {});
       return true;
     } catch (e) {
-      console.warn('Sync from Supabase failed, relying on local cache:', e);
       return false;
     }
   },
 
   handleRealtimeEvent(table, payload) {
-    if (table === 'bookings') {
-      const currentBookings = this.getBookings();
-      if (payload.eventType === 'INSERT') {
-        const newBooking = payload.new ? DataMapper.dbToBooking(payload.new) : null;
-        if (newBooking && !currentBookings.find(b => b.id === newBooking.id)) {
-          currentBookings.unshift(newBooking);
-          safeSet(STORAGE_KEYS.BOOKINGS, currentBookings);
-          this.notifyChange('bookings', currentBookings);
-        }
-      } else if (payload.eventType === 'UPDATE') {
-        this.syncFromSupabase();
-      }
-    } else if (table === 'workers') {
+    if (table === 'bookings' || table === 'workers') {
       this.syncFromSupabase();
     }
   },
 
-  // Workers
   getWorkers() {
     return safeGet(STORAGE_KEYS.WORKERS, INITIAL_WORKERS);
   },
   saveWorkers(workers) {
     safeSet(STORAGE_KEYS.WORKERS, workers);
     this.notifyChange('workers', workers);
-
     if (SupabaseService.isConfigured()) {
-      workers.forEach(w => {
-        SupabaseDataService.upsertWorker(w).catch(err => console.warn('Supabase worker sync error:', err));
-      });
+      workers.forEach(w => SupabaseDataService.upsertWorker(w).catch(() => {}));
     }
   },
 
-  // Bookings
   getBookings() {
     return safeGet(STORAGE_KEYS.BOOKINGS, INITIAL_BOOKINGS);
   },
   saveBookings(bookings) {
     safeSet(STORAGE_KEYS.BOOKINGS, bookings);
     this.notifyChange('bookings', bookings);
-
     if (SupabaseService.isConfigured()) {
-      bookings.forEach(b => {
-        SupabaseDataService.upsertBooking(b).catch(err => console.warn('Supabase booking sync error:', err));
-      });
+      bookings.forEach(b => SupabaseDataService.upsertBooking(b).catch(() => {}));
     }
   },
 
-  // Reviews
   getReviews() {
     return safeGet(STORAGE_KEYS.REVIEWS, INITIAL_REVIEWS);
   },
   saveReviews(reviews) {
     safeSet(STORAGE_KEYS.REVIEWS, reviews);
     this.notifyChange('reviews', reviews);
-
-    if (SupabaseService.isConfigured()) {
-      reviews.forEach(r => {
-        SupabaseDataService.upsertReview(r).catch(err => console.warn('Supabase review sync error:', err));
-      });
-    }
   },
 
-  // Complaints
   getComplaints() {
     return safeGet(STORAGE_KEYS.COMPLAINTS, INITIAL_COMPLAINTS);
   },
   saveComplaints(complaints) {
     safeSet(STORAGE_KEYS.COMPLAINTS, complaints);
     this.notifyChange('complaints', complaints);
-
-    if (SupabaseService.isConfigured()) {
-      complaints.forEach(c => {
-        SupabaseDataService.upsertComplaint(c).catch(err => console.warn('Supabase complaint sync error:', err));
-      });
-    }
   },
 
   getCurrentRole() {
-    return safeGetItem(STORAGE_KEYS.CURRENT_ROLE, 'landing');
+    return sessionGetItem(STORAGE_KEYS.CURRENT_ROLE, 'landing');
   },
   setCurrentRole(role) {
-    safeSetItem(STORAGE_KEYS.CURRENT_ROLE, role);
+    sessionSetItem(STORAGE_KEYS.CURRENT_ROLE, role);
   },
 
   getSelectedWorkerId() {
-    return safeGetItem(STORAGE_KEYS.SELECTED_WORKER_ID, 'w1');
+    return sessionGetItem(STORAGE_KEYS.SELECTED_WORKER_ID, 'w1');
   },
   setSelectedWorkerId(id) {
-    safeSetItem(STORAGE_KEYS.SELECTED_WORKER_ID, id);
+    sessionSetItem(STORAGE_KEYS.SELECTED_WORKER_ID, id);
   },
 
   getCustomerLocality() {
-    return safeGetItem(STORAGE_KEYS.CUSTOMER_LOCALITY, 'andheri');
+    return sessionGetItem(STORAGE_KEYS.CUSTOMER_LOCALITY, 'andheri');
   },
   setCustomerLocality(loc) {
-    safeSetItem(STORAGE_KEYS.CUSTOMER_LOCALITY, loc);
+    sessionSetItem(STORAGE_KEYS.CUSTOMER_LOCALITY, loc);
   },
 
   getTheme() {
-    return safeGetItem(STORAGE_KEYS.THEME, 'light');
+    return sessionGetItem(STORAGE_KEYS.THEME, 'light');
   },
   setTheme(theme) {
-    safeSetItem(STORAGE_KEYS.THEME, theme);
+    sessionSetItem(STORAGE_KEYS.THEME, theme);
   },
 
   resetDemoData() {
@@ -256,9 +202,9 @@ export const StorageService = {
     safeSet(STORAGE_KEYS.BOOKINGS, INITIAL_BOOKINGS);
     safeSet(STORAGE_KEYS.REVIEWS, INITIAL_REVIEWS);
     safeSet(STORAGE_KEYS.COMPLAINTS, INITIAL_COMPLAINTS);
-    safeSetItem(STORAGE_KEYS.CURRENT_ROLE, 'landing');
-    safeSetItem(STORAGE_KEYS.SELECTED_WORKER_ID, 'w1');
-    safeSetItem(STORAGE_KEYS.CUSTOMER_LOCALITY, 'andheri');
+    sessionSetItem(STORAGE_KEYS.CURRENT_ROLE, 'landing');
+    sessionSetItem(STORAGE_KEYS.SELECTED_WORKER_ID, 'w1');
+    sessionSetItem(STORAGE_KEYS.CUSTOMER_LOCALITY, 'andheri');
     if (typeof window !== 'undefined') {
       window.location.reload();
     }
