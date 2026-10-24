@@ -131,7 +131,7 @@ export const App = {
         </header>
 
         <!-- Hero Section -->
-        <section class="landing-hero" style="padding: 80px 24px; max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; width: 100%;">
+        <section class="landing-hero" style="padding: 60px 24px; max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; justify-items: center; width: 100%;">
           <div class="hero-content" style="text-align: left; align-items: flex-start; width: 100%;">
             <div style="display: inline-flex; align-items: center; gap: 8px; background: var(--color-highlighter-yellow); color: var(--color-forest-ink); padding: 6px 16px; border-radius: 9999px; font-size: 13px; font-weight: 600; margin-bottom: 24px; border: 1px solid var(--border-color);">
               <span>⭐ Verified Local Experts</span> • Hyperlocal Marketplace
