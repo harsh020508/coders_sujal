@@ -1,15 +1,11 @@
 {
   "name": "localkaam",
   "version": "1.0.0",
-  "type": "module",
-  "description": "Hyperlocal blue-collar services marketplace with Supabase and SQLite backend integration",
-  "main": "server.js",
+  "private": true,
+  "description": "Hyperlocal blue-collar services marketplace with Supabase Auth and PostgreSQL",
   "scripts": {
     "start": "node server.js",
     "serve": "python3 -m http.server 8080"
-  },
-  "engines": {
-    "node": ">=22.13"
   },
   "keywords": [
     "marketplace",
