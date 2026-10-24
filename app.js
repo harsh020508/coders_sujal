@@ -3,11 +3,22 @@ import { CATEGORIES } from './data.js';
 import { CustomerFrontend } from './customer.js';
 import { WorkerFrontend } from './worker.js';
 import { Toast } from './toast.js';
+import { AuthModal } from './authModal.js';
 
 export const App = {
   init() {
     this.applyTheme(StorageService.getTheme());
     this.render();
+
+    // Initialize backend / Supabase storage sync in background
+    StorageService.init(() => {
+      this.render();
+    });
+
+    // Listen to live data changes across tabs/devices
+    StorageService.onChange(() => {
+      this.render();
+    });
   },
 
   applyTheme(theme) {
@@ -143,10 +154,10 @@ export const App = {
           <p class="section-subtitle">Browse trustworthy blue-collar professionals ready to serve your household immediately or on schedule.</p>
           <div class="categories-grid">
             ${CATEGORIES.map(c => `
-              <div class="category-card" data-category="${esc(c.id)}">
-                <div class="category-icon">${esc(c.icon)}</div>
-                <h3>${esc(c.name)}</h3>
-                <p>${esc(c.description)}</p>
+              <div class="category-card" data-category="${c.id}">
+                <div class="category-icon">${c.icon}</div>
+                <h3>${c.name}</h3>
+                <p>${c.description}</p>
               </div>
             `).join('')}
           </div>
@@ -409,9 +420,11 @@ export const App = {
 
     root.querySelectorAll('.category-card').forEach(card => {
       card.addEventListener('click', () => {
-        StorageService.setCurrentRole('customer');
-        CustomerFrontend.currentCategory = card.getAttribute('data-category');
-        this.render();
+        AuthModal.show('customer', () => {
+          StorageService.setCurrentRole('customer');
+          CustomerFrontend.currentCategory = card.getAttribute('data-category');
+          this.render();
+        });
       });
     });
   },
@@ -426,12 +439,16 @@ export const App = {
       this.render();
     });
     root.querySelector('#select-customer-role')?.addEventListener('click', () => {
-      StorageService.setCurrentRole('customer');
-      this.render();
+      AuthModal.show('customer', () => {
+        StorageService.setCurrentRole('customer');
+        this.render();
+      });
     });
     root.querySelector('#select-worker-role')?.addEventListener('click', () => {
-      StorageService.setCurrentRole('worker');
-      this.render();
+      AuthModal.show('worker', () => {
+        StorageService.setCurrentRole('worker');
+        this.render();
+      });
     });
 
     const themeBtn = root.querySelector('#theme-toggle-btn');
