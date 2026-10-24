@@ -10,11 +10,26 @@ import { esc } from './utils.js';
 export const App = {
   init() {
     this.applyTheme(StorageService.getTheme());
+    
+    // Handle initial URL hash or history state
+    const hash = window.location.hash.replace('#', '');
+    if (['landing', 'role-select', 'customer', 'worker'].includes(hash)) {
+      StorageService.setCurrentRole(hash);
+    }
+
     this.render();
 
-    // Handle browser back/forward navigation
+    // Handle browser back/forward navigation smoothly without exiting app
     if (typeof window !== 'undefined') {
-      window.addEventListener('popstate', () => {
+      window.addEventListener('popstate', (e) => {
+        if (e.state && e.state.role) {
+          StorageService.setCurrentRole(e.state.role);
+        } else {
+          const h = window.location.hash.replace('#', '');
+          if (['landing', 'role-select', 'customer', 'worker'].includes(h)) {
+            StorageService.setCurrentRole(h);
+          }
+        }
         this.render();
       });
     }
@@ -28,6 +43,16 @@ export const App = {
     StorageService.onChange(() => {
       this.render();
     });
+  },
+
+  navigateToRole(role) {
+    StorageService.setCurrentRole(role);
+    try {
+      if (window.history && window.history.pushState) {
+        window.history.pushState({ role }, '', `#${role}`);
+      }
+    } catch (e) {}
+    this.render();
   },
 
   applyTheme(theme) {
@@ -85,7 +110,7 @@ export const App = {
   renderLandingPage() {
     const theme = StorageService.getTheme();
     return `
-      <div class="app-container" style="background-color: var(--color-cream-paper); color: var(--color-forest-ink);">
+      <div class="app-container" style="background-color: var(--bg-primary); color: var(--text-primary);">
         <!-- Top Navigation Bar -->
         <header class="navbar">
           <div class="nav-brand" id="nav-home-logo">
@@ -108,13 +133,13 @@ export const App = {
         <!-- Hero Section -->
         <section class="landing-hero" style="padding: 80px 24px; max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center;">
           <div class="hero-content" style="text-align: left; align-items: flex-start;">
-            <div style="display: inline-flex; align-items: center; gap: 8px; background: var(--color-highlighter-yellow); color: var(--color-forest-ink); padding: 6px 16px; border-radius: 9999px; font-size: 13px; font-weight: 600; margin-bottom: 24px; border: 1px solid var(--color-forest-ink);">
+            <div style="display: inline-flex; align-items: center; gap: 8px; background: var(--color-highlighter-yellow); color: var(--color-forest-ink); padding: 6px 16px; border-radius: 9999px; font-size: 13px; font-weight: 600; margin-bottom: 24px; border: 1px solid var(--border-color);">
               <span>⭐ Verified Local Experts</span> • Hyperlocal Marketplace
             </div>
-            <h1 style="font-size: 60px; font-weight: 800; line-height: 1.05; letter-spacing: 0.03em; font-family: 'Bricolage Grotesque', sans-serif; margin-bottom: 24px;">
-              Local help.<br>Fair prices.<br><span style="background-color: var(--color-highlighter-yellow); padding: 0 8px; border-radius: 4px;">Right around</span> the corner.
+            <h1 style="font-size: 60px; font-weight: 800; line-height: 1.05; letter-spacing: 0.03em; font-family: 'Bricolage Grotesque', sans-serif; margin-bottom: 24px; color: var(--text-primary);">
+              Local help.<br>Fair prices.<br><span style="background-color: var(--color-highlighter-yellow); color: #1a3300; padding: 0 8px; border-radius: 4px;">Right around</span> the corner.
             </h1>
-            <p style="font-size: 18px; color: var(--color-forest-ink); margin-bottom: 32px; line-height: 1.6;">
+            <p style="font-size: 18px; color: var(--text-secondary); margin-bottom: 32px; line-height: 1.6;">
               Traditional home-service aggregators charge exorbitant commissions and squeeze workers. LocalKaam connects you directly with vetted local plumbers, electricians, carpenters, and cleaners with transparent pricing.
             </p>
             <div class="hero-cta" style="display: flex; gap: 16px;">
@@ -122,32 +147,32 @@ export const App = {
               <button class="btn btn-outline" id="hero-explore-btn">Explore Features</button>
             </div>
           </div>
-          <div class="hero-visual" style="background: var(--color-sticky-note-mint); border: 1px solid var(--color-forest-ink); border-radius: 16px; padding: 32px; box-shadow: var(--shadow-subtle-2);">
-            <div style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--color-forest-ink); display: flex; align-items: center; gap: 8px;">
+          <div class="hero-visual" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 32px; box-shadow: var(--shadow-subtle-2);">
+            <div style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
               <span>⚡ Live Ecosystem Preview</span>
             </div>
-            <p style="font-size: 14px; color: var(--color-forest-ink); margin-bottom: 24px; line-height: 1.5;">
+            <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.5;">
               Direct peer matching across Mumbai localities with zero algorithmic surge markups and zero platform tax.
             </p>
             <div class="stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
-              <div class="stat-card" style="background: var(--color-cream-paper); border: 1px solid var(--color-forest-ink); padding: 16px; border-radius: 12px;">
+              <div class="stat-card" style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 16px; border-radius: 12px;">
                 <span style="font-size: 11px; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; color: var(--text-secondary);">Avg Worker ETA</span>
-                <h3 style="font-size: 28px; font-weight: 800; font-family: 'Bricolage Grotesque', sans-serif; color: var(--color-forest-ink); margin-top: 4px;">~25m</h3>
+                <h3 style="font-size: 28px; font-weight: 800; font-family: 'Bricolage Grotesque', sans-serif; color: var(--text-primary); margin-top: 4px;">~25m</h3>
               </div>
-              <div class="stat-card" style="background: var(--color-cream-paper); border: 1px solid var(--color-forest-ink); padding: 16px; border-radius: 12px;">
+              <div class="stat-card" style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 16px; border-radius: 12px;">
                 <span style="font-size: 11px; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; color: var(--text-secondary);">Hidden Fee</span>
-                <h3 style="font-size: 28px; font-weight: 800; font-family: 'Bricolage Grotesque', sans-serif; color: var(--color-forest-ink); margin-top: 4px;">₹0</h3>
+                <h3 style="font-size: 28px; font-weight: 800; font-family: 'Bricolage Grotesque', sans-serif; color: var(--text-primary); margin-top: 4px;">₹0</h3>
               </div>
             </div>
           </div>
         </section>
 
         <!-- Problem and Solution -->
-        <section class="section-container" id="problem" style="background: var(--color-cream-paper); border-top: 1px solid var(--color-pencil-gray); border-bottom: 1px solid var(--color-pencil-gray);">
+        <section class="section-container" id="problem" style="background: var(--bg-primary); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
           <h2 class="section-title">The Real-World Problem vs. LocalKaam</h2>
           <p class="section-subtitle">Why urban households and local blue-collar professionals need a decentralized hyperlocal marketplace.</p>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px; max-width: 1100px; margin: 0 auto;">
-            <div style="background: var(--color-cream-paper); border: 2px solid #ba1a1a; border-radius: 16px; padding: 32px; box-shadow: var(--shadow-subtle);">
+            <div style="background: var(--bg-card); border: 2px solid #ba1a1a; border-radius: 16px; padding: 32px; box-shadow: var(--shadow-subtle);">
               <h3 style="font-size: 20px; font-weight: 800; color: #ba1a1a; margin-bottom: 16px;">❌ Traditional Aggregator Pain Points</h3>
               <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px; color: var(--text-secondary); font-size: 15px;">
                 <li>• <strong>Opaque Commissions:</strong> Platforms take 25–40% cuts, squeezing workers' earnings.</li>
@@ -157,9 +182,9 @@ export const App = {
               </ul>
             </div>
 
-            <div style="background: var(--color-cream-paper); border: 2px solid var(--color-forest-ink); border-radius: 16px; padding: 32px; box-shadow: var(--shadow-subtle-2);">
-              <h3 style="font-size: 20px; font-weight: 800; color: var(--color-forest-ink); margin-bottom: 16px;">✅ The LocalKaam Solution</h3>
-              <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px; color: var(--color-forest-ink); font-size: 15px;">
+            <div style="background: var(--bg-card); border: 2px solid var(--border-color); border-radius: 16px; padding: 32px; box-shadow: var(--shadow-subtle-2);">
+              <h3 style="font-size: 20px; font-weight: 800; color: var(--text-primary); margin-bottom: 16px;">✅ The LocalKaam Solution</h3>
+              <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px; color: var(--text-primary); font-size: 15px;">
                 <li>• <strong>Direct Payouts:</strong> Workers set their own rates and retain 100% of agreed earnings.</li>
                 <li>• <strong>Hyperlocal Radius:</strong> Matches professionals residing within your neighborhood.</li>
                 <li>• <strong>Counter-Offers:</strong> Built-in negotiation allows counter-offers and transparent agreements.</li>
@@ -185,28 +210,28 @@ export const App = {
         </section>
 
         <!-- USPs -->
-        <section class="section-container" id="usps" style="background: var(--color-cream-paper); border-top: 1px solid var(--color-pencil-gray); border-bottom: 1px solid var(--color-pencil-gray);">
+        <section class="section-container" id="usps" style="background: var(--bg-primary); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
           <h2 class="section-title">Why Choose LocalKaam?</h2>
           <p class="section-subtitle">Four core pillars that set our platform apart from conventional gig apps.</p>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto;">
-            <div style="background: var(--color-cream-paper); padding: 24px; border-radius: 12px; border: 1px solid var(--color-forest-ink);">
+            <div style="background: var(--bg-card); padding: 24px; border-radius: 12px; border: 1px solid var(--border-color);">
               <div style="font-size: 32px; margin-bottom: 12px;">💬</div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Transparent Negotiation</h3>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Transparent Negotiation</h3>
               <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">Direct price offers and counter-offers between households and professionals with complete history tracking.</p>
             </div>
-            <div style="background: var(--color-cream-paper); padding: 24px; border-radius: 12px; border: 1px solid var(--color-forest-ink);">
+            <div style="background: var(--bg-card); padding: 24px; border-radius: 12px; border: 1px solid var(--border-color);">
               <div style="font-size: 32px; margin-bottom: 12px;">📍</div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Hyperlocal Matching Grid</h3>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Hyperlocal Matching Grid</h3>
               <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">Haversine distance calculations and service radius limits ensuring experts arrive within ~25 minutes.</p>
             </div>
-            <div style="background: var(--color-cream-paper); padding: 24px; border-radius: 12px; border: 1px solid var(--color-forest-ink);">
+            <div style="background: var(--bg-card); padding: 24px; border-radius: 12px; border: 1px solid var(--border-color);">
               <div style="font-size: 32px; margin-bottom: 12px;">🛡️</div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Verified Trust & Reviews</h3>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Verified Trust & Reviews</h3>
               <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">Strict reviews tied exclusively to completed jobs and verified badges to maintain absolute safety.</p>
             </div>
-            <div style="background: var(--color-cream-paper); padding: 24px; border-radius: 12px; border: 1px solid var(--color-forest-ink);">
+            <div style="background: var(--bg-card); padding: 24px; border-radius: 12px; border: 1px solid var(--border-color);">
               <div style="font-size: 32px; margin-bottom: 12px;">🛠️</div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Worker Empowerment</h3>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Worker Empowerment</h3>
               <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">Multi-step onboarding allowing workers to configure service-specific pricing, schedules, and online status.</p>
             </div>
           </div>
@@ -221,7 +246,7 @@ export const App = {
               <thead>
                 <tr>
                   <th>Feature</th>
-                  <th style="color: var(--color-forest-ink);">LocalKaam (Ours)</th>
+                  <th style="color: var(--text-primary);">LocalKaam (Ours)</th>
                   <th>Urban Company</th>
                   <th>Housejoy</th>
                   <th>Justdial Local</th>
@@ -262,23 +287,23 @@ export const App = {
         </section>
 
         <!-- How It Works -->
-        <section class="section-container" id="how-it-works" style="background: var(--color-cream-paper); border-top: 1px solid var(--color-pencil-gray); border-bottom: 1px solid var(--color-pencil-gray);">
+        <section class="section-container" id="how-it-works" style="background: var(--bg-primary); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
           <h2 class="section-title">How LocalKaam Works in 3 Steps</h2>
           <p class="section-subtitle">A seamless workflow designed for households and neighborhood professionals.</p>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 32px; max-width: 1000px; margin: 0 auto;">
-            <div style="background: var(--color-cream-paper); padding: 32px; border-radius: 12px; border: 1px solid var(--color-forest-ink);">
-              <div style="font-size: 28px; font-weight: 800; color: var(--color-forest-ink); margin-bottom: 12px;">01</div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Discover Nearby Experts</h3>
+            <div style="background: var(--bg-card); padding: 32px; border-radius: 12px; border: 1px solid var(--border-color);">
+              <div style="font-size: 28px; font-weight: 800; color: var(--text-primary); margin-bottom: 12px;">01</div>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Discover Nearby Experts</h3>
               <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">Select your Mumbai locality and service category. Our matching engine surfaces online professionals nearby.</p>
             </div>
-            <div style="background: var(--color-cream-paper); padding: 32px; border-radius: 12px; border: 1px solid var(--color-forest-ink);">
-              <div style="font-size: 28px; font-weight: 800; color: var(--color-forest-ink); margin-bottom: 12px;">02</div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Book & Agree on Price</h3>
+            <div style="background: var(--bg-card); padding: 32px; border-radius: 12px; border: 1px solid var(--border-color);">
+              <div style="font-size: 28px; font-weight: 800; color: var(--text-primary); margin-bottom: 12px;">02</div>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Book & Agree on Price</h3>
               <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">Choose an appointment slot, describe the task, and submit your request or optional price offer.</p>
             </div>
-            <div style="background: var(--color-cream-paper); padding: 32px; border-radius: 12px; border: 1px solid var(--color-forest-ink);">
-              <div style="font-size: 28px; font-weight: 800; color: var(--color-forest-ink); margin-bottom: 12px;">03</div>
-              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Track, Complete & Review</h3>
+            <div style="background: var(--bg-card); padding: 32px; border-radius: 12px; border: 1px solid var(--border-color);">
+              <div style="font-size: 28px; font-weight: 800; color: var(--text-primary); margin-bottom: 12px;">03</div>
+              <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Track, Complete & Review</h3>
               <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">Track job progress live from confirmed to completed, generate digital receipts, and leave ratings.</p>
             </div>
           </div>
@@ -289,7 +314,7 @@ export const App = {
           <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; align-items: center;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <div class="nav-logo" style="width: 32px; height: 32px; font-size: 0.85rem;">LK</div>
-              <span style="font-weight: 700; font-size: 18px;">LocalKaam</span>
+              <span style="font-weight: 700; font-size: 18px; color: var(--text-primary);">LocalKaam</span>
             </div>
             <p style="font-size: 14px; color: var(--text-secondary);">© 2026 LocalKaam Inc. Hyperlocal Blue-Collar Services Marketplace. All rights reserved.</p>
           </div>
@@ -301,7 +326,7 @@ export const App = {
   renderRoleSelectionPage() {
     const theme = StorageService.getTheme();
     return `
-      <div class="app-container" style="background-color: var(--color-cream-paper); color: var(--color-forest-ink);">
+      <div class="app-container" style="background-color: var(--bg-primary); color: var(--text-primary);">
         <header class="navbar">
           <div class="nav-brand" id="nav-back-home">
             <div class="nav-logo">LK</div>
@@ -355,7 +380,7 @@ export const App = {
             <div class="nav-title">LocalKaam</div>
           </div>
           <div class="nav-links">
-            <span class="role-badge" style="background: var(--color-sticky-note-mint); color: var(--color-forest-ink); font-weight: 700;">
+            <span class="role-badge" style="background: var(--accent-light); color: var(--text-primary); font-weight: 700;">
               Role: ${activeRole === 'customer' ? '🏠 Customer' : '🛠️ Worker'} (${esc(userName)})
             </span>
           </div>
@@ -373,16 +398,13 @@ export const App = {
 
   attachLandingEvents(root) {
     root.querySelector('#nav-home-logo')?.addEventListener('click', () => {
-      StorageService.setCurrentRole('landing');
-      this.render();
+      this.navigateToRole('landing');
     });
     root.querySelector('#get-started-btn')?.addEventListener('click', () => {
-      StorageService.setCurrentRole('role-select');
-      this.render();
+      this.navigateToRole('role-select');
     });
     root.querySelector('#hero-find-pro-btn')?.addEventListener('click', () => {
-      StorageService.setCurrentRole('role-select');
-      this.render();
+      this.navigateToRole('role-select');
     });
     root.querySelector('#hero-explore-btn')?.addEventListener('click', () => {
       const el = root.querySelector('#usps');
@@ -411,12 +433,12 @@ export const App = {
       card.addEventListener('click', () => {
         const profile = AuthService.getProfile();
         if (profile && profile.role === 'customer') {
-          StorageService.setCurrentRole('customer');
+          this.navigateToRole('customer');
           CustomerFrontend.currentCategory = card.getAttribute('data-category');
           this.render();
         } else {
           AuthModal.show('customer', () => {
-            StorageService.setCurrentRole('customer');
+            this.navigateToRole('customer');
             CustomerFrontend.currentCategory = card.getAttribute('data-category');
             this.render();
           });
@@ -427,34 +449,28 @@ export const App = {
 
   attachRoleSelectionEvents(root) {
     root.querySelector('#nav-back-home')?.addEventListener('click', () => {
-      StorageService.setCurrentRole('landing');
-      this.render();
+      this.navigateToRole('landing');
     });
     root.querySelector('#back-to-home-link')?.addEventListener('click', () => {
-      StorageService.setCurrentRole('landing');
-      this.render();
+      this.navigateToRole('landing');
     });
     root.querySelector('#select-customer-role')?.addEventListener('click', () => {
       const profile = AuthService.getProfile();
       if (profile && profile.role === 'customer') {
-        StorageService.setCurrentRole('customer');
-        this.render();
+        this.navigateToRole('customer');
       } else {
         AuthModal.show('customer', () => {
-          StorageService.setCurrentRole('customer');
-          this.render();
+          this.navigateToRole('customer');
         });
       }
     });
     root.querySelector('#select-worker-role')?.addEventListener('click', () => {
       const profile = AuthService.getProfile();
       if (profile && profile.role === 'worker') {
-        StorageService.setCurrentRole('worker');
-        this.render();
+        this.navigateToRole('worker');
       } else {
         AuthModal.show('worker', () => {
-          StorageService.setCurrentRole('worker');
-          this.render();
+          this.navigateToRole('worker');
         });
       }
     });
@@ -471,12 +487,10 @@ export const App = {
 
   attachShellEvents(root) {
     root.querySelector('#nav-brand-dashboard')?.addEventListener('click', () => {
-      StorageService.setCurrentRole('landing');
-      this.render();
+      this.navigateToRole('landing');
     });
     root.querySelector('#switch-role-btn')?.addEventListener('click', () => {
-      StorageService.setCurrentRole('role-select');
-      this.render();
+      this.navigateToRole('role-select');
     });
 
     const themeBtn = root.querySelector('#theme-toggle-btn');
