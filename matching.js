@@ -28,14 +28,13 @@ export const MatchingService = {
 
   calculateMatchScore(worker, customerLocalityId) {
     const distance = this.calculateDistance(worker.baseLocality, customerLocalityId);
-    const availableFactor = (worker.available && !worker.pauseNewBookings) ? 0 : 60;
     const distanceFactor = distance * 4;
     const ratingVal = worker.ratingCount > 0 ? worker.ratingAverage : 4.0;
     const ratingFactor = (5 - ratingVal) * 10;
     const verifiedFactor = worker.verificationStatus === 'Verified' ? 0 : 5;
 
     return {
-      score: availableFactor + distanceFactor + ratingFactor + verifiedFactor,
+      score: distanceFactor + ratingFactor + verifiedFactor,
       distance,
       eta: this.calculateETA(distance)
     };
@@ -44,15 +43,19 @@ export const MatchingService = {
   getEligibleWorkers(workers, customerLocalityId, category = 'all', searchQuery = '') {
     return workers
       .filter(worker => {
-        // Must have completed profile and not paused new bookings entirely
+        // Must have completed profile and MUST BE ONLINE & NOT PAUSED
         if (!worker.profileCompleted) return false;
+        if (!worker.available || worker.pauseNewBookings) return false;
+
         // Service radius check
         const distance = this.calculateDistance(worker.baseLocality, customerLocalityId);
         if (distance > worker.serviceRadius) return false;
+
         // Category check: worker must have this category in their specialities
         if (category && category !== 'all') {
           if (!worker.specialities || !worker.specialities[category]) return false;
         }
+
         // Search query check
         if (searchQuery && searchQuery.trim() !== '') {
           const q = searchQuery.toLowerCase();

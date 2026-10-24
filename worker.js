@@ -2,11 +2,12 @@ import { StorageService } from './storage.js';
 import { BookingService } from './bookings.js';
 import { CATEGORIES, LOCALITIES } from './data.js';
 import { Toast } from './toast.js';
+import { esc } from './utils.js';
 
 export const WorkerFrontend = {
   render(container) {
     const workers = StorageService.getWorkers();
-    const currentWorkerId = StorageService.getSelectedWorkerId();
+    let currentWorkerId = StorageService.getSelectedWorkerId();
     let worker = workers.find(w => w.id === currentWorkerId) || workers[0];
 
     // If profile is incomplete, force onboarding
@@ -30,7 +31,7 @@ export const WorkerFrontend = {
           <div style="padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
             <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.35rem;">Active Professional Profile:</label>
             <select id="worker-profile-select" class="form-select" style="font-size: 0.85rem; padding: 0.5rem;">
-              ${workers.map(w => `<option value="${w.id}" ${w.id === worker.id ? 'selected' : ''}>${w.name} (${Object.keys(w.specialities || {}).join(', ')})</option>`).join('')}
+              ${workers.map(w => `<option value="${esc(w.id)}" ${w.id === worker.id ? 'selected' : ''}>${esc(w.name)} (${Object.keys(w.specialities || {}).join(', ')})</option>`).join('')}
             </select>
             <button class="btn btn-outline btn-sm" id="create-new-worker-btn" style="width: 100%; margin-top: 0.5rem; font-size: 0.8rem;">+ Register New Worker</button>
           </div>
@@ -66,15 +67,16 @@ export const WorkerFrontend = {
   },
 
   renderOverviewView(worker, pendingRequests, activeJobs, completedJobs, totalEarnings) {
+    const isOnline = worker.available && !worker.pauseNewBookings;
     return `
       <div class="dashboard-header">
         <div>
-          <h1>Welcome back, ${worker.name}! 👋</h1>
-          <p>Service Area: <strong>${worker.serviceArea || worker.baseLocality.toUpperCase()}</strong> • Status: <span style="color: ${worker.available && !worker.pauseNewBookings ? 'var(--success)' : 'var(--danger)'};">${worker.available && !worker.pauseNewBookings ? '🟢 Online & Discoverable' : '🔴 Offline / Paused'}</span></p>
+          <h1>Welcome back, ${esc(worker.name)}! 👋</h1>
+          <p>Service Area: <strong>${esc(worker.serviceArea || worker.baseLocality)}</strong> • Status: <span style="color: ${isOnline ? 'var(--success)' : 'var(--danger)'};">${isOnline ? '🟢 Online & Discoverable' : '🔴 Offline / Paused'}</span></p>
         </div>
         <div>
-          <button class="btn ${worker.available && !worker.pauseNewBookings ? 'btn-primary' : 'btn-outline'} btn-sm" id="quick-toggle-online">
-            ${worker.available && !worker.pauseNewBookings ? '🟢 Go Offline' : '🔴 Go Online'}
+          <button class="btn ${isOnline ? 'btn-primary' : 'btn-outline'} btn-sm" id="quick-toggle-online">
+            ${isOnline ? '🟢 Go Offline' : '🔴 Go Online'}
           </button>
         </div>
       </div>
@@ -111,19 +113,19 @@ export const WorkerFrontend = {
             ${pendingRequests.map(b => `
               <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <div>
-                  <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem;">${b.serviceCategory.toUpperCase()} — ${b.serviceTask} (${b.id})</h4>
-                  <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">Customer: <strong>${b.customerName}</strong> (${b.customerPhone}) • Address: ${b.address} (${b.locality.toUpperCase()})</p>
-                  <p style="font-size: 0.9rem;">Problem: ${b.jobDescription}</p>
+                  <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem;">${esc(b.serviceCategory.toUpperCase())} — ${esc(b.serviceTask)} (${esc(b.id)})</h4>
+                  <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">Customer: <strong>${esc(b.customerName)}</strong> (${esc(b.customerPhone)}) • Address: ${esc(b.address)} (${esc(b.locality.toUpperCase())})</p>
+                  <p style="font-size: 0.9rem;">Problem: ${esc(b.jobDescription)}</p>
                   <p style="margin-top: 0.5rem; font-size: 0.95rem;">
-                    Date & Time: <strong>${b.appointmentDate} @ ${b.appointmentTime}</strong><br>
+                    Date & Time: <strong>${esc(b.appointmentDate)} @ ${esc(b.appointmentTime)}</strong><br>
                     Estimated Amount: <strong>₹${b.basePrice + b.visitingCharge}</strong> (Base ₹${b.basePrice} + Visiting ₹${b.visitingCharge})
                     ${b.customerOffer ? `<br><span style="color: var(--accent-primary); font-weight: 600;">Customer Offered: ₹${b.customerOffer}</span>` : ''}
                   </p>
                 </div>
                 <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-                  <button class="btn btn-primary btn-sm accept-request-btn" data-id="${b.id}">Accept (₹${b.customerOffer || (b.basePrice + b.visitingCharge)})</button>
-                  <button class="btn btn-outline btn-sm counter-request-btn" data-id="${b.id}">Counter Offer</button>
-                  <button class="btn btn-danger btn-sm reject-request-btn" data-id="${b.id}">Reject</button>
+                  <button class="btn btn-primary btn-sm accept-request-btn" data-id="${esc(b.id)}">Accept (₹${b.customerOffer || (b.basePrice + b.visitingCharge)})</button>
+                  <button class="btn btn-outline btn-sm counter-request-btn" data-id="${esc(b.id)}">Counter Offer</button>
+                  <button class="btn btn-danger btn-sm reject-request-btn" data-id="${esc(b.id)}">Reject</button>
                 </div>
               </div>
             `).join('')}
@@ -143,15 +145,15 @@ export const WorkerFrontend = {
             ${activeJobs.map(b => `
               <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <div>
-                  <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem;">${b.serviceTask} (${b.id}) <span class="badge badge-accepted">${b.status}</span></h4>
-                  <p style="color: var(--text-secondary); font-size: 0.9rem;">Customer: ${b.customerName} (${b.customerPhone}) • Address: ${b.address}</p>
+                  <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem;">${esc(b.serviceTask)} (${esc(b.id)}) <span class="badge badge-accepted">${esc(b.status)}</span></h4>
+                  <p style="color: var(--text-secondary); font-size: 0.9rem;">Customer: ${esc(b.customerName)} (${esc(b.customerPhone)}) • Address: ${esc(b.address)}</p>
                   <p style="margin-top: 0.5rem; font-weight: 600;">Confirmed Agreed Price: ₹${b.agreedPrice}</p>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                  ${b.status === 'Confirmed' ? `<button class="btn btn-outline btn-sm enroute-job-btn" data-id="${b.id}">🚗 I'm On My Way</button>` : ''}
-                  ${b.status === 'Worker en route' ? `<button class="btn btn-outline btn-sm arrived-job-btn" data-id="${b.id}">📍 Confirm Arrival</button>` : ''}
-                  ${['Confirmed', 'Worker en route', 'Worker arrived'].includes(b.status) ? `<button class="btn btn-primary btn-sm start-job-btn" data-id="${b.id}">▶️ Start Job</button>` : ''}
-                  ${b.status === 'Job in progress' ? `<button class="btn btn-primary btn-sm complete-job-btn" data-id="${b.id}" style="background: var(--success);">✅ Complete Job</button>` : ''}
+                  ${b.status === 'Confirmed' ? `<button class="btn btn-outline btn-sm enroute-job-btn" data-id="${esc(b.id)}">🚗 I'm On My Way</button>` : ''}
+                  ${b.status === 'Worker en route' ? `<button class="btn btn-outline btn-sm arrived-job-btn" data-id="${esc(b.id)}">📍 Confirm Arrival</button>` : ''}
+                  ${['Confirmed', 'Worker en route', 'Worker arrived'].includes(b.status) ? `<button class="btn btn-primary btn-sm start-job-btn" data-id="${esc(b.id)}">▶️ Start Job</button>` : ''}
+                  ${b.status === 'Job in progress' ? `<button class="btn btn-primary btn-sm complete-job-btn" data-id="${esc(b.id)}" style="background: var(--success);">✅ Complete Job</button>` : ''}
                 </div>
               </div>
             `).join('')}
@@ -186,14 +188,14 @@ export const WorkerFrontend = {
               <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No pending requests.</td></tr>
             ` : pending.map(b => `
               <tr>
-                <td><strong>${b.id}</strong><br><small>${new Date(b.createdAt).toLocaleDateString()}</small></td>
-                <td><strong>${b.serviceCategory.toUpperCase()}</strong><br>${b.customerName} (${b.customerPhone})</td>
-                <td>${b.jobDescription}<br><small>${b.address} (${b.locality.toUpperCase()})</small></td>
+                <td><strong>${esc(b.id)}</strong><br><small>${new Date(b.createdAt).toLocaleDateString()}</small></td>
+                <td><strong>${esc(b.serviceCategory.toUpperCase())}</strong><br>${esc(b.customerName)} (${esc(b.customerPhone)})</td>
+                <td>${esc(b.jobDescription)}<br><small>${esc(b.address)} (${esc(b.locality.toUpperCase())})</small></td>
                 <td>Standard: ₹${b.basePrice + b.visitingCharge}<br>${b.customerOffer ? `<strong style="color: var(--accent-primary);">Offer: ₹${b.customerOffer}</strong>` : ''}</td>
                 <td>
-                  <button class="btn btn-primary btn-sm accept-request-btn" data-id="${b.id}">Accept</button>
-                  <button class="btn btn-outline btn-sm counter-request-btn" data-id="${b.id}">Counter</button>
-                  <button class="btn btn-danger btn-sm reject-request-btn" data-id="${b.id}">Reject</button>
+                  <button class="btn btn-primary btn-sm accept-request-btn" data-id="${esc(b.id)}">Accept</button>
+                  <button class="btn btn-outline btn-sm counter-request-btn" data-id="${esc(b.id)}">Counter</button>
+                  <button class="btn btn-danger btn-sm reject-request-btn" data-id="${esc(b.id)}">Reject</button>
                 </td>
               </tr>
             `).join('')}
@@ -228,16 +230,16 @@ export const WorkerFrontend = {
               <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No active jobs.</td></tr>
             ` : active.map(b => `
               <tr>
-                <td><strong>${b.id}</strong></td>
-                <td>${b.serviceTask}<br>${b.customerName}</td>
-                <td>${b.appointmentDate} @ ${b.appointmentTime}</td>
-                <td><span class="badge badge-accepted">${b.status}</span></td>
+                <td><strong>${esc(b.id)}</strong></td>
+                <td>${esc(b.serviceTask)}<br>${esc(b.customerName)}</td>
+                <td>${esc(b.appointmentDate)} @ ${esc(b.appointmentTime)}</td>
+                <td><span class="badge badge-accepted">${esc(b.status)}</span></td>
                 <td>
                   <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    ${b.status === 'Confirmed' ? `<button class="btn btn-outline btn-sm enroute-job-btn" data-id="${b.id}">🚗 En Route</button>` : ''}
-                    ${b.status === 'Worker en route' ? `<button class="btn btn-outline btn-sm arrived-job-btn" data-id="${b.id}">📍 Arrived</button>` : ''}
-                    ${['Confirmed', 'Worker en route', 'Worker arrived'].includes(b.status) ? `<button class="btn btn-primary btn-sm start-job-btn" data-id="${b.id}">Start</button>` : ''}
-                    ${b.status === 'Job in progress' ? `<button class="btn btn-primary btn-sm complete-job-btn" data-id="${b.id}" style="background: var(--success);">Complete</button>` : ''}
+                    ${b.status === 'Confirmed' ? `<button class="btn btn-outline btn-sm enroute-job-btn" data-id="${esc(b.id)}">🚗 En Route</button>` : ''}
+                    ${b.status === 'Worker en route' ? `<button class="btn btn-outline btn-sm arrived-job-btn" data-id="${esc(b.id)}">📍 Arrived</button>` : ''}
+                    ${['Confirmed', 'Worker en route', 'Worker arrived'].includes(b.status) ? `<button class="btn btn-primary btn-sm start-job-btn" data-id="${esc(b.id)}">Start</button>` : ''}
+                    ${b.status === 'Job in progress' ? `<button class="btn btn-primary btn-sm complete-job-btn" data-id="${esc(b.id)}" style="background: var(--success);">Complete</button>` : ''}
                   </div>
                 </td>
               </tr>
@@ -249,6 +251,7 @@ export const WorkerFrontend = {
   },
 
   renderScheduleView(worker) {
+    const isOnline = worker.available && !worker.pauseNewBookings;
     return `
       <div class="dashboard-header">
         <div>
@@ -261,10 +264,10 @@ export const WorkerFrontend = {
         <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
           <div>
             <h3 style="font-size: 1.15rem; font-weight: 700;">Online Discovery Status</h3>
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">When online, you appear in customer search results for your specialities.</p>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">When offline, you will not show up in any customer search results.</p>
           </div>
-          <button class="btn ${worker.available && !worker.pauseNewBookings ? 'btn-primary' : 'btn-outline'}" id="toggle-online-status" style="background-color: ${worker.available && !worker.pauseNewBookings ? 'var(--success)' : 'var(--danger)'}; border-color: transparent; color: white;">
-            ${worker.available && !worker.pauseNewBookings ? '🟢 Online' : '🔴 Offline'}
+          <button class="btn ${isOnline ? 'btn-primary' : 'btn-outline'}" id="toggle-online-status" style="background-color: ${isOnline ? 'var(--success)' : 'var(--danger)'}; border-color: transparent; color: white;">
+            ${isOnline ? '🟢 Online' : '🔴 Offline'}
           </button>
         </div>
 
@@ -283,11 +286,11 @@ export const WorkerFrontend = {
           <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
             <div>
               <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Start Time</label>
-              <input type="time" id="work-start" class="form-control" value="${worker.workingHours?.start || '09:00'}">
+              <input type="time" id="work-start" class="form-control" value="${esc(worker.workingHours?.start || '09:00')}">
             </div>
             <div>
               <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">End Time</label>
-              <input type="time" id="work-end" class="form-control" value="${worker.workingHours?.end || '19:00'}">
+              <input type="time" id="work-end" class="form-control" value="${esc(worker.workingHours?.end || '19:00')}">
             </div>
           </div>
           <button class="btn btn-primary" id="save-schedule-settings">Save Schedule</button>
@@ -326,8 +329,8 @@ export const WorkerFrontend = {
               <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No completed jobs yet.</td></tr>
             ` : completedJobs.map(b => `
               <tr>
-                <td><strong>${b.id}</strong></td>
-                <td>${b.serviceTask}<br><small>${b.customerName}</small></td>
+                <td><strong>${esc(b.id)}</strong></td>
+                <td>${esc(b.serviceTask)}<br><small>${esc(b.customerName)}</small></td>
                 <td>${new Date(b.completedAt || b.createdAt).toLocaleDateString()}</td>
                 <td><strong>₹${b.agreedPrice}</strong></td>
                 <td><span class="badge badge-completed">Completed</span></td>
@@ -345,7 +348,7 @@ export const WorkerFrontend = {
       <div class="dashboard-header">
         <div>
           <h1>Profile & Specialities</h1>
-          <p>Manage your professional bio, service areas, and service-specific pricing.</p>
+          <p>Manage your professional bio, service areas, past experience, and certifications.</p>
         </div>
       </div>
 
@@ -353,53 +356,44 @@ export const WorkerFrontend = {
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
           <div>
             <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Full Name</label>
-            <input type="text" id="wp-name" class="form-control" value="${worker.name}" required>
+            <input type="text" id="wp-name" class="form-control" value="${esc(worker.name)}" required>
           </div>
           <div>
             <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Phone Number</label>
-            <input type="text" id="wp-phone" class="form-control" value="${worker.phone || ''}" required>
+            <input type="text" id="wp-phone" class="form-control" value="${esc(worker.phone || '')}" required>
           </div>
         </div>
 
         <div>
           <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Professional Bio</label>
-          <textarea id="wp-bio" class="form-control" rows="3" required>${worker.bio || ''}</textarea>
+          <textarea id="wp-bio" class="form-control" rows="3" required>${esc(worker.bio || '')}</textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+          <div>
+            <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Past Experience / Portfolio (Optional)</label>
+            <textarea id="wp-experience" class="form-control" rows="2" placeholder="e.g. Worked with L&T contractors for 4 years...">${esc(worker.pastExperience || '')}</textarea>
+          </div>
+          <div>
+            <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Certifications / Licenses (Optional)</label>
+            <input type="text" id="wp-certifications" class="form-control" value="${esc(worker.certifications || '')}" placeholder="e.g. ITI Certified, Electrical License Grade A">
+          </div>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
           <div>
             <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Base Locality</label>
             <select id="wp-locality" class="form-select">
-              ${LOCALITIES.map(l => `<option value="${l.id}" ${l.id === worker.baseLocality ? 'selected' : ''}>${l.name}</option>`).join('')}
+              ${LOCALITIES.map(l => `<option value="${esc(l.id)}" ${l.id === worker.baseLocality ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}
             </select>
           </div>
           <div>
             <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Service Area Description</label>
-            <input type="text" id="wp-area" class="form-control" value="${worker.serviceArea || ''}" required>
+            <input type="text" id="wp-area" class="form-control" value="${esc(worker.serviceArea || '')}" required>
           </div>
           <div>
             <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Service Radius (km)</label>
             <input type="number" id="wp-radius" class="form-control" value="${worker.serviceRadius || 10}" min="1" max="50" required>
-          </div>
-        </div>
-
-        <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
-          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Configured Specialities & Service-Specific Pricing</h3>
-          <div style="display: flex; flex-direction: column; gap: 1rem;">
-            ${specialitiesKeys.map(sk => {
-              const catObj = CATEGORIES.find(c => c.id === sk) || { name: sk };
-              const info = worker.specialities[sk] || {};
-              return `
-                <div style="background: var(--bg-primary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                  <h4 style="font-size: 1rem; font-weight: 600; color: var(--accent-primary); margin-bottom: 0.5rem;">${catObj.name}</h4>
-                  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; font-size: 0.9rem;">
-                    <div><strong>Starting Price:</strong> ₹${info.startingPrice || 350}</div>
-                    <div><strong>Visiting Charge:</strong> ₹${info.visitingCharge || 100}</div>
-                    <div><strong>Method:</strong> ${info.pricingMethod || 'hourly'}</div>
-                  </div>
-                </div>
-              `;
-            }).join('')}
           </div>
         </div>
 
@@ -420,24 +414,35 @@ export const WorkerFrontend = {
           <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
             <div>
               <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Full Name</label>
-              <input type="text" id="ob-name" class="form-control" value="${worker?.name || ''}" placeholder="e.g. Rajesh Kumar" required>
+              <input type="text" id="ob-name" class="form-control" value="${esc(worker?.name || '')}" placeholder="e.g. Rajesh Kumar" required>
             </div>
             <div>
               <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Phone Number</label>
-              <input type="text" id="ob-phone" class="form-control" value="${worker?.phone || '+91 98200 11223'}" required>
+              <input type="text" id="ob-phone" class="form-control" value="${esc(worker?.phone || '+91 98200 11223')}" required>
             </div>
           </div>
 
           <div>
             <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Professional Bio</label>
-            <textarea id="ob-bio" class="form-control" rows="3" placeholder="Describe your experience and reliability..." required>${worker?.bio || 'Experienced and reliable local service professional in Mumbai.'}</textarea>
+            <textarea id="ob-bio" class="form-control" rows="3" placeholder="Describe your experience and reliability..." required>${esc(worker?.bio || 'Experienced and reliable local service professional in Mumbai.')}</textarea>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+            <div>
+              <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Past Experience / Portfolio <small style="color: var(--text-secondary);">(Optional)</small></label>
+              <textarea id="ob-experience" class="form-control" rows="2" placeholder="e.g. 4 years working with residential apartment maintenance...">${esc(worker?.pastExperience || '')}</textarea>
+            </div>
+            <div>
+              <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Certifications / Licenses <small style="color: var(--text-secondary);">(Optional)</small></label>
+              <input type="text" id="ob-certifications" class="form-control" value="${esc(worker?.certifications || '')}" placeholder="e.g. ITI Certified Electrician">
+            </div>
           </div>
 
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
             <div>
               <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Base Locality</label>
               <select id="ob-locality" class="form-select">
-                ${LOCALITIES.map(l => `<option value="${l.id}">${l.name}</option>`).join('')}
+                ${LOCALITIES.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('')}
               </select>
             </div>
             <div>
@@ -450,15 +455,15 @@ export const WorkerFrontend = {
             </div>
           </div>
 
-          <h3 style="font-size: 1.25rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-top: 1rem;">Step 2 & 3 — Select Specialities & Service-Specific Pricing</h3>
-          <p style="font-size: 0.9rem; color: var(--text-secondary);">Select the categories you provide services for and set your starting prices.</p>
+          <h3 style="font-size: 1.25rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-top: 1rem;">Step 2 & 3 — Select Specialities & Starting Prices</h3>
+          <p style="font-size: 0.9rem; color: var(--text-secondary);">Select categories you provide services for.</p>
 
           <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;" id="speciality-checkboxes">
             ${CATEGORIES.map(c => `
               <label style="display: flex; align-items: center; gap: 0.75rem; background: var(--bg-primary); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
-                <input type="checkbox" name="speciality" value="${c.id}" style="width: 18px; height: 18px;" ${c.id === 'electrician' ? 'checked' : ''}>
+                <input type="checkbox" name="speciality" value="${esc(c.id)}" style="width: 18px; height: 18px;" ${c.id === 'electrician' ? 'checked' : ''}>
                 <div>
-                  <div style="font-weight: 600;">${c.icon} ${c.name}</div>
+                  <div style="font-weight: 600;">${esc(c.icon)} ${esc(c.name)}</div>
                   <div style="font-size: 0.75rem; color: var(--text-secondary);">Starting @ ₹350</div>
                 </div>
               </label>
@@ -475,6 +480,8 @@ export const WorkerFrontend = {
       const name = container.querySelector('#ob-name').value;
       const phone = container.querySelector('#ob-phone').value;
       const bio = container.querySelector('#ob-bio').value;
+      const pastExperience = container.querySelector('#ob-experience').value;
+      const certifications = container.querySelector('#ob-certifications').value;
       const baseLocality = container.querySelector('#ob-locality').value;
       const serviceArea = container.querySelector('#ob-area').value;
       const serviceRadius = parseFloat(container.querySelector('#ob-radius').value) || 10;
@@ -514,6 +521,8 @@ export const WorkerFrontend = {
       targetWorker.name = name;
       targetWorker.phone = phone;
       targetWorker.bio = bio;
+      targetWorker.pastExperience = pastExperience;
+      targetWorker.certifications = certifications;
       targetWorker.baseLocality = baseLocality;
       targetWorker.serviceArea = serviceArea;
       targetWorker.serviceRadius = serviceRadius;
@@ -740,13 +749,15 @@ export const WorkerFrontend = {
         worker.name = container.querySelector('#wp-name').value;
         worker.phone = container.querySelector('#wp-phone').value;
         worker.bio = container.querySelector('#wp-bio').value;
+        worker.pastExperience = container.querySelector('#wp-experience').value;
+        worker.certifications = container.querySelector('#wp-certifications').value;
         worker.baseLocality = container.querySelector('#wp-locality').value;
         worker.serviceArea = container.querySelector('#wp-area').value;
         worker.serviceRadius = parseFloat(container.querySelector('#wp-radius').value) || 10;
 
         let workers = StorageService.getWorkers();
         workers = workers.map(w => w.id === worker.id ? worker : w);
-        StorageService.saveWorkers(workers);
+        StorageService.saveStorageWorkers ? StorageService.saveWorkers(workers) : StorageService.saveWorkers(workers);
         Toast.show('Profile updated successfully!', 'success');
         this.render(container);
       };
