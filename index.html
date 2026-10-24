@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html class="scroll-smooth" lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,12 +7,11 @@
   <link rel="stylesheet" href="./styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Supabase Client JS CDN -->
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
-  <div id="app"></div>
+<body class="bg-[#fbf9f4] text-[#1b1c19] antialiased min-h-screen flex flex-col">
+  <div id="app" class="flex flex-col min-h-screen"></div>
 
   <script type="module">
     import { App } from './app.js';
@@ -22,46 +21,37 @@
 
     window.addEventListener('DOMContentLoaded', async () => {
       try {
-        // Handle OAuth redirect — Supabase puts tokens in URL hash after Google sign-in
         const hash = window.location.hash;
         if (hash && (hash.includes('access_token') || hash.includes('error'))) {
           const appDiv = document.getElementById('app');
           if (appDiv) {
-            appDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;"><div style="font-size:2rem;margin-bottom:1rem;">⏳</div><p style="font-size:1.1rem;font-weight:600;color:#333;">Completing Google Sign-In...</p><p style="color:#666;font-size:0.9rem;margin-top:0.5rem;">Please wait while we verify your account.</p></div>';
+            appDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;"><div style="font-size:2rem;margin-bottom:1rem;">⏳</div><p style="font-size:1.1rem;font-weight:600;color:#333;">Completing Sign-In...</p></div>';
           }
-
           try {
             const client = await SupabaseService.getClient();
             if (client) {
               const { data, error } = await client.auth.getSession();
               if (error) {
-                console.error('OAuth session error:', error);
                 Toast.show('Sign-in error: ' + (error.message || 'Unknown error'), 'error');
               } else if (data.session) {
                 await AuthService.syncUserProfile(data.session.user);
-                Toast.show('Signed in with Google as ' + (data.session.user.email || 'User') + '!', 'success');
+                Toast.show('Signed in as ' + (data.session.user.email || 'User') + '!', 'success');
               }
             }
-          } catch (err) {
-            console.error('OAuth callback processing error:', err);
-          }
-
+          } catch (err) {}
           if (window.history && window.history.replaceState) {
             window.history.replaceState(null, '', window.location.pathname + window.location.search);
           }
         }
-      } catch (e) {
-        console.error('Auth init warning:', e);
-      }
+      } catch (e) {}
 
-      // Always initialize App
       try {
         App.init();
       } catch (err) {
         console.error('App init fatal error:', err);
         const appDiv = document.getElementById('app');
         if (appDiv) {
-          appDiv.innerHTML = '<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>Welcome to LocalKaam</h2><p>Please refresh the page to load the marketplace.</p><button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #0284c7; color: white; border: none; border-radius: 8px; cursor: pointer;">Refresh App</button></div>';
+          appDiv.innerHTML = '<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Please refresh the page to load the marketplace.</p><button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1a3300; color: white; border: none; border-radius: 8px; cursor: pointer;">Refresh App</button></div>';
         }
       }
     });
