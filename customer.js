@@ -9,6 +9,7 @@ export const CustomerFrontend = {
   searchQuery: '',
   comparedWorkers: [],
   sortBy: 'match', // match, rating, price_low, distance
+  currentView: 'discover', // discover, bookings
 
   render(container) {
     const workers = StorageService.getWorkers();
@@ -23,10 +24,10 @@ export const CustomerFrontend = {
       <div class="dashboard-layout">
         <!-- Customer Sidebar -->
         <div class="sidebar">
-          <div class="sidebar-item active" data-view="discover">
+          <div class="sidebar-item ${this.currentView === 'discover' ? 'active' : ''}" data-view="discover">
             <span>🔍</span> Discover Services
           </div>
-          <div class="sidebar-item" data-view="bookings">
+          <div class="sidebar-item ${this.currentView === 'bookings' ? 'active' : ''}" data-view="bookings">
             <span>📅</span> My Bookings (${bookings.length})
           </div>
           <div class="sidebar-item" data-view="compare" id="compare-sidebar-btn">
@@ -42,7 +43,7 @@ export const CustomerFrontend = {
 
         <!-- Main Content Area -->
         <div class="main-content" id="customer-main-content">
-          ${this.renderDiscoverView(eligibleWorkers)}
+          ${this.currentView === 'bookings' ? this.renderBookingsView() : this.renderDiscoverView(eligibleWorkers)}
         </div>
       </div>
     `;
@@ -165,8 +166,15 @@ export const CustomerFrontend = {
   },
 
   renderBookingsView() {
-    const bookings = StorageService.getBookings();
+    const rawBookings = StorageService.getBookings();
     const workers = StorageService.getWorkers();
+
+    // Sort bookings newest first using safe fallback when createdAt is missing or invalid
+    const bookings = [...rawBookings].sort((a, b) => {
+      const timeA = a && a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b && b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+    });
 
     return `
       <div class="dashboard-header">
@@ -202,17 +210,35 @@ export const CustomerFrontend = {
                 'Cancelled': 'badge-cancelled'
               }[b.status] || 'badge-pending';
 
+              const createdDisplay = b.createdAt && !isNaN(new Date(b.createdAt).getTime())
+                ? new Date(b.createdAt).toLocaleDateString()
+                : 'Recent';
+
+              const hasWorkerCounter = b.status === 'Pending' &&
+                Array.isArray(b.counterOfferHistory) &&
+                b.counterOfferHistory.length > 0 &&
+                b.counterOfferHistory[b.counterOfferHistory.length - 1].sender === 'worker';
+              const lastWorkerOffer = hasWorkerCounter ? b.counterOfferHistory[b.counterOfferHistory.length - 1] : null;
+
               return `
                 <tr>
-                  <td><strong>${b.id}</strong><br><small style="color: var(--text-secondary);">${new Date(b.createdAt).toLocaleDateString()}</small></td>
+                  <td><strong>${b.id}</strong><br><small style="color: var(--text-secondary);">${createdDisplay}</small></td>
                   <td>
                     <strong>${b.service}</strong><br>
                     <span style="color: var(--accent-primary); font-weight: 500;">${worker.name}</span>
                   </td>
                   <td>${b.locality.toUpperCase()}<br><small style="color: var(--text-secondary);">${b.address}</small></td>
-                  <td><strong>₹${b.agreedPrice}</strong> ${b.customerOffer ? `<br><small style="color: var(--text-secondary);">Offer: ₹${b.customerOffer}</small>` : ''}</td>
-                  <td><span class="badge ${statusBadgeClass}">${b.status}</span></td>
                   <td>
+                    <strong>₹${b.agreedPrice}</strong>
+                    ${b.customerOffer ? `<br><small style="color: var(--text-secondary);">Your Offer: ₹${b.customerOffer}</small>` : ''}
+                    ${hasWorkerCounter ? `<br><small style="color: var(--accent-primary); font-weight: 600;">Countered: ₹${lastWorkerOffer.amount}</small>` : ''}
+                  </td>
+                  <td>
+                    <span class="badge ${statusBadgeClass}">${b.status}</span>
+                    ${hasWorkerCounter ? `<br><span class="badge" style="background: var(--accent-light); color: var(--accent-primary); font-size: 0.72rem; margin-top: 4px; display: inline-block;">Counter: ₹${lastWorkerOffer.amount}</span>` : ''}
+                  </td>
+                  <td>
+                    ${hasWorkerCounter ? `<button class="btn btn-primary btn-sm review-counter-direct-btn" data-id="${b.id}" style="margin-bottom: 4px; font-weight: 600;">Review Counter (₹${lastWorkerOffer.amount})</button><br>` : ''}
                     <button class="btn btn-outline btn-sm view-booking-details-btn" data-id="${b.id}">Details</button>
                     ${b.status === 'Pending' || b.status === 'Accepted' ? `<button class="btn btn-danger btn-sm cancel-booking-btn" data-id="${b.id}">Cancel</button>` : ''}
                     ${b.status === 'Completed' ? `
@@ -243,6 +269,12 @@ export const CustomerFrontend = {
     container.querySelectorAll('.sidebar-item').forEach(item => {
       item.addEventListener('click', () => {
         const view = item.getAttribute('data-view');
+        if (view === 'compare') {
+          this.showComparisonModal(container);
+          return;
+        }
+
+        this.currentView = view;
         container.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
 
@@ -257,13 +289,15 @@ export const CustomerFrontend = {
         } else if (view === 'bookings') {
           mainContent.innerHTML = this.renderBookingsView();
           this.attachBookingsEvents(container);
-        } else if (view === 'compare') {
-          this.showComparisonModal(container);
         }
       });
     });
 
-    this.attachDiscoverEvents(container);
+    if (this.currentView === 'bookings') {
+      this.attachBookingsEvents(container);
+    } else {
+      this.attachDiscoverEvents(container);
+    }
   },
 
   attachDiscoverEvents(container) {
@@ -358,6 +392,13 @@ export const CustomerFrontend = {
   },
 
   attachBookingsEvents(container) {
+    container.querySelectorAll('.review-counter-direct-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const bookingId = btn.getAttribute('data-id');
+        this.showBookingDetailsModal(bookingId, container);
+      });
+    });
+
     container.querySelectorAll('.view-booking-details-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const bookingId = btn.getAttribute('data-id');
@@ -509,7 +550,7 @@ export const CustomerFrontend = {
           <div><strong>Hourly Rate:</strong> ₹${worker.hourlyRate} / hr</div>
           <div><strong>Rating:</strong> ⭐ ${worker.ratingAverage} (${worker.ratingCount} reviews)</div>
           <div><strong>Service Radius:</strong> ${worker.serviceRadius} km</div>
-          <div><strong>Status:</strong> <span style="color: ${worker.available ? 'var(--success)' : 'var(--danger)'};">${worker.available ? 'Available Now' : 'Busy'}</span></div>
+          <div><strong>Status:</strong> <span style="color: ${worker.available ? 'var(--success)' : 'var(--danger)'};">${worker.available ? 'Available Now' : 'Offline (Instant unavailable)'}</span></div>
         </div>
 
         <div style="margin-bottom: 1.5rem;">
@@ -521,7 +562,7 @@ export const CustomerFrontend = {
 
         <div style="display: flex; justify-content: flex-end; gap: 1rem;">
           <button class="btn btn-outline" id="close-btn">Close</button>
-          <button class="btn btn-primary" id="modal-book-btn" data-id="${worker.id}">Book Professional Now</button>
+          <button class="btn btn-primary" id="modal-book-btn" data-id="${worker.id}">${worker.available ? 'Book Professional Now' : 'Schedule Booking'}</button>
         </div>
       </div>
     `;
@@ -548,6 +589,12 @@ export const CustomerFrontend = {
         <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Book Service with ${worker.name}</h2>
         <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">Category: ${worker.category.toUpperCase()} • Rate: ₹${worker.hourlyRate}/hr</p>
 
+        ${!worker.available ? `
+          <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); color: var(--danger); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; font-size: 0.88rem; font-weight: 500;">
+            ⚠️ <strong>${worker.name} is currently offline.</strong> Instant booking is unavailable. You may submit a Scheduled booking request only.
+          </div>
+        ` : ''}
+
         <form id="booking-form" style="display: flex; flex-direction: column; gap: 1rem;">
           <div>
             <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Your Name</label>
@@ -565,8 +612,8 @@ export const CustomerFrontend = {
             <div>
               <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Booking Type</label>
               <select id="booking-type" class="form-select">
-                <option value="instant">Instant (Immediate)</option>
-                <option value="scheduled">Scheduled</option>
+                <option value="instant" ${!worker.available ? 'disabled' : ''}>Instant (Immediate)${!worker.available ? ' — Unavailable (Offline)' : ''}</option>
+                <option value="scheduled" ${!worker.available ? 'selected' : ''}>Scheduled</option>
               </select>
             </div>
             <div>
@@ -582,7 +629,7 @@ export const CustomerFrontend = {
 
           <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
             <button type="button" class="btn btn-outline" id="close-btn">Cancel</button>
-            <button type="submit" class="btn btn-primary">Submit Booking Request</button>
+            <button type="submit" class="btn btn-primary">${worker.available ? 'Submit Booking Request' : 'Submit Scheduled Request'}</button>
           </div>
         </form>
       </div>
@@ -601,28 +648,47 @@ export const CustomerFrontend = {
 
     modal.querySelector('#booking-form').onsubmit = (e) => {
       e.preventDefault();
-      const customerData = {
-        name: modal.querySelector('#cust-name').value,
-        phone: '+91 98765 43210',
-        address: modal.querySelector('#cust-address').value,
-        locality: StorageService.getCustomerLocality()
-      };
-      const bookingDetails = {
-        service: worker.skills[0] || worker.category,
-        jobDescription: modal.querySelector('#job-desc').value,
-        bookingType: modal.querySelector('#booking-type').value,
-        estimatedHours: parseFloat(estHoursInput.value),
-        customerOffer: modal.querySelector('#cust-offer').value ? parseFloat(modal.querySelector('#cust-offer').value) : null
-      };
+      try {
+        const bookingType = modal.querySelector('#booking-type').value;
+        if (bookingType === 'instant' && !worker.available) {
+          Toast.show(`${worker.name} is currently offline and unavailable for instant bookings. Please choose Scheduled booking.`, 'warning');
+          return;
+        }
 
-      const newBooking = BookingService.createBooking(worker, customerData, bookingDetails);
-      const bookings = StorageService.getBookings();
-      bookings.push(newBooking);
-      StorageService.saveBookings(bookings);
+        const customerData = {
+          name: modal.querySelector('#cust-name').value,
+          phone: '+91 98765 43210',
+          address: modal.querySelector('#cust-address').value,
+          locality: StorageService.getCustomerLocality()
+        };
+        const bookingDetails = {
+          service: worker.skills[0] || worker.category,
+          jobDescription: modal.querySelector('#job-desc').value,
+          bookingType,
+          estimatedHours: parseFloat(estHoursInput.value),
+          customerOffer: modal.querySelector('#cust-offer').value ? parseFloat(modal.querySelector('#cust-offer').value) : null
+        };
 
-      modal.remove();
-      Toast.show(`Booking request ${newBooking.id} submitted successfully!`, 'success');
-      this.render(container);
+        const newBooking = BookingService.createBooking(worker, customerData, bookingDetails);
+        const bookings = StorageService.getBookings();
+        bookings.push(newBooking);
+        StorageService.saveBookings(bookings);
+
+        // Update selected worker context only after booking has been successfully created and saved
+        if (newBooking && newBooking.workerId) {
+          const currentWorkers = StorageService.getWorkers();
+          if (currentWorkers.some(w => w.id === newBooking.workerId)) {
+            StorageService.setSelectedWorkerId(newBooking.workerId);
+          }
+        }
+
+        modal.remove();
+        Toast.show(`Booking request ${newBooking.id} submitted successfully!`, 'success');
+        this.render(container);
+      } catch (err) {
+        console.error('Failed to submit booking request:', err);
+        Toast.show('Failed to submit booking request. Please try again.', 'error');
+      }
     };
   },
 

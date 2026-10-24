@@ -3,12 +3,40 @@ import { BookingService } from './bookings.js';
 import { CATEGORIES, LOCALITIES } from './data.js';
 import { Toast } from './toast.js';
 
+function isActionableForWorker(b) {
+  if (!b || b.status !== 'Pending') return false;
+  if (Array.isArray(b.counterOfferHistory) && b.counterOfferHistory.length > 0) {
+    const lastOffer = b.counterOfferHistory[b.counterOfferHistory.length - 1];
+    if (lastOffer && lastOffer.sender === 'worker') {
+      return false; // Awaiting customer response to counter-offer
+    }
+  }
+  return true;
+}
+
+function sortBookingsNewestFirst(list) {
+  return [...list].sort((a, b) => {
+    const timeA = a && a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b && b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+  });
+}
+
 export const WorkerFrontend = {
+  currentView: 'overview', // overview, requests, schedule, earnings, profile
+
   render(container) {
     const workers = StorageService.getWorkers();
+    const allBookings = StorageService.getBookings();
     const currentWorkerId = StorageService.getSelectedWorkerId();
     const worker = workers.find(w => w.id === currentWorkerId) || workers[0];
-    const bookings = StorageService.getBookings().filter(b => b.workerId === worker.id);
+    
+    // Sort worker bookings newest first safely without mutating stored array
+    const bookings = sortBookingsNewestFirst(allBookings.filter(b => b && b.workerId === worker.id));
+
+    // Get authentic customer reviews for this worker
+    const allReviews = StorageService.getReviews();
+    const workerReviews = Array.isArray(allReviews) ? allReviews.filter(r => r && r.workerId === worker.id) : [];
 
     // Calculate metrics
     const pendingRequests = bookings.filter(b => b.status === 'Pending');
@@ -26,30 +54,34 @@ export const WorkerFrontend = {
           <div style="padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
             <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.35rem;">Select Demo Worker Profile:</label>
             <select id="worker-profile-select" class="form-select" style="font-size: 0.85rem; padding: 0.5rem;">
-              ${workers.map(w => `<option value="${w.id}" ${w.id === worker.id ? 'selected' : ''}>${w.name} (${w.category})</option>`).join('')}
+              ${workers.map(w => {
+                const actionableCount = allBookings.filter(b => b && b.workerId === w.id && isActionableForWorker(b)).length;
+                const countBadge = actionableCount > 0 ? ` [🔔 ${actionableCount} new request${actionableCount > 1 ? 's' : ''}]` : '';
+                return `<option value="${w.id}" ${w.id === worker.id ? 'selected' : ''}>${w.name} (${w.category})${countBadge}</option>`;
+              }).join('')}
             </select>
           </div>
 
-          <div class="sidebar-item active" data-view="overview">
+          <div class="sidebar-item ${this.currentView === 'overview' ? 'active' : ''}" data-view="overview">
             <span>📊</span> Dashboard Overview
           </div>
-          <div class="sidebar-item" data-view="requests">
+          <div class="sidebar-item ${this.currentView === 'requests' ? 'active' : ''}" data-view="requests">
             <span>📥</span> Booking Requests (${pendingRequests.length})
           </div>
-          <div class="sidebar-item" data-view="schedule">
+          <div class="sidebar-item ${this.currentView === 'schedule' ? 'active' : ''}" data-view="schedule">
             <span>⏰</span> Schedule & Availability
           </div>
-          <div class="sidebar-item" data-view="earnings">
-            <span>💰</span> Earnings & History (${completedJobs.length})
+          <div class="sidebar-item ${this.currentView === 'earnings' ? 'active' : ''}" data-view="earnings">
+            <span>💰</span> Earnings & Reviews (${completedJobs.length})
           </div>
-          <div class="sidebar-item" data-view="profile">
+          <div class="sidebar-item ${this.currentView === 'profile' ? 'active' : ''}" data-view="profile">
             <span>👤</span> My Profile & Rates
           </div>
         </div>
 
         <!-- Main Content Area -->
         <div class="main-content" id="worker-main-content">
-          ${this.renderOverviewView(worker, pendingRequests, acceptedBookings, inProgressJobs, completedJobs, totalEarnings)}
+          ${this.renderCurrentSubView(worker, pendingRequests, acceptedBookings, inProgressJobs, completedJobs, totalEarnings, workerReviews, bookings)}
         </div>
       </div>
     `;
@@ -57,13 +89,26 @@ export const WorkerFrontend = {
     this.attachEvents(container);
   },
 
-  renderOverviewView(worker, pendingRequests, acceptedBookings, inProgressJobs, completedJobs, totalEarnings) {
+  renderCurrentSubView(worker, pendingRequests, acceptedBookings, inProgressJobs, completedJobs, totalEarnings, workerReviews, bookings) {
+    if (this.currentView === 'requests') {
+      return this.renderRequestsView(worker, bookings);
+    } else if (this.currentView === 'schedule') {
+      return this.renderScheduleView(worker);
+    } else if (this.currentView === 'earnings') {
+      return this.renderEarningsView(worker, completedJobs, totalEarnings, workerReviews);
+    } else if (this.currentView === 'profile') {
+      return this.renderProfileView(worker, workerReviews);
+    }
+    return this.renderOverviewView(worker, pendingRequests, acceptedBookings, inProgressJobs, completedJobs, totalEarnings, workerReviews);
+  },
+
+  renderOverviewView(worker, pendingRequests, acceptedBookings, inProgressJobs, completedJobs, totalEarnings, workerReviews = []) {
     const activeList = [...acceptedBookings, ...inProgressJobs];
     return `
       <div class="dashboard-header">
         <div>
           <h1>Welcome back, ${worker.name}! 👋</h1>
-          <p>Category: <strong>${worker.category.toUpperCase()}</strong> • Base: ${worker.baseLocality.toUpperCase()} • Rate: ₹${worker.hourlyRate}/hr</p>
+          <p>Category: <strong>${worker.category.toUpperCase()}</strong> • Base: ${worker.baseLocality.toUpperCase()} • Rate: ₹${worker.hourlyRate}/hr • Rating: ⭐ <strong>${worker.ratingAverage || 0}</strong> (${worker.ratingCount || 0} reviews)</p>
         </div>
         <div>
           <span class="badge ${worker.available ? 'badge-verified' : 'badge-rejected'}" style="font-size: 0.95rem; padding: 0.5rem 1rem;">
@@ -101,7 +146,13 @@ export const WorkerFrontend = {
           </div>
         ` : `
           <div style="display: flex; flex-direction: column; gap: 1rem;">
-            ${pendingRequests.map(b => `
+            ${pendingRequests.map(b => {
+              const isAwaitingCustomer = Array.isArray(b.counterOfferHistory) &&
+                b.counterOfferHistory.length > 0 &&
+                b.counterOfferHistory[b.counterOfferHistory.length - 1].sender === 'worker';
+              const lastWorkerCounter = isAwaitingCustomer ? b.counterOfferHistory[b.counterOfferHistory.length - 1] : null;
+
+              return `
               <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <div>
                   <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem;">${b.service} (${b.id})</h4>
@@ -110,21 +161,30 @@ export const WorkerFrontend = {
                   <p style="margin-top: 0.5rem; font-size: 0.95rem;">
                     Original Estimate: <strong>₹${b.originalEstimate}</strong> (${b.estimatedHours} hrs @ ₹${worker.hourlyRate}/hr)
                     ${b.customerOffer ? `<br><span style="color: var(--accent-primary); font-weight: 600;">Customer Offered: ₹${b.customerOffer}</span>` : ''}
+                    ${isAwaitingCustomer ? `<br><span style="color: var(--accent-primary); font-weight: 600;">Your Counter-Offer: ₹${lastWorkerCounter.amount} (${lastWorkerCounter.note || 'Awaiting customer response'})</span>` : ''}
                   </p>
                 </div>
                 <div style="display: flex; gap: 0.75rem; align-items: center;">
-                  <button class="btn btn-primary btn-sm accept-request-btn" data-id="${b.id}">Accept (₹${b.customerOffer || b.originalEstimate})</button>
-                  <button class="btn btn-outline btn-sm counter-request-btn" data-id="${b.id}">Counter Offer</button>
-                  <button class="btn btn-danger btn-sm reject-request-btn" data-id="${b.id}">Reject</button>
+                  ${isAwaitingCustomer ? `
+                    <span class="badge" style="background: var(--accent-light); color: var(--accent-primary); padding: 0.5rem 0.75rem; font-weight: 600;">
+                      ⏳ Awaiting Customer Response (Countered ₹${lastWorkerCounter.amount})
+                    </span>
+                    <button class="btn btn-danger btn-sm reject-request-btn" data-id="${b.id}">Cancel</button>
+                  ` : `
+                    <button class="btn btn-primary btn-sm accept-request-btn" data-id="${b.id}">Accept (₹${b.customerOffer || b.originalEstimate})</button>
+                    <button class="btn btn-outline btn-sm counter-request-btn" data-id="${b.id}">Counter Offer</button>
+                    <button class="btn btn-danger btn-sm reject-request-btn" data-id="${b.id}">Reject</button>
+                  `}
                 </div>
               </div>
-            `).join('')}
+            `;
+            }).join('')}
           </div>
         `}
       </div>
 
       <!-- In Progress & Accepted Jobs -->
-      <div>
+      <div style="margin-bottom: 2.5rem;">
         <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Active & Accepted Jobs</h3>
         ${activeList.length === 0 ? `
           <div style="padding: 2rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); text-align: center; color: var(--text-secondary);">
@@ -148,6 +208,31 @@ export const WorkerFrontend = {
           </div>
         `}
       </div>
+
+      <!-- Recent Customer Reviews Section -->
+      ${workerReviews.length > 0 ? `
+        <div>
+          <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Recent Customer Feedback</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+            ${workerReviews.slice(0, 2).map(r => {
+              const stars = '⭐'.repeat(Math.max(1, Math.min(5, parseInt(r.rating) || 5)));
+              const dateStr = r.timestamp && !isNaN(new Date(r.timestamp).getTime())
+                ? new Date(r.timestamp).toLocaleDateString()
+                : 'Recent';
+              return `
+                <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.25rem;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                    <strong>${r.customerName || 'Customer'}</strong>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">${dateStr}</span>
+                  </div>
+                  <div style="margin-bottom: 0.35rem;">${stars} (${r.rating || 5}/5)</div>
+                  <p style="font-size: 0.9rem; color: var(--text-secondary); font-style: italic;">"${r.comment || 'No comment provided.'}"</p>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      ` : ''}
     `;
   },
 
@@ -174,19 +259,40 @@ export const WorkerFrontend = {
           <tbody>
             ${pending.length === 0 ? `
               <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No pending requests.</td></tr>
-            ` : pending.map(b => `
+            ` : pending.map(b => {
+              const createdDisplay = b.createdAt && !isNaN(new Date(b.createdAt).getTime())
+                ? new Date(b.createdAt).toLocaleDateString()
+                : 'Recent';
+              const isAwaitingCustomer = Array.isArray(b.counterOfferHistory) &&
+                b.counterOfferHistory.length > 0 &&
+                b.counterOfferHistory[b.counterOfferHistory.length - 1].sender === 'worker';
+              const lastWorkerCounter = isAwaitingCustomer ? b.counterOfferHistory[b.counterOfferHistory.length - 1] : null;
+
+              return `
               <tr>
-                <td><strong>${b.id}</strong><br><small>${new Date(b.createdAt).toLocaleDateString()}</small></td>
+                <td><strong>${b.id}</strong><br><small>${createdDisplay}</small></td>
                 <td><strong>${b.service}</strong><br>${b.customerName} (${b.customerPhone})</td>
                 <td>${b.jobDescription}<br><small>${b.locality.toUpperCase()}</small></td>
-                <td>Original: ₹${b.originalEstimate}<br>${b.customerOffer ? `<strong style="color: var(--accent-primary);">Offer: ₹${b.customerOffer}</strong>` : 'No offer'}</td>
                 <td>
-                  <button class="btn btn-primary btn-sm accept-request-btn" data-id="${b.id}">Accept</button>
-                  <button class="btn btn-outline btn-sm counter-request-btn" data-id="${b.id}">Counter</button>
-                  <button class="btn btn-danger btn-sm reject-request-btn" data-id="${b.id}">Reject</button>
+                  Original: ₹${b.originalEstimate}<br>
+                  ${b.customerOffer ? `<strong style="color: var(--accent-primary);">Offer: ₹${b.customerOffer}</strong>` : 'No offer'}
+                  ${isAwaitingCustomer ? `<br><span class="badge" style="background: var(--accent-light); color: var(--accent-primary); font-size: 0.72rem; margin-top: 4px; display: inline-block;">Counter: ₹${lastWorkerCounter.amount}</span>` : ''}
+                </td>
+                <td>
+                  ${isAwaitingCustomer ? `
+                    <span class="badge" style="background: var(--accent-light); color: var(--accent-primary); font-size: 0.8rem; display: inline-block; margin-bottom: 4px;">
+                      ⏳ Awaiting Customer
+                    </span><br>
+                    <button class="btn btn-danger btn-sm reject-request-btn" data-id="${b.id}">Cancel</button>
+                  ` : `
+                    <button class="btn btn-primary btn-sm accept-request-btn" data-id="${b.id}">Accept</button>
+                    <button class="btn btn-outline btn-sm counter-request-btn" data-id="${b.id}">Counter</button>
+                    <button class="btn btn-danger btn-sm reject-request-btn" data-id="${b.id}">Reject</button>
+                  `}
                 </td>
               </tr>
-            `).join('')}
+            `;
+            }).join('')}
           </tbody>
         </table>
       </div>
@@ -229,12 +335,12 @@ export const WorkerFrontend = {
     `;
   },
 
-  renderEarningsView(completedJobs, totalEarnings) {
+  renderEarningsView(worker, completedJobs, totalEarnings, workerReviews = []) {
     return `
       <div class="dashboard-header">
         <div>
           <h1>Earnings & Work History</h1>
-          <p>Review completed jobs and total earnings.</p>
+          <p>Review completed jobs, customer feedback, and total earnings.</p>
         </div>
       </div>
 
@@ -257,22 +363,66 @@ export const WorkerFrontend = {
           <tbody>
             ${completedJobs.length === 0 ? `
               <tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No completed jobs yet.</td></tr>
-            ` : completedJobs.map(b => `
+            ` : completedJobs.map(b => {
+              const compDate = (b.completedAt || b.createdAt);
+              const dateDisplay = compDate && !isNaN(new Date(compDate).getTime())
+                ? new Date(compDate).toLocaleDateString()
+                : 'Recent';
+              return `
               <tr>
                 <td><strong>${b.id}</strong></td>
                 <td>${b.service}<br><small>${b.customerName}</small></td>
-                <td>${new Date(b.completedAt || b.createdAt).toLocaleDateString()}</td>
+                <td>${dateDisplay}</td>
                 <td><strong>₹${b.agreedPrice}</strong></td>
                 <td><span class="badge badge-completed">Completed</span></td>
               </tr>
-            `).join('')}
+            `;
+            }).join('')}
           </tbody>
         </table>
+      </div>
+
+      <!-- Customer Reviews & Feedback -->
+      <div style="margin-top: 3rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+          <h3 style="font-size: 1.25rem; font-weight: 700;">Customer Reviews & Feedback (${workerReviews.length})</h3>
+          <div style="font-size: 1rem; font-weight: 600; color: var(--accent-primary);">
+            Overall Rating: ⭐ ${worker.ratingAverage || 0} (${worker.ratingCount || 0} reviews)
+          </div>
+        </div>
+
+        ${workerReviews.length === 0 ? `
+          <div style="padding: 2rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); text-align: center; color: var(--text-secondary);">
+            No customer reviews yet. Reviews will appear here once customers complete and review services.
+          </div>
+        ` : `
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+            ${workerReviews.map(r => {
+              const stars = '⭐'.repeat(Math.max(1, Math.min(5, parseInt(r.rating) || 5)));
+              const dateStr = r.timestamp && !isNaN(new Date(r.timestamp).getTime())
+                ? new Date(r.timestamp).toLocaleDateString()
+                : 'Recent';
+              return `
+                <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong>${r.customerName || 'Customer'}</strong>
+                    <span style="font-size: 0.85rem; color: var(--text-secondary);">${dateStr}</span>
+                  </div>
+                  <div>${stars} (${r.rating || 5}/5)</div>
+                  <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.25rem; font-style: italic;">
+                    "${r.comment || 'No comment provided.'}"
+                  </p>
+                  ${r.bookingId ? `<small style="color: var(--text-secondary); font-size: 0.75rem;">Booking: ${r.bookingId}</small>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
       </div>
     `;
   },
 
-  renderProfileView(worker) {
+  renderProfileView(worker, workerReviews = []) {
     return `
       <div class="dashboard-header">
         <div>
@@ -318,6 +468,23 @@ export const WorkerFrontend = {
 
         <button type="submit" class="btn btn-primary" style="align-self: flex-start;">Save Profile Updates</button>
       </form>
+
+      ${workerReviews.length > 0 ? `
+        <div style="margin-top: 2rem; max-width: 700px;">
+          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.75rem;">Customer Feedback Received (${workerReviews.length})</h3>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            ${workerReviews.map(r => `
+              <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                  <strong>${r.customerName || 'Customer'}</strong>
+                  <span>⭐ ${r.rating || 5}/5</span>
+                </div>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); font-style: italic;">"${r.comment || 'No comment provided.'}"</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
     `;
   },
 
@@ -334,13 +501,18 @@ export const WorkerFrontend = {
     container.querySelectorAll('.sidebar-item').forEach(item => {
       item.addEventListener('click', () => {
         const view = item.getAttribute('data-view');
+        this.currentView = view;
         container.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
 
         const workers = StorageService.getWorkers();
+        const allBookings = StorageService.getBookings();
         const currentWorkerId = StorageService.getSelectedWorkerId();
         const worker = workers.find(w => w.id === currentWorkerId) || workers[0];
-        const bookings = StorageService.getBookings().filter(b => b.workerId === worker.id);
+        const bookings = sortBookingsNewestFirst(allBookings.filter(b => b && b.workerId === worker.id));
+        const allReviews = StorageService.getReviews();
+        const workerReviews = Array.isArray(allReviews) ? allReviews.filter(r => r && r.workerId === worker.id) : [];
+
         const pendingRequests = bookings.filter(b => b.status === 'Pending');
         const acceptedBookings = bookings.filter(b => b.status === 'Accepted');
         const inProgressJobs = bookings.filter(b => b.status === 'In Progress');
@@ -349,22 +521,30 @@ export const WorkerFrontend = {
 
         const mainContent = container.querySelector('#worker-main-content');
         if (view === 'overview') {
-          mainContent.innerHTML = this.renderOverviewView(worker, pendingRequests, acceptedBookings, inProgressJobs, completedJobs, totalEarnings);
+          mainContent.innerHTML = this.renderOverviewView(worker, pendingRequests, acceptedBookings, inProgressJobs, completedJobs, totalEarnings, workerReviews);
         } else if (view === 'requests') {
           mainContent.innerHTML = this.renderRequestsView(worker, bookings);
         } else if (view === 'schedule') {
           mainContent.innerHTML = this.renderScheduleView(worker);
           this.attachScheduleEvents(container, worker);
         } else if (view === 'earnings') {
-          mainContent.innerHTML = this.renderEarningsView(completedJobs, totalEarnings);
+          mainContent.innerHTML = this.renderEarningsView(worker, completedJobs, totalEarnings, workerReviews);
         } else if (view === 'profile') {
-          mainContent.innerHTML = this.renderProfileView(worker);
+          mainContent.innerHTML = this.renderProfileView(worker, workerReviews);
           this.attachProfileEvents(container, worker);
         }
         this.attachActionEvents(container);
       });
     });
 
+    const workers = StorageService.getWorkers();
+    const currentWorkerId = StorageService.getSelectedWorkerId();
+    const worker = workers.find(w => w.id === currentWorkerId) || workers[0];
+    if (this.currentView === 'schedule') {
+      this.attachScheduleEvents(container, worker);
+    } else if (this.currentView === 'profile') {
+      this.attachProfileEvents(container, worker);
+    }
     this.attachActionEvents(container);
   },
 
@@ -373,6 +553,14 @@ export const WorkerFrontend = {
       btn.onclick = () => {
         const bookingId = btn.getAttribute('data-id');
         let bookings = StorageService.getBookings();
+        const targetBooking = bookings.find(b => b.id === bookingId);
+        if (targetBooking && Array.isArray(targetBooking.counterOfferHistory) && targetBooking.counterOfferHistory.length > 0) {
+          const last = targetBooking.counterOfferHistory[targetBooking.counterOfferHistory.length - 1];
+          if (last && last.sender === 'worker') {
+            Toast.show('Cannot accept while awaiting customer response to your counter-offer.', 'warning');
+            return;
+          }
+        }
         bookings = bookings.map(b => b.id === bookingId ? BookingService.acceptBooking(b, true) : b);
         StorageService.saveBookings(bookings);
         Toast.show(`Booking ${bookingId} accepted successfully!`, 'success');
@@ -394,11 +582,19 @@ export const WorkerFrontend = {
     container.querySelectorAll('.counter-request-btn').forEach(btn => {
       btn.onclick = () => {
         const bookingId = btn.getAttribute('data-id');
-        const amount = prompt('Enter counter offer amount (₹):');
-        if (!amount) return;
-        const note = prompt('Add optional note for customer (e.g. "Parts cost extra"):') || 'Counter-offer';
-
         let bookings = StorageService.getBookings();
+        const targetBooking = bookings.find(b => b.id === bookingId);
+        if (targetBooking && Array.isArray(targetBooking.counterOfferHistory) && targetBooking.counterOfferHistory.length > 0) {
+          const last = targetBooking.counterOfferHistory[targetBooking.counterOfferHistory.length - 1];
+          if (last && last.sender === 'worker') {
+            Toast.show('You have already sent a counter-offer for this booking. Awaiting customer response.', 'warning');
+            return;
+          }
+        }
+        const amount = prompt('Enter counter offer amount (₹):');
+        if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) return;
+        const note = prompt('Add optional note for customer (e.g. "Parts cost extra"):') || 'Worker counter-offer';
+
         bookings = bookings.map(b => b.id === bookingId ? BookingService.workerCounterOffer(b, amount, note) : b);
         StorageService.saveBookings(bookings);
         Toast.show(`Counter offer of ₹${amount} sent to customer!`, 'success');

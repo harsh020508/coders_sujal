@@ -3,10 +3,83 @@ import { CATEGORIES } from './data.js';
 import { CustomerFrontend } from './customer.js';
 import { WorkerFrontend } from './worker.js';
 
+function isActionableBooking(b) {
+  if (!b || b.status !== 'Pending') return false;
+  if (Array.isArray(b.counterOfferHistory) && b.counterOfferHistory.length > 0) {
+    const lastOffer = b.counterOfferHistory[b.counterOfferHistory.length - 1];
+    if (lastOffer && lastOffer.sender === 'worker') {
+      return false;
+    }
+  }
+  return true;
+}
+
 export const App = {
   init() {
     this.applyTheme(StorageService.getTheme());
+    this.initCrossTabSync();
     this.render();
+  },
+
+  initCrossTabSync() {
+    if (typeof window === 'undefined') return;
+    window.addEventListener('storage', (e) => {
+      this.handleStorageEvent(e);
+    });
+  },
+
+  handleStorageEvent(e) {
+    if (!e || !e.key) return;
+
+    if (e.key === 'localkaam_theme') {
+      const newTheme = e.newValue || 'light';
+      if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.setAttribute('data-theme', newTheme);
+      }
+      return;
+    }
+
+    const relevantKeys = [
+      'localkaam_bookings',
+      'localkaam_workers',
+      'localkaam_reviews',
+      'localkaam_complaints',
+      'localkaam_selected_worker_id',
+      'localkaam_customer_locality'
+    ];
+
+    if (!relevantKeys.includes(e.key)) return;
+
+    // Preserve user input and active modal dialog state
+    if (typeof document !== 'undefined') {
+      if (document.querySelector('.modal-overlay')) {
+        return; // Active modal open
+      }
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        return; // User is actively typing
+      }
+    }
+
+    // Refresh active view cleanly without full-page reloads
+    const currentRole = StorageService.getCurrentRole();
+    if (currentRole === 'customer') {
+      const viewContainer = document.getElementById('app-view-container');
+      if (viewContainer) {
+        CustomerFrontend.render(viewContainer);
+      }
+    } else if (currentRole === 'worker') {
+      const viewContainer = document.getElementById('app-view-container');
+      if (viewContainer) {
+        WorkerFrontend.render(viewContainer);
+      }
+    } else if (currentRole === 'role-select') {
+      const root = document.getElementById('app');
+      if (root) {
+        root.innerHTML = this.renderRoleSelectionPage();
+        this.attachRoleSelectionEvents(root);
+      }
+    }
   },
 
   applyTheme(theme) {
@@ -177,6 +250,11 @@ export const App = {
 
   renderRoleSelectionPage() {
     const theme = StorageService.getTheme();
+    const workers = StorageService.getWorkers();
+    const validWorkerIds = new Set(workers.map(w => w.id));
+    const allBookings = StorageService.getBookings();
+    const actionableCount = allBookings.filter(b => b && validWorkerIds.has(b.workerId) && isActionableBooking(b)).length;
+
     return `
       <div class="app-container">
         <header class="navbar">
@@ -207,6 +285,7 @@ export const App = {
               <div class="role-icon">🛠️</div>
               <h3>Continue as Worker</h3>
               <p>Showcase your skills, set your own hourly rates, manage booking requests, counter offers, and track earnings.</p>
+              ${actionableCount > 0 ? `<div style="margin-bottom: 0.75rem; font-size: 0.85rem; font-weight: 600; color: var(--accent-primary);">🔔 ${actionableCount} actionable request${actionableCount > 1 ? 's' : ''} awaiting response</div>` : ''}
               <button class="btn btn-primary" style="width: 100%;">Continue as Worker</button>
             </div>
           </div>
@@ -304,6 +383,30 @@ export const App = {
       this.render();
     });
     root.querySelector('#select-worker-role')?.addEventListener('click', () => {
+      const workers = StorageService.getWorkers();
+      const validWorkerIds = new Set(workers.map(w => w.id));
+      const allBookings = StorageService.getBookings();
+      const currentWorkerId = StorageService.getSelectedWorkerId();
+      
+      const currentHasActionable = allBookings.some(b => b && b.workerId === currentWorkerId && isActionableBooking(b));
+
+      // Select worker with newest actionable request only if currently selected worker has no actionable requests
+      if (!currentHasActionable) {
+        const actionableBookings = allBookings.filter(b => b && validWorkerIds.has(b.workerId) && isActionableBooking(b));
+        if (actionableBookings.length > 0) {
+          const sortedActionable = [...actionableBookings].sort((a, b) => {
+            const timeA = a && a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b && b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+          });
+          const targetWorkerId = sortedActionable[0]?.workerId;
+          // Validate worker ID before setting selection
+          if (targetWorkerId && validWorkerIds.has(targetWorkerId)) {
+            StorageService.setSelectedWorkerId(targetWorkerId);
+          }
+        }
+      }
+
       StorageService.setCurrentRole('worker');
       this.render();
     });
