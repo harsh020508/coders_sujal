@@ -18,7 +18,49 @@ export const App = {
   init() {
     this.applyTheme(StorageService.getTheme());
     this.initCrossTabSync();
+    this.initBackendSync();
     this.render();
+  },
+
+  initBackendSync() {
+    StorageService.initBackendSync((key, value) => {
+      this.handleRemoteSync(key, value);
+    });
+  },
+
+  handleRemoteSync(key, value) {
+    if (!key) return;
+
+    // Preserve user input and active modal dialog state
+    if (typeof document !== 'undefined') {
+      if (document.querySelector('.modal-overlay')) {
+        return; // Active modal open
+      }
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        return; // User is actively typing
+      }
+    }
+
+    // Refresh active view cleanly without full-page reloads
+    const currentRole = StorageService.getCurrentRole();
+    if (currentRole === 'customer') {
+      const viewContainer = document.getElementById('app-view-container');
+      if (viewContainer) {
+        CustomerFrontend.render(viewContainer);
+      }
+    } else if (currentRole === 'worker') {
+      const viewContainer = document.getElementById('app-view-container');
+      if (viewContainer) {
+        WorkerFrontend.render(viewContainer);
+      }
+    } else if (currentRole === 'role-select') {
+      const root = document.getElementById('app');
+      if (root) {
+        root.innerHTML = this.renderRoleSelectionPage();
+        this.attachRoleSelectionEvents(root);
+      }
+    }
   },
 
   initCrossTabSync() {

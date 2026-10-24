@@ -1,0 +1,19 @@
+{
+  "name": "coders_sujal",
+  "version": "1.0.0",
+  "description": "LocalKaam — Hyperlocal Blue-Collar Services Marketplace",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js app.js storage.js bookings.js customer.js worker.js data.js matching.js toast.js"
+  },
+  "keywords": [
+    "marketplace",
+    "services",
+    "hyperlocal",
+    "blue-collar"
+  ],
+  "author": "",
+  "license": "ISC"
+}
