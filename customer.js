@@ -483,13 +483,6 @@ export const CustomerFrontend = {
       });
     });
 
-    container.querySelectorAll('.view-worker-docs-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const workerId = btn.getAttribute('data-id');
-        this.showWorkerDocumentsModal(workerId);
-      });
-    });
-
     container.querySelectorAll('.book-worker-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const workerId = btn.getAttribute('data-id');

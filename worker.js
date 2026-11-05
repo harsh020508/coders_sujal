@@ -1,6 +1,6 @@
 import { StorageService } from './storage.js';
 import { BookingService } from './bookings.js';
-import { CATEGORIES, LOCALITIES, COMPLAINT_CATEGORIES } from './data.js';
+import { CATEGORIES, LOCALITIES, COMPLAINT_CATEGORIES, REQUIRED_VERIFICATION_DOCUMENTS } from './data.js';
 import { WorkerFeedback, WorkerEarnings } from './worker_new_features.js';
 import { Toast } from './toast.js';
 import { AuthService } from './authService.js';
@@ -28,8 +28,6 @@ export const WorkerFrontend = {
         currentWorkerId = myWorker.id;
         StorageService.setSelectedWorkerId(myWorker.id);
       }
-      currentWorkerId = myWorker.id;
-      StorageService.setSelectedWorkerId(myWorker.id);
     }
 
     let worker = workers.find(w => w.id === currentWorkerId) || workers[0];

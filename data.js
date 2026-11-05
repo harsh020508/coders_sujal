@@ -1,5 +1,40 @@
 // LocalKaam Enhanced Data Models with Additional Categories
 
+export const REQUIRED_VERIFICATION_DOCUMENTS = [
+  {
+    type: 'identity_proof',
+    title: 'Government Identity Proof',
+    subtitle: 'Aadhaar Card, PAN Card, Voter ID, or Passport (Mandatory KYC)',
+    required: true,
+    icon: '🪪',
+    demoFileName: 'Aadhaar_Govt_ID_Verified.pdf'
+  },
+  {
+    type: 'address_proof',
+    title: 'Local Address Proof',
+    subtitle: 'Electricity Bill, Ration Card, or Rent Agreement (Mumbai Resident)',
+    required: true,
+    icon: '🏠',
+    demoFileName: 'Mumbai_Electricity_Bill_Verified.pdf'
+  },
+  {
+    type: 'trade_license',
+    title: 'Trade License / Technical Qualification',
+    subtitle: 'ITI Certificate, Vocational Training, or Government Trade License',
+    required: true,
+    icon: '📜',
+    demoFileName: 'ITI_Trade_License_Certified.pdf'
+  },
+  {
+    type: 'experience_evidence',
+    title: 'Experience Proof & Work Portfolio',
+    subtitle: 'Contractor Reference Letter, Work Completion Slips, or Photos of Past Jobs',
+    required: false,
+    icon: '💼',
+    demoFileName: 'Contractor_Experience_Letter.pdf'
+  }
+];
+
 export const LOCALITIES = [
   { id: 'andheri', name: 'Andheri West', lat: 19.1136, lng: 72.8258, zone: 'Western Suburbs', city: 'Mumbai' },
   { id: 'bandra', name: 'Bandra West', lat: 19.0596, lng: 72.8295, zone: 'Western Suburbs', city: 'Mumbai' },
