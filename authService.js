@@ -245,6 +245,10 @@ class AuthServiceManager {
    * Evaluates verified active session.
    * True only if user AND unexpired session token exist.
    */
+  isGuest() {
+    return String(this.currentUser?.id || '').startsWith('guest_');
+  }
+
   isAuthenticated() {
     if (!this.currentUser || !this.currentSession) return false;
     return !this._isSessionExpired(this.currentSession);
@@ -490,6 +494,11 @@ class AuthServiceManager {
   // SECURE SIGN OUT
   // ========================================================================
   async signOut() {
+    if (this.isGuest()) {
+      this.clearSessionState();
+      this.notifyListeners('SIGNED_OUT', null);
+      return { success: true, error: null };
+    }
     const client = await SupabaseService.getClient();
     if (client) {
       try {

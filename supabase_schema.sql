@@ -294,11 +294,15 @@ DROP POLICY IF EXISTS "complaints_insert" ON public.complaints;
 CREATE POLICY "profiles_select" ON public.profiles
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "profiles_insert" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_update" ON public.profiles;
+
 CREATE POLICY "profiles_insert" ON public.profiles
-  FOR INSERT WITH CHECK (auth.uid() = id OR auth.role() = 'anon');
+  FOR INSERT WITH CHECK (auth.uid() = id);
 
 CREATE POLICY "profiles_update" ON public.profiles
-  FOR UPDATE USING (auth.uid() = id OR auth.role() = 'anon');
+  FOR UPDATE USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id AND role IN ('customer', 'worker'));
 
 -- WORKERS POLICIES
 -- Online workers (available = true) are publicly visible for discovery.

@@ -146,6 +146,7 @@ export const App = {
           </nav>
           <div class="nav-actions">
             <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️' : '🌙'}</button>
+            <button class="btn btn-outline btn-sm" id="nav-signin-btn">Sign In</button>
             <button class="btn btn-primary btn-sm" id="get-started-btn">Get Started</button>
             <button class="nav-hamburger" id="nav-hamburger" aria-label="Open navigation menu">
               <span></span><span></span><span></span>
@@ -385,7 +386,7 @@ export const App = {
 
   renderAppShell(activeRole) {
     const theme = StorageService.getTheme();
-    const isAuthed = AuthService.isAuthenticated();
+    const isAuthed = AuthService.isAuthenticated() && !AuthService.isGuest();
     const profile = AuthService.getProfile();
     const userName = profile ? (profile.full_name || profile.email || 'User') : 'User';
     // Truncate long usernames for display
@@ -521,13 +522,14 @@ export const App = {
     root.querySelectorAll('.category-card').forEach(card => {
       card.addEventListener('click', () => {
         StorageService.setCurrentRole('customer');
-        if (!AuthService.isAuthenticated()) {
-          AuthService.loginGuest('customer');
-        } else {
-          AuthService.setRole('customer');
-        }
         CustomerFrontend.currentCategory = card.getAttribute('data-category');
-        this.navigateToRole('customer');
+        const go = () => this.navigateToRole('customer');
+        if (AuthService.isAuthenticated()) {
+          AuthService.setRole('customer');
+          go();
+        } else {
+          AuthModal.show('customer', go);
+        }
       });
       card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') card.click(); });
     });
@@ -544,21 +546,23 @@ export const App = {
     });
     root.querySelector('#select-customer-role')?.addEventListener('click', () => {
       StorageService.setCurrentRole('customer');
-      if (!AuthService.isAuthenticated()) {
-        AuthService.loginGuest('customer');
-      } else {
+      const go = () => this.navigateToRole('customer');
+      if (AuthService.isAuthenticated()) {
         AuthService.setRole('customer');
+        go();
+      } else {
+        AuthModal.show('customer', go);
       }
-      this.navigateToRole('customer');
     });
     root.querySelector('#select-worker-role')?.addEventListener('click', () => {
       StorageService.setCurrentRole('worker');
-      if (!AuthService.isAuthenticated()) {
-        AuthService.loginGuest('worker');
-      } else {
+      const go = () => this.navigateToRole('worker');
+      if (AuthService.isAuthenticated()) {
         AuthService.setRole('worker');
+        go();
+      } else {
+        AuthModal.show('worker', go);
       }
-      this.navigateToRole('worker');
     });
 
     const themeBtn = root.querySelector('#theme-toggle-btn');
@@ -573,6 +577,13 @@ export const App = {
 
   attachShellEvents(root) {
     this._attachMobileNav(root);
+
+    root.querySelector('#nav-signin-btn')?.addEventListener('click', () => {
+      const curRole = StorageService.getCurrentRole();
+      AuthModal.show(curRole === 'worker' ? 'worker' : 'customer', () => {
+        this.render();
+      });
+    });
 
     const logoutBtn = root.querySelector('#logout-btn');
     if (logoutBtn) {

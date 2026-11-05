@@ -5,7 +5,7 @@ import { Toast } from './toast.js';
 export const AuthModal = {
   show(role = 'customer', onAuthenticated) {
     // If the user already has a valid, verified session for this role, proceed directly
-    if (AuthService.isAuthenticated()) {
+    if (AuthService.isAuthenticated() && !AuthService.isGuest()) {
       AuthService.setRole(role);
       const currentProfile = AuthService.getProfile();
       if (onAuthenticated) onAuthenticated(AuthService.getUser(), currentProfile);
