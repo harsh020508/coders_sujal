@@ -24,26 +24,28 @@ export const CustomerFrontend = {
         <!-- Customer Sidebar -->
         <aside class="sidebar">
           <div class="sidebar-section-label">Navigation</div>
-          <div class="sidebar-item active" data-view="discover">
-            <span>🔍</span>
-            <span>Discover Services</span>
-          </div>
-          <div class="sidebar-item" data-view="bookings">
-            <span>📅</span>
-            <span>My Bookings</span>
-            <span class="sidebar-badge">${bookings.length}</span>
-          </div>
-          <div class="sidebar-item" data-view="compare" id="compare-sidebar-btn">
-            <span>⚖️</span>
-            <span>Compare</span>
-            <span class="sidebar-badge">${this.comparedWorkers.length}/3</span>
+          <div class="sidebar-nav-list">
+            <div class="sidebar-item active" data-view="discover">
+              <span>🔍</span>
+              <span>Discover Services</span>
+            </div>
+            <div class="sidebar-item" data-view="bookings">
+              <span>📅</span>
+              <span>My Bookings</span>
+              <span class="sidebar-badge">${bookings.length}</span>
+            </div>
+            <div class="sidebar-item" data-view="compare" id="compare-sidebar-btn">
+              <span>⚖️</span>
+              <span>Compare</span>
+              <span class="sidebar-badge">${this.comparedWorkers.length}/3</span>
+            </div>
           </div>
 
-          <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-            <label for="locality-select" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
+          <div class="sidebar-locality-box">
+            <label for="locality-select">
               Service Location
             </label>
-            <select id="locality-select" class="form-select" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+            <select id="locality-select" class="form-select">
               ${LOCALITIES.map(l => `<option value="${esc(l.id)}" ${l.id === customerLocality ? 'selected' : ''}>${esc(l.name)} (${esc(l.zone)})</option>`).join('')}
             </select>
           </div>

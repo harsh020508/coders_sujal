@@ -410,6 +410,7 @@ export const App = {
           <div class="nav-brand" id="nav-brand-dashboard">
             <div class="nav-logo">LK</div>
             <div class="nav-title">LocalKaam</div>
+            <span class="role-badge-mobile">${activeRole === 'customer' ? '🏠 Customer' : '🛠️ Worker'}</span>
           </div>
           <div class="nav-links">
             <span class="role-badge" style="background:var(--accent-light);color:var(--text-primary);font-weight:700;font-size:0.8rem;">

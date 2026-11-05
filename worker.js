@@ -42,44 +42,44 @@ export const WorkerFrontend = {
       <div class="dashboard-layout">
         <!-- Worker Sidebar -->
         <aside class="sidebar">
-          <div style="padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
-            <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
-              Active Profile
-            </label>
-            <select id="worker-profile-select" class="form-select" style="font-size: 0.85rem; padding: 0.4rem 0.6rem; margin-bottom: 0.5rem;">
+          <div class="sidebar-worker-profile-box">
+            <label>Active Profile</label>
+            <select id="worker-profile-select" class="form-select">
               ${workers.map(w => `<option value="${esc(w.id)}" ${w.id === worker.id ? 'selected' : ''}>${esc(w.name)} (${Object.keys(w.specialities || {}).join(', ') || 'Pro'})</option>`).join('')}
             </select>
-            <button class="btn btn-outline btn-xs" id="create-new-worker-btn" style="width: 100%; font-size: 0.75rem;">
+            <button class="btn btn-outline btn-xs" id="create-new-worker-btn">
               + Register New Worker
             </button>
           </div>
 
           <div class="sidebar-section-label">Worker Menu</div>
-          <div class="sidebar-item active" data-view="overview">
-            <span>📊</span>
-            <span>Dashboard</span>
-          </div>
-          <div class="sidebar-item" data-view="requests">
-            <span>📥</span>
-            <span>Requests</span>
-            <span class="sidebar-badge">${pendingRequests.length}</span>
-          </div>
-          <div class="sidebar-item" data-view="active-jobs">
-            <span>⚡</span>
-            <span>Active Jobs</span>
-            <span class="sidebar-badge">${activeJobs.length}</span>
-          </div>
-          <div class="sidebar-item" data-view="schedule">
-            <span>⏰</span>
-            <span>Availability</span>
-          </div>
-          <div class="sidebar-item" data-view="earnings">
-            <span>💰</span>
-            <span>Earnings</span>
-          </div>
-          <div class="sidebar-item" data-view="profile">
-            <span>👤</span>
-            <span>My Profile</span>
+          <div class="sidebar-nav-list">
+            <div class="sidebar-item active" data-view="overview">
+              <span>📊</span>
+              <span>Dashboard</span>
+            </div>
+            <div class="sidebar-item" data-view="requests">
+              <span>📥</span>
+              <span>Requests</span>
+              <span class="sidebar-badge">${pendingRequests.length}</span>
+            </div>
+            <div class="sidebar-item" data-view="active-jobs">
+              <span>⚡</span>
+              <span>Active Jobs</span>
+              <span class="sidebar-badge">${activeJobs.length}</span>
+            </div>
+            <div class="sidebar-item" data-view="schedule">
+              <span>⏰</span>
+              <span>Availability</span>
+            </div>
+            <div class="sidebar-item" data-view="earnings">
+              <span>💰</span>
+              <span>Earnings</span>
+            </div>
+            <div class="sidebar-item" data-view="profile">
+              <span>👤</span>
+              <span>My Profile</span>
+            </div>
           </div>
         </aside>
 
