@@ -782,11 +782,14 @@ export const SettingsPage = {
               </label>
             `).join('')}
             <label class="accent-swatch accent-swatch-custom" title="Custom colour">
-              <span class="accent-swatch-dot" style="background:conic-gradient(#b5491f,#ffe95c,#0f6b62,#45439a,#b5491f)"></span>
+              <span class="accent-swatch-dot${accent && !ACCENT_COLORS.some((c) => c.value === accent) ? ' is-selected' : ''}" style="background:conic-gradient(#b5491f,#ffe95c,#0f6b62,#45439a,#b5491f)">
+                ${accent && !ACCENT_COLORS.some((c) => c.value === accent) ? icon('check', 13) : ''}
+              </span>
               <span class="accent-swatch-name">Custom</span>
               <input type="color" id="appearance-custom-accent" value="${esc(accent || '#1a3300')}" aria-label="Choose a custom accent colour">
             </label>
           </div>
+          <p class="settings-field-note">Every colour adapts automatically for dark mode — presets use a brighter variant so text stays readable on dark surfaces.</p>
         </fieldset>
       `)}
 

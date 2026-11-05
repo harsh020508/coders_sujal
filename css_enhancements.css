@@ -469,20 +469,14 @@
 
 .sidebar-item.active,
 .sidebar-item.dash-active {
-  background: #feece7 !important;
-  color: #ea580c !important;
+  background: var(--accent-light) !important;
+  color: var(--accent-primary) !important;
   font-weight: 600 !important;
 }
 
 .sidebar-item.active::before,
 .sidebar-item.dash-active::before {
   display: none !important;
-}
-
-[data-theme="dark"] .sidebar-item.active,
-[data-theme="dark"] .sidebar-item.dash-active {
-  background: rgba(234, 88, 12, 0.2) !important;
-  color: #fb923c !important;
 }
 
 .sidebar-badge {
@@ -493,6 +487,11 @@
   border-radius: 999px;
   background: #fee2e2;
   color: #ef4444;
+}
+
+[data-theme="dark"] .sidebar-badge {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
 }
 
 /* Dashboard Shell */
@@ -548,8 +547,8 @@
 }
 
 .dash-search-box:focus-within {
-  border-color: #ea580c;
-  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-light);
 }
 
 .dash-search-box input {
@@ -641,7 +640,7 @@
   height: 30px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1.5px solid #ea580c;
+  border: 1.5px solid var(--accent-primary);
 }
 
 .dash-user-name {
@@ -936,8 +935,14 @@
 }
 
 .dash-income-kpi-card.accent {
-  background: linear-gradient(135deg, rgba(234, 88, 12, 0.08) 0%, rgba(245, 158, 11, 0.04) 100%);
-  border-color: rgba(234, 88, 12, 0.3);
+  background: linear-gradient(135deg, var(--accent-light) 0%, var(--bg-card) 100%);
+  border-color: var(--accent-primary);
+}
+
+.dash-hero-card.accent-earnings {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent-light) 0%, var(--bg-card) 100%);
+  outline: 1px solid var(--accent-primary);
 }
 
 .dash-income-kpi-card span {
@@ -1036,11 +1041,6 @@
   box-shadow: 0 6px 16px rgba(0,0,0,0.06);
 }
 
-.dash-hero-card.accent-earnings {
-  border-color: rgba(234, 88, 12, 0.35);
-  background: linear-gradient(135deg, rgba(254, 236, 231, 0.5) 0%, var(--bg-card) 100%);
-}
-
 .dash-hero-top {
   display: flex;
   justify-content: space-between;
@@ -1125,7 +1125,7 @@
 
 .dash-chart-toggle-btn.active {
   background: var(--bg-card);
-  color: #ea580c;
+  color: var(--accent-primary);
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 
@@ -1257,7 +1257,7 @@
 }
 
 .dash-job-step.current {
-  color: #ea580c;
+  color: var(--accent-primary);
   font-weight: 800;
 }
 
@@ -1270,3 +1270,24 @@
   border-radius: 999px;
   text-transform: uppercase;
 }
+
+[data-theme="dark"] .dash-urgent-pill {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+/* Dark mode: light pastel status/priority pills (hardcoded hex) need
+   translucent dark variants or they glare and lose contrast. Star ratings
+   (#f59e0b) and the amber chart bar are intentional in both modes. */
+[data-theme="dark"] .status-submitted { background: rgba(37, 99, 235, 0.2); color: #93c5fd; }
+[data-theme="dark"] .status-under-review { background: rgba(217, 119, 6, 0.2); color: #fbbf24; }
+[data-theme="dark"] .status-awaiting-response { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; }
+[data-theme="dark"] .status-resolved { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+[data-theme="dark"] .status-closed { background: rgba(148, 163, 184, 0.18); color: #94a3b8; }
+[data-theme="dark"] .priority-low { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+[data-theme="dark"] .priority-medium { background: rgba(37, 99, 235, 0.2); color: #93c5fd; }
+[data-theme="dark"] .priority-high { background: rgba(217, 119, 6, 0.2); color: #fbbf24; }
+[data-theme="dark"] .priority-urgent { background: rgba(186, 26, 26, 0.25); color: #fca5a5; }
+[data-theme="dark"] .transaction-table .status-paid { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+[data-theme="dark"] .transaction-table .status-pending { background: rgba(217, 119, 6, 0.2); color: #fbbf24; }
+[data-theme="dark"] .transaction-table .status-failed { background: rgba(186, 26, 26, 0.25); color: #fca5a5; }

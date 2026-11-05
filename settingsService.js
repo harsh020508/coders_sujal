@@ -6,12 +6,12 @@ const STORAGE_KEY = 'localkaam_settings_v2';
 const LEGACY_KEY = 'localkaam_settings';
 
 export const ACCENT_COLORS = [
-  { id: 'default', name: 'Theme default', value: '' },
-  { id: 'forest', name: 'Forest', value: '#1a3300' },
-  { id: 'terracotta', name: 'Terracotta', value: '#b5491f' },
-  { id: 'teal', name: 'Teal', value: '#0f6b62' },
-  { id: 'indigo', name: 'Indigo', value: '#45439a' },
-  { id: 'plum', name: 'Plum', value: '#7a2f5e' }
+  { id: 'default', name: 'Theme default', value: '', dark: '' },
+  { id: 'forest', name: 'Forest', value: '#1a3300', dark: '#a8d879' },
+  { id: 'terracotta', name: 'Terracotta', value: '#b5491f', dark: '#f2a592' },
+  { id: 'teal', name: 'Teal', value: '#0f6b62', dark: '#5fd0c2' },
+  { id: 'indigo', name: 'Indigo', value: '#45439a', dark: '#a5a3ec' },
+  { id: 'plum', name: 'Plum', value: '#7a2f5e', dark: '#e59ac6' }
 ];
 
 export const FONT_SIZES = [
@@ -136,6 +136,59 @@ function hexToRgb(hex) {
   };
 }
 
+function rgbToHex(r, g, b) {
+  const clamp = (n) => Math.max(0, Math.min(255, Math.round(n)));
+  return `#${[clamp(r), clamp(g), clamp(b)].map((n) => n.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function rgbToHsl(r, g, b) {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l: l * 100 };
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === rn) h = ((gn - bn) / d + (gn < bn ? 6 : 0)) * 60;
+  else if (max === gn) h = ((bn - rn) / d + 2) * 60;
+  else h = ((rn - gn) / d + 4) * 60;
+  return { h, s: s * 100, l: l * 100 };
+}
+
+function hslToHex(h, s, l) {
+  const sn = Math.max(0, Math.min(100, s)) / 100;
+  const ln = Math.max(0, Math.min(100, l)) / 100;
+  const c = (1 - Math.abs(2 * ln - 1)) * sn;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = ln - c / 2;
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  if (h < 60) { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; }
+  else { r = c; b = x; }
+  return rgbToHex((r + m) * 255, (g + m) * 255, (b + m) * 255);
+}
+
+function adjustLightness(hex, deltaPoints) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  return hslToHex(hsl.h, hsl.s, hsl.l + deltaPoints);
+}
+
+function rgbaOf(hex, alpha) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
+
 function shade(hex, amount) {
   const rgb = hexToRgb(hex);
   if (!rgb) return hex;
@@ -145,7 +198,7 @@ function shade(hex, amount) {
     g: clamp(rgb.g + amount),
     b: clamp(rgb.b + amount)
   };
-  return `#${[next.r, next.g, next.b].map((n) => n.toString(16).padStart(2, '0')).join('')}`;
+  return rgbToHex(next.r, next.g, next.b);
 }
 
 function relativeLuminance(hex) {
@@ -157,6 +210,94 @@ function relativeLuminance(hex) {
   };
   return 0.2126 * channel(rgb.r) + 0.7152 * channel(rgb.g) + 0.0722 * channel(rgb.b);
 }
+
+function contrastRatio(hexA, hexB) {
+  const l1 = relativeLuminance(hexA);
+  const l2 = relativeLuminance(hexB);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+// Build a theme-aware accent palette so every picker colour stays readable
+// on both light and dark surfaces, and so the ui.css "peacock" tokens follow
+// the same accent instead of staying frozen teal.
+export function getAccentPalette(baseHex, resolvedTheme) {
+  const cleaned = String(baseHex || '').trim();
+  if (!cleaned) return null;
+  const rgb = hexToRgb(cleaned);
+  if (!rgb) return null;
+  const isDark = resolvedTheme === 'dark';
+  const preset = ACCENT_COLORS.find((c) => String(c.value || '').toLowerCase() === cleaned.toLowerCase());
+
+  let lightPrimary = cleaned.toLowerCase();
+  // Light surfaces (cream #fbf9f4): keep luminance <= 0.25 so accent text
+  // clears WCAG AA (4.5:1) on cream. Deepen pale customs (e.g. yellow)
+  // in steps rather than a single nudge.
+  let guard = 0;
+  while (relativeLuminance(lightPrimary) > 0.25 && guard < 4) {
+    lightPrimary = adjustLightness(lightPrimary, -10);
+    guard += 1;
+  }
+
+  let darkPrimary;
+  if (preset && preset.dark) {
+    darkPrimary = preset.dark;
+  } else {
+    // Dark surfaces (#0f120e / #1e231c): lift the hue to a light, readable
+    // tone while keeping its character. Near-neutral greys map to a warm
+    // light greige so they don't turn blue/green.
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    const sat = hsl.s < 6 ? 18 : Math.max(48, Math.min(78, hsl.s));
+    darkPrimary = hslToHex(hsl.h, sat, 72);
+  }
+
+  const primary = isDark ? darkPrimary : lightPrimary;
+  // Hover darkens/lightens proportionally so very dark accents (forest,
+  // L~15) don't collapse to near-black and very light ones don't blow out.
+  const pRgb = hexToRgb(primary);
+  const pHsl = pRgb ? rgbToHsl(pRgb.r, pRgb.g, pRgb.b) : null;
+  const hover = pHsl
+    ? hslToHex(pHsl.h, pHsl.s, isDark ? Math.min(88, pHsl.l + 8) : Math.max(6, pHsl.l * 0.78))
+    : primary;
+  const primaryRgb = pRgb;
+  const accentLight = primaryRgb ? rgbaOf(primary, isDark ? 0.2 : 0.14) : primary;
+  const peacock100 = primaryRgb ? rgbaOf(primary, isDark ? 0.3 : 0.18) : accentLight;
+  // Text on top of the primary fill (primary buttons, checked chips).
+  const contrast = contrastRatio(primary, '#121411') >= contrastRatio(primary, '#ffffff')
+    ? '#121411'
+    : '#ffffff';
+
+  return {
+    base: cleaned,
+    lightPrimary,
+    darkPrimary,
+    primary,
+    hover,
+    accentLight,
+    peacock100,
+    peacock700: pHsl
+      ? hslToHex(pHsl.h, pHsl.s, isDark ? Math.min(90, pHsl.l + 10) : Math.max(6, pHsl.l * 0.7))
+      : primary,
+    contrast,
+    focus: rgbaOf(primary, 0.35)
+  };
+}
+
+const ACCENT_CSS_VARS = [
+  '--accent-primary',
+  '--accent-hover',
+  '--accent-light',
+  '--accent-contrast',
+  '--accent-primary-light',
+  '--accent-primary-dark',
+  '--peacock-50',
+  '--peacock-100',
+  '--peacock-500',
+  '--peacock-600',
+  '--peacock-700',
+  '--focus'
+];
 
 function migrateLegacy(legacy) {
   if (!isPlainObject(legacy)) return {};
@@ -342,8 +483,18 @@ class SettingsManager {
     document.documentElement.setAttribute('data-theme', resolved);
     document.documentElement.setAttribute('data-theme-preference', this.get('appearance.theme', 'light'));
     try {
+      document.documentElement.style.colorScheme = resolved;
+    } catch (e) {}
+    try {
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0f120e' : '#fbf9f4');
+    } catch (e) {}
+    try {
       if (StorageService && StorageService.setTheme) StorageService.setTheme(resolved);
     } catch (e) {}
+    // Accent lightness/alpha depends on the resolved surface, so a theme
+    // switch (including system changes) must re-derive the accent palette.
+    this.applyAccent();
   }
 
   bindSystemTheme() {
@@ -386,21 +537,25 @@ class SettingsManager {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
     const color = this.get('appearance.accentColor', '');
-    if (!color) {
-      root.style.removeProperty('--accent-primary');
-      root.style.removeProperty('--accent-hover');
-      root.style.removeProperty('--accent-light');
-      root.style.removeProperty('--accent-contrast');
-      return;
-    }
-    const rgb = hexToRgb(color);
-    if (!rgb) return;
-    const dark = this.getResolvedTheme() === 'dark';
-    const luminance = relativeLuminance(color);
-    root.style.setProperty('--accent-primary', color);
-    root.style.setProperty('--accent-hover', shade(color, luminance > 0.5 ? -24 : 28));
-    root.style.setProperty('--accent-light', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${dark ? 0.22 : 0.14})`);
-    root.style.setProperty('--accent-contrast', luminance > 0.55 ? '#121411' : '#ffffff');
+    ACCENT_CSS_VARS.forEach((name) => root.style.removeProperty(name));
+    if (!color) return;
+    const palette = getAccentPalette(color, this.getResolvedTheme());
+    if (!palette) return;
+    root.style.setProperty('--accent-primary', palette.primary);
+    root.style.setProperty('--accent-hover', palette.hover);
+    root.style.setProperty('--accent-light', palette.accentLight);
+    root.style.setProperty('--accent-contrast', palette.contrast);
+    root.style.setProperty('--accent-primary-light', palette.lightPrimary);
+    root.style.setProperty('--accent-primary-dark', palette.darkPrimary);
+    // Bridge to the parallel ui.css token system ("peacock") so buttons,
+    // chips, category tiles, focus rings, toasts and search all follow the
+    // same accent in both modes.
+    root.style.setProperty('--peacock-50', palette.accentLight);
+    root.style.setProperty('--peacock-100', palette.peacock100);
+    root.style.setProperty('--peacock-500', palette.primary);
+    root.style.setProperty('--peacock-600', palette.hover);
+    root.style.setProperty('--peacock-700', palette.peacock700);
+    root.style.setProperty('--focus', palette.focus);
   }
 
   applyFontSize() {

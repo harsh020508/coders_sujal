@@ -5,10 +5,49 @@
 import { StorageService } from './storage.js';
 import { AuthService } from './authService.js';
 import { SupabaseService } from './supabaseClient.js';
-import { SupabaseDataService } from './supabaseDataService.js';
+import { SupabaseDataService, DataMapper } from './supabaseDataService.js';
 
 const POPUP_DURATION_MS = 6000;
 const SEEN_POPUPS_KEY = 'localkaam_seen_popups';
+
+// Notification colours must adapt to the resolved surface — the light pastel
+// fills (#ecfdf5 etc.) glare in dark mode. Dark variants use translucent
+// fills with lighter text for the same hue.
+export const NOTIF_COLORS = {
+  light: {
+    ORDER_ACCEPTED: { color: '#10b981', bg: '#ecfdf5', border: '#a7f3d0', icon: 'check-circle' },
+    WORKER_ARRIVED: { color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', icon: 'map-pin' },
+    ORDER_COMPLETED: { color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', icon: 'check-circle' }
+  },
+  dark: {
+    ORDER_ACCEPTED: { color: '#34d399', bg: 'rgba(16, 185, 129, 0.16)', border: 'rgba(16, 185, 129, 0.35)', icon: 'check-circle' },
+    WORKER_ARRIVED: { color: '#7cb3f5', bg: 'rgba(37, 99, 235, 0.18)', border: 'rgba(37, 99, 235, 0.35)', icon: 'map-pin' },
+    ORDER_COMPLETED: { color: '#c4b5fd', bg: 'rgba(124, 58, 237, 0.18)', border: 'rgba(124, 58, 237, 0.35)', icon: 'check-circle' }
+  }
+};
+
+export function resolveNotifTheme() {
+  try {
+    if (typeof document !== 'undefined') {
+      const t = document.documentElement.getAttribute('data-theme');
+      if (t === 'dark' || t === 'light') return t;
+    }
+  } catch (e) {}
+  try {
+    return StorageService.getTheme() === 'dark' ? 'dark' : 'light';
+  } catch (e) {}
+  return 'light';
+}
+
+export function getNotifColors(type, theme) {
+  const mode = theme === 'dark' ? 'dark' : 'light';
+  const table = NOTIF_COLORS[mode] || NOTIF_COLORS.light;
+  const fallback = table.ORDER_ACCEPTED;
+  const found = table[type];
+  if (found) return found;
+  // Unknown types fall back to the accepted style of the active mode.
+  return fallback;
+}
 
 // Multi-tab broadcast channel
 let broadcastChannel = null;
@@ -261,32 +300,16 @@ export const NotificationService = {
       document.body.appendChild(container);
     }
 
-    // Configuration per event type
-    const configMap = {
-      ORDER_ACCEPTED: {
-        typeClass: 'accepted',
-        iconName: 'check-circle',
-        badgeColor: '#10b981',
-        badgeBg: '#ecfdf5',
-        borderColor: '#a7f3d0'
-      },
-      WORKER_ARRIVED: {
-        typeClass: 'arrived',
-        iconName: 'map-pin',
-        badgeColor: '#2563eb',
-        badgeBg: '#eff6ff',
-        borderColor: '#bfdbfe'
-      },
-      ORDER_COMPLETED: {
-        typeClass: 'completed',
-        iconName: 'check-circle',
-        badgeColor: '#7c3aed',
-        badgeBg: '#f5f3ff',
-        borderColor: '#ddd6fe'
-      }
+    // Configuration per event type — theme-aware so dark mode stays readable
+    const themeMode = resolveNotifTheme();
+    const colors = getNotifColors(notif.notificationType, themeMode);
+    const config = {
+      typeClass: notif.notificationType === 'WORKER_ARRIVED' ? 'arrived' : notif.notificationType === 'ORDER_COMPLETED' ? 'completed' : 'accepted',
+      iconName: colors.icon,
+      badgeColor: colors.color,
+      badgeBg: colors.bg,
+      borderColor: colors.border
     };
-
-    const config = configMap[notif.notificationType] || configMap.ORDER_ACCEPTED;
 
     const toast = document.createElement('div');
     toast.className = `order-notification-toast ${config.typeClass}`;
@@ -297,7 +320,7 @@ export const NotificationService = {
 
     toast.innerHTML = `
       <div class="toast-indicator" style="background:${config.badgeColor};"></div>
-      <div class="toast-icon-box" style="background:${config.badgeBg}; color:${config.badgeColor};">
+      <div class="toast-icon-box" style="background:${config.badgeBg}; color:${config.badgeColor}; border:1px solid ${config.borderColor};">
         <i data-lucide="${config.iconName}" class="lucide-sm"></i>
       </div>
       <div class="toast-content">
@@ -505,17 +528,13 @@ export const NotificationService = {
   },
 
   _renderNotificationItem(n) {
-    const configMap = {
-      ORDER_ACCEPTED: { icon: 'check-circle', color: '#10b981', bg: '#ecfdf5', label: 'Order Accepted' },
-      WORKER_ARRIVED: { icon: 'map-pin', color: '#2563eb', bg: '#eff6ff', label: 'Worker Arrived' },
-      ORDER_COMPLETED: { icon: 'check-circle', color: '#7c3aed', bg: '#f5f3ff', label: 'Order Completed' }
-    };
-    const c = configMap[n.notificationType] || configMap.ORDER_ACCEPTED;
+    const colors = getNotifColors(n.notificationType, resolveNotifTheme());
+    const c = { icon: colors.icon, color: colors.color, bg: colors.bg, border: colors.border };
     const timeFormatted = this._formatRelativeTime(n.createdAt);
 
     return `
       <div class="notif-item ${n.isRead ? 'read' : 'unread'}" data-id="${this._escape(n.id)}">
-        <div class="notif-item-icon" style="background:${c.bg};color:${c.color};">
+        <div class="notif-item-icon" style="background:${c.bg};color:${c.color};border:1px solid ${c.border};">
           <i data-lucide="${c.icon}" class="lucide-xs"></i>
         </div>
         <div class="notif-item-content">

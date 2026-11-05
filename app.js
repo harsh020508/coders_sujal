@@ -136,9 +136,15 @@ export const App = {
     if (typeof document === 'undefined') return;
     const dark = Settings.getResolvedTheme() === 'dark';
     document.querySelectorAll('#theme-toggle-btn').forEach((button) => {
-      button.textContent = dark ? '☀️ Light' : '🌙 Dark';
+      // Rebuild the icon node instead of textContent, which wiped the
+      // lucide <i> placeholder and left emoji text in the navbar.
+      button.innerHTML = `<i data-lucide="${dark ? 'sun' : 'moon'}" class="lucide-sm"></i>`;
       button.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+      button.title = dark ? 'Switch to light theme' : 'Switch to dark theme';
     });
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') {
+      window.refreshIcons();
+    }
   },
 
   updateProfileBadge() {
@@ -879,7 +885,9 @@ export const App = {
     const mobileThemeBtn = root.querySelector('#mobile-theme-toggle-btn');
     if (mobileThemeBtn) {
       mobileThemeBtn.addEventListener('click', () => {
-        const cur = StorageService.getTheme();
+        // Resolve from Settings (source of truth, handles 'system') rather
+        // than the legacy localkaam_theme key.
+        const cur = Settings.getResolvedTheme();
         this.applyTheme(cur === 'dark' ? 'light' : 'dark');
         closeDrawer();
         this.render();
