@@ -357,13 +357,28 @@ class AuthServiceManager {
     return { data: { user: mockUser, profile: mockProfile }, error: null };
   }
 
-  signInDemoCustomer() {
+  async signInDemoCustomer() {
+    const email = 'customer.demo@localkaam.in';
+    const password = 'Password@123';
+    try {
+      const client = await SupabaseService.getClient();
+      if (client) {
+        const { data, error } = await client.auth.signInWithPassword({ email, password });
+        if (!error && data?.session?.user) {
+          await this.syncUserProfile(data.session.user);
+          this.notifyListeners('SIGNED_IN', data.session);
+          Toast.show('Signed in as Demo Customer (Aarav Mehta)!', 'success');
+          return;
+        }
+      }
+    } catch (e) {}
+
     const mockUser = {
-      id: 'demo_customer_101', email: 'customer.demo@localkaam.in',
+      id: 'demo_customer_101', email,
       user_metadata: { full_name: 'Aarav Mehta', role: 'customer', phone: '+91 98765 43210', locality: 'andheri' }
     };
     const mockProfile = {
-      id: 'demo_customer_101', email: 'customer.demo@localkaam.in',
+      id: 'demo_customer_101', email,
       role: 'customer', full_name: 'Aarav Mehta', phone: '+91 98765 43210', locality: 'andheri'
     };
     this.saveCachedUser(mockUser, mockProfile);
@@ -371,13 +386,28 @@ class AuthServiceManager {
     Toast.show('Signed in as Demo Customer (Aarav Mehta)!', 'success');
   }
 
-  signInDemoWorker() {
+  async signInDemoWorker() {
+    const email = 'ramesh.worker@localkaam.in';
+    const password = 'Password@123';
+    try {
+      const client = await SupabaseService.getClient();
+      if (client) {
+        const { data, error } = await client.auth.signInWithPassword({ email, password });
+        if (!error && data?.session?.user) {
+          await this.syncUserProfile(data.session.user);
+          this.notifyListeners('SIGNED_IN', data.session);
+          Toast.show('Signed in as Demo Worker (Ramesh Kumar - Plumber)!', 'success');
+          return;
+        }
+      }
+    } catch (e) {}
+
     const mockUser = {
-      id: 'demo_worker_w1', email: 'ramesh.worker@localkaam.in',
+      id: 'demo_worker_w1', email,
       user_metadata: { full_name: 'Ramesh Kumar', role: 'worker', phone: '+91 98211 44551', locality: 'andheri' }
     };
     const mockProfile = {
-      id: 'demo_worker_w1', email: 'ramesh.worker@localkaam.in',
+      id: 'demo_worker_w1', email,
       role: 'worker', full_name: 'Ramesh Kumar', phone: '+91 98211 44551', locality: 'andheri'
     };
     this.saveCachedUser(mockUser, mockProfile);

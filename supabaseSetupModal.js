@@ -348,12 +348,19 @@ export const SupabaseSetupModal = {
     };
 
     // Copy SQL
-    modal.querySelector('#btn-copy-sql').onclick = () => {
-      navigator.clipboard.writeText(SCHEMA_SQL).then(() => {
-        Toast.show('SQL Schema copied to clipboard!', 'success');
-      }).catch(() => {
-        Toast.show('Could not copy to clipboard. Select text manually.', 'warning');
-      });
+    modal.querySelector('#btn-copy-sql').onclick = async () => {
+      try {
+        const resp = await fetch('./supabase_schema.sql');
+        const sqlText = await resp.text();
+        await navigator.clipboard.writeText(sqlText);
+        Toast.show('Full supabase_schema.sql copied to clipboard!', 'success');
+      } catch (err) {
+        navigator.clipboard.writeText(SCHEMA_SQL).then(() => {
+          Toast.show('SQL Schema copied to clipboard!', 'success');
+        }).catch(() => {
+          Toast.show('Could not copy to clipboard. Select text manually.', 'warning');
+        });
+      }
     };
   }
 };
