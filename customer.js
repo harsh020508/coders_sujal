@@ -579,10 +579,78 @@ export const CustomerFrontend = {
           </div>
         </div>
       </div>
+
+      <div style="margin-top: 1.5rem; background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: var(--radius-cards); padding: 1.25rem;">
+        <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem;">LocalKaam Care (AI)</h4>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.75rem;">Ask about bookings, workers, payments, reviews, account issues or complaints. I only answer LocalKaam / complaint questions.</p>
+        <div id="care-messages" style="display:flex; flex-direction:column; gap:8px; max-height:260px; overflow-y:auto; padding:8px; background:var(--bg-secondary); border-radius:10px; margin-bottom:8px;">
+          <div style="font-size:0.85rem; color:var(--text-secondary); padding:10px; background:var(--bg-card); border-radius:10px;">Hi! Ask me about a booking, complaint, payment, or LocalKaam service.</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="care-input" class="form-control" placeholder="e.g. My worker did not arrive, how do I complain?" maxlength="2000" style="flex:1;">
+          <button class="btn btn-primary btn-sm" id="care-send">Send</button>
+        </div>
+      </div>
     `;
   },
 
   attachHelpEvents(container) {
+    // LocalKaam Care chat (scoped AI, keys stay server-side)
+    const careHistory = [];
+    const careBox = container.querySelector('#care-messages');
+    const careInput = container.querySelector('#care-input');
+    const careSend = container.querySelector('#care-send');
+    const appendCare = (role, text) => {
+      if (!careBox) return;
+      const who = role === 'user' ? 'You' : 'Care';
+      const div = document.createElement('div');
+      div.style.cssText = 'font-size:0.85rem; padding:10px; border-radius:10px; max-width:92%; white-space:pre-wrap; word-break:break-word; ' + (role === 'user'
+        ? 'align-self:flex-end; background:var(--accent-primary); color:#fff;'
+        : 'align-self:flex-start; background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border-color);');
+      div.innerHTML = esc(text);
+      const label = document.createElement('div');
+      label.style.cssText = 'font-size:0.7rem; font-weight:700; letter-spacing:0.04em; opacity:0.7; margin-bottom:2px;';
+      label.textContent = who.toUpperCase();
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex; flex-direction:column; gap:2px; ' + (role === 'user' ? 'align-items:flex-end;' : 'align-items:flex-start;');
+      wrap.appendChild(label);
+      wrap.appendChild(div);
+      careBox.appendChild(wrap);
+      careBox.scrollTop = careBox.scrollHeight;
+    };
+    const sendCare = async () => {
+      const text = (careInput?.value || '').trim();
+      if (!text || !careInput) return;
+      careInput.value = '';
+      appendCare('user', text);
+      careHistory.push({ role: 'user', content: text });
+      if (careSend) { careSend.disabled = true; careSend.textContent = '…'; }
+      appendCare('assistant', 'Thinking…');
+      try {
+        const res = await fetch('/api/customer-care', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, history: careHistory.slice(-10) })
+        });
+        const data = await res.json().catch(() => ({}));
+        // Replace the "Thinking…" bubble
+        const last = careBox?.lastElementChild?.querySelector('div:last-child');
+        const reply = (data && data.reply) || 'I could not answer right now. Please open a Support Ticket below.';
+        if (last) last.textContent = reply;
+        else appendCare('assistant', reply);
+        careHistory.push({ role: 'assistant', content: reply });
+      } catch (e) {
+        const last = careBox?.lastElementChild?.querySelector('div:last-child');
+        if (last) last.textContent = 'I could not reach the care server. Please open a Support Ticket below.';
+        else appendCare('assistant', 'I could not reach the care server. Please open a Support Ticket below.');
+      } finally {
+        if (careSend) { careSend.disabled = false; careSend.textContent = 'Send'; }
+        careInput?.focus();
+      }
+    };
+    careSend?.addEventListener('click', sendCare);
+    careInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendCare(); });
+
     container.querySelectorAll('.help-cat-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         this.helpCategory = btn.getAttribute('data-cat');
