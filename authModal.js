@@ -21,6 +21,11 @@ export const AuthModal = {
     let errorMessage = '';
     let releaseFocus = null;
 
+    const closeModal = () => {
+      try { releaseFocus?.(); } catch (e) {}
+      modal.remove();
+    };
+
     const modal = document.createElement('div');
     modal.className = 'ui-overlay modal-overlay';
     modal.setAttribute('role', 'dialog');
@@ -170,7 +175,7 @@ export const AuthModal = {
         isLoading = newIsLoading !== undefined ? newIsLoading : isLoading;
         errorMessage = newError !== undefined ? newError : '';
         render();
-      });
+      }, closeModal);
     };
 
     render();
@@ -181,12 +186,8 @@ export const AuthModal = {
     }
   },
 
-  bindEvents(modal, currentRole, currentMode, showPassword, isLoading, onAuthenticated, updateState) {
+  bindEvents(modal, currentRole, currentMode, showPassword, isLoading, onAuthenticated, updateState, closeModal) {
     // Close modal
-    const closeModal = () => {
-      if (releaseFocus) releaseFocus();
-      modal.remove();
-    };
     modal.querySelector('#close-auth-modal')?.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeModal();

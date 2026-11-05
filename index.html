@@ -55,6 +55,7 @@
         const isOAuth = hash.includes('access_token') || hash.includes('error') ||
                         search.includes('code=') || search.includes('error=');
         if (isOAuth) {
+          let oauthTargetRole = null;
           const appDiv = document.getElementById('app');
           if (appDiv) {
             appDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;"><div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div><p style="font-size:1.1rem;font-weight:600;color:var(--text-primary);">Completing Secure Sign-In...</p></div>';
@@ -89,6 +90,7 @@
                 await AuthService.syncUserProfile(session.user);
                 AuthService.setRole(targetRole);
                 StorageService.setCurrentRole(targetRole);
+                oauthTargetRole = targetRole;
 
                 Toast.show('Signed in as ' + (session.user.email || 'User') + '!', 'success');
               }
@@ -98,7 +100,7 @@
             Toast.show('Authentication error occurred.', 'error');
           }
           if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, '', window.location.pathname);
+            window.history.replaceState(null, '', window.location.pathname + (oauthTargetRole ? '#' + oauthTargetRole : ''));
           }
         }
       } catch (e) {}

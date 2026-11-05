@@ -1552,32 +1552,10 @@ export const CustomerFrontend = {
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#cancel-rev-btn').onclick = () => modal.remove();
 
-    // Star rating interactions
-    const setStarRating = (starsContainer, inputId, currentVal) => {
-      const stars = starsContainer.querySelectorAll('.star');
-      stars.forEach(star => {
-        star.onclick = () => {
-          stars.forEach(s => { s.style.color = 'var(--text-secondary)'; });
-          star.style.color = '#f59e0b';
-          const val = parseInt(star.getAttribute('data-value'));
-          document.getElementById(inputId).value = val;
-        };
-      });
-    };
-
-    // Set initial values
-    document.getElementById('rev-rating').value = String(this.currentOverallRating || 0);
-    document.getElementById('rev-quality').value = String(this.currentQualityRating || 0);
-    document.getElementById('rev-behaviour').value = String(this.currentBehaviourRating || 0);
-    document.getElementById('rev-punctuality').value = String(this.currentPunctualityRating || 0);
-    document.getElementById('rev-communication').value = String(this.currentCommunicationRating || 0);
-
     modal.querySelector('#review-form').onsubmit = (e) => {
       e.preventDefault();
       const rating = parseInt(modal.querySelector('#rev-rating').value, 10);
       const comment = modal.querySelector('#rev-comment').value;
-
-      const finalTags = [...new Set(selectedTags)];
 
       const newReview = {
         id: `REV-${Date.now()}`,
@@ -1585,13 +1563,13 @@ export const CustomerFrontend = {
         workerId: worker.id,
         customerId: null,
         customerName: AuthService.getProfile()?.full_name || 'Customer',
-        overallRating,
-        qualityRating,
-        behaviourRating,
-        punctualityRating,
-        communicationRating,
+        overallRating: rating,
+        qualityRating: rating,
+        behaviourRating: rating,
+        punctualityRating: rating,
+        communicationRating: rating,
         comment: comment.trim(),
-        feedbackTags: finalTags,
+        feedbackTags: [],
         createdAt: new Date().toISOString()
       };
 

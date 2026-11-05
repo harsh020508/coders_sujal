@@ -959,12 +959,10 @@ export const App = {
         const cat = card.getAttribute('data-category');
         const isAuthed = AuthService.isAuthenticated() && !AuthService.isGuest();
         if (isAuthed) {
-          StorageService.setCurrentCategory(cat);
           CustomerFrontend.currentCategory = cat;
           this.navigateToRole('customer');
         } else {
           AuthModal.show('customer', () => {
-            StorageService.setCurrentCategory(cat);
             CustomerFrontend.currentCategory = cat;
             this.navigateToRole('customer');
           });
