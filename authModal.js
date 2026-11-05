@@ -1,6 +1,7 @@
 import { AuthService } from './authService.js';
 import { SupabaseService } from './supabaseClient.js';
 import { Toast } from './toast.js';
+import { i18n, t } from './i18n.js';
 
 export const AuthModal = {
   show(role = 'customer', onAuthenticated) {
@@ -46,6 +47,7 @@ export const AuthModal = {
     `;
 
     document.body.appendChild(modal);
+    i18n.translateDOM(modal);
 
     modal.querySelector('#close-auth-modal').onclick = () => modal.remove();
 

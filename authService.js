@@ -328,6 +328,165 @@ class AuthServiceManager {
   }
 
   // ========================================================================
+  // ACCOUNT MANAGEMENT
+  // ========================================================================
+  isDemoAccount() {
+    if (!this.currentUser) return true;
+    const id = String(this.currentUser.id || '');
+    return id.startsWith('demo_') || id.startsWith('usr_');
+  }
+
+  isSupabaseAccount() {
+    return Boolean(this.currentUser && !this.isDemoAccount());
+  }
+
+  async updateProfile(updates = {}) {
+    const current = this.getProfile();
+    if (!current) {
+      return { profile: null, error: { message: 'No signed-in profile was found.' }, synced: false };
+    }
+
+    const result = {
+      profile: null,
+      error: null,
+      syncError: null,
+      synced: false,
+      emailConfirmation: false
+    };
+
+    const client = await SupabaseService.getClient();
+    const canSync = Boolean(client && this.isSupabaseAccount());
+
+    if (canSync) {
+      try {
+        const profilePatch = { id: this.currentUser.id, email: this.currentUser.email };
+        ['full_name', 'phone', 'locality', 'avatar_url'].forEach((key) => {
+          if (updates[key] !== undefined) profilePatch[key] = updates[key];
+        });
+
+        const { error: profileError } = await client
+          .from('profiles')
+          .upsert(profilePatch, { onConflict: 'id' });
+
+        if (profileError) {
+          result.syncError = profileError;
+        } else {
+          result.synced = true;
+        }
+
+        // Username and bio are stored in auth metadata because they are not
+        // part of the current public.profiles schema.
+        const metadataPatch = {};
+        ['username', 'bio'].forEach((key) => {
+          if (updates[key] !== undefined) metadataPatch[key] = updates[key];
+        });
+        if (updates.full_name !== undefined) metadataPatch.full_name = updates.full_name;
+        if (updates.phone !== undefined) metadataPatch.phone = updates.phone;
+        if (updates.locality !== undefined) metadataPatch.locality = updates.locality;
+
+        if (Object.keys(metadataPatch).length) {
+          const { error: metadataError } = await client.auth.updateUser({ data: metadataPatch });
+          if (metadataError) result.syncError = result.syncError || metadataError;
+        }
+
+        if (updates.email && updates.email !== this.currentUser.email) {
+          const { error: emailError } = await client.auth.updateUser({ email: updates.email });
+          if (emailError) {
+            result.error = emailError;
+          } else {
+            result.emailConfirmation = true;
+          }
+        }
+      } catch (err) {
+        result.syncError = err;
+      }
+    }
+
+    const updatedProfile = { ...current, ...updates };
+    // If Supabase requires email confirmation, keep showing the verified email
+    // until the user completes the confirmation flow.
+    if (result.emailConfirmation) updatedProfile.email = current.email;
+
+    this.currentProfile = updatedProfile;
+    if (this.currentUser) {
+      this.currentUser = {
+        ...this.currentUser,
+        email: updatedProfile.email || this.currentUser.email,
+        user_metadata: {
+          ...(this.currentUser.user_metadata || {}),
+          ...(updates.full_name !== undefined ? { full_name: updates.full_name } : {}),
+          ...(updates.phone !== undefined ? { phone: updates.phone } : {}),
+          ...(updates.locality !== undefined ? { locality: updates.locality } : {}),
+          ...(updates.username !== undefined ? { username: updates.username } : {}),
+          ...(updates.bio !== undefined ? { bio: updates.bio } : {})
+        }
+      };
+    }
+    this.saveCachedUser(this.currentUser, this.currentProfile);
+    this.notifyListeners('USER_UPDATED', { user: this.currentUser });
+    result.profile = this.currentProfile;
+    return result;
+  }
+
+  async changePassword(newPassword) {
+    if (!newPassword || String(newPassword).length < 8) {
+      return { data: null, error: { message: 'Password must be at least 8 characters long.' } };
+    }
+    const client = await SupabaseService.getClient();
+    if (!client || !this.isSupabaseAccount()) {
+      return {
+        data: null,
+        error: { message: 'Password changes require a Supabase account. Local demo accounts do not have a password.' }
+      };
+    }
+    try {
+      const { data, error } = await client.auth.updateUser({ password: newPassword });
+      return { data, error };
+    } catch (err) {
+      return { data: null, error: err };
+    }
+  }
+
+  async getSessionInfo() {
+    const client = await SupabaseService.getClient();
+    if (!client || !this.isSupabaseAccount()) {
+      return {
+        mode: 'local',
+        session: null,
+        user: this.currentUser,
+        profile: this.currentProfile,
+        error: null
+      };
+    }
+    try {
+      const { data, error } = await client.auth.getSession();
+      return {
+        mode: 'supabase',
+        session: data?.session || null,
+        user: data?.session?.user || this.currentUser,
+        profile: this.currentProfile,
+        error
+      };
+    } catch (err) {
+      return { mode: 'supabase', session: null, user: this.currentUser, profile: this.currentProfile, error: err };
+    }
+  }
+
+  async signOutAllDevices() {
+    const client = await SupabaseService.getClient();
+    if (client && this.isSupabaseAccount()) {
+      try {
+        await client.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        console.warn('Global sign out error:', err);
+      }
+    }
+    this.saveCachedUser(null, null);
+    this.notifyListeners('SIGNED_OUT', null);
+    return { success: true };
+  }
+
+  // ========================================================================
   // DEMO (OFFLINE) HELPERS
   // ========================================================================
   _demoSignUp(email, fullName, phone, role, locality) {

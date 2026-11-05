@@ -4,6 +4,7 @@ import { CATEGORIES, LOCALITIES } from './data.js';
 import { Toast } from './toast.js';
 import { AuthService } from './authService.js';
 import { esc } from './utils.js';
+import { i18n, t } from './i18n.js';
 
 export const WorkerFrontend = {
   render(container) {
@@ -40,30 +41,30 @@ export const WorkerFrontend = {
         <!-- Worker Sidebar -->
         <div class="sidebar">
           <div style="padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
-            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.35rem;">Active Professional Profile:</label>
+            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.35rem;">${t('worker_sidebar_profile', 'Active Professional Profile:')}</label>
             <select id="worker-profile-select" class="form-select" style="font-size: 0.85rem; padding: 0.5rem;">
               ${workers.map(w => `<option value="${esc(w.id)}" ${w.id === worker.id ? 'selected' : ''}>${esc(w.name)} (${Object.keys(w.specialities || {}).join(', ')})</option>`).join('')}
             </select>
-            <button class="btn btn-outline btn-sm" id="create-new-worker-btn" style="width: 100%; margin-top: 0.5rem; font-size: 0.8rem;">+ Register New Worker</button>
+            <button class="btn btn-outline btn-sm" id="create-new-worker-btn" style="width: 100%; margin-top: 0.5rem; font-size: 0.8rem;">${t('worker_sidebar_register', '+ Register New Worker')}</button>
           </div>
 
           <div class="sidebar-item active" data-view="overview">
-            <span>📊</span> Dashboard Overview
+            <span>📊</span> ${t('worker_sidebar_overview', 'Dashboard Overview')}
           </div>
           <div class="sidebar-item" data-view="requests">
-            <span>📥</span> Booking Requests (${pendingRequests.length})
+            <span>📥</span> ${t('worker_sidebar_requests', 'Booking Requests')} (${pendingRequests.length})
           </div>
           <div class="sidebar-item" data-view="active-jobs">
-            <span>⚡</span> Active Jobs (${activeJobs.length})
+            <span>⚡</span> ${t('worker_sidebar_active_jobs', 'Active Jobs')} (${activeJobs.length})
           </div>
           <div class="sidebar-item" data-view="schedule">
-            <span>⏰</span> Availability & Status
+            <span>⏰</span> ${t('worker_sidebar_schedule', 'Availability & Status')}
           </div>
           <div class="sidebar-item" data-view="earnings">
-            <span>💰</span> Earnings & History (${completedJobs.length})
+            <span>💰</span> ${t('worker_sidebar_earnings', 'Earnings & History')} (${completedJobs.length})
           </div>
           <div class="sidebar-item" data-view="profile">
-            <span>👤</span> Profile & Specialities
+            <span>👤</span> ${t('worker_sidebar_specialities', 'Profile & Specialities')}
           </div>
         </div>
 
@@ -75,6 +76,7 @@ export const WorkerFrontend = {
     `;
 
     this.attachEvents(container);
+    i18n.translateDOM(container);
   },
 
   renderOverviewView(worker, pendingRequests, activeJobs, completedJobs, totalEarnings) {
@@ -83,11 +85,11 @@ export const WorkerFrontend = {
       <div class="dashboard-header">
         <div>
           <h1>Welcome back, ${esc(worker.name)}! 👋</h1>
-          <p>Service Area: <strong>${esc(worker.serviceArea || worker.baseLocality)}</strong> • Status: <span style="color: ${isOnline ? 'var(--success)' : 'var(--danger)'};">${isOnline ? '🟢 Online & Discoverable' : '🔴 Offline / Paused'}</span></p>
+          <p>Service Area: <strong>${esc(worker.serviceArea || worker.baseLocality)}</strong> • Status: <span style="color: ${isOnline ? 'var(--success)' : 'var(--danger)'};">${isOnline ? t('worker_status_online', '🟢 Online & Discoverable') : t('worker_status_offline', '🔴 Offline / Paused')}</span></p>
         </div>
         <div>
           <button class="btn ${isOnline ? 'btn-primary' : 'btn-outline'} btn-sm" id="quick-toggle-online">
-            ${isOnline ? '🟢 Go Offline' : '🔴 Go Online'}
+            ${isOnline ? t('worker_btn_go_offline', '🟢 Go Offline') : t('worker_btn_go_online', '🔴 Go Online')}
           </button>
         </div>
       </div>
@@ -95,19 +97,19 @@ export const WorkerFrontend = {
       <!-- Metrics Grid -->
       <div class="metrics-grid">
         <div class="metric-card accent">
-          <span>Total Verified Earnings</span>
+          <span>${t('metric_earnings', 'Total Verified Earnings')}</span>
           <h2>₹${totalEarnings}</h2>
         </div>
         <div class="metric-card">
-          <span>New Requests</span>
+          <span>${t('metric_requests', 'New Requests')}</span>
           <h2>${pendingRequests.length}</h2>
         </div>
         <div class="metric-card">
-          <span>Active Jobs</span>
+          <span>${t('metric_active', 'Active Jobs')}</span>
           <h2>${activeJobs.length}</h2>
         </div>
         <div class="metric-card">
-          <span>Completed Jobs</span>
+          <span>${t('metric_completed', 'Completed Jobs')}</span>
           <h2>${completedJobs.length}</h2>
         </div>
       </div>
@@ -117,7 +119,7 @@ export const WorkerFrontend = {
         <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Incoming Booking Requests (${pendingRequests.length})</h3>
         ${pendingRequests.length === 0 ? `
           <div style="padding: 2rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); text-align: center; color: var(--text-secondary);">
-            No pending booking requests right now. Ensure you are online and discoverable!
+            ${t('worker_requests_empty', 'No pending booking requests right now. Ensure you are online and discoverable!')}
           </div>
         ` : `
           <div style="display: flex; flex-direction: column; gap: 1rem;">

@@ -5,6 +5,7 @@ import { CATEGORIES, LOCALITIES } from './data.js';
 import { Toast } from './toast.js';
 import { AuthService } from './authService.js';
 import { esc } from './utils.js';
+import { i18n, t } from './i18n.js';
 
 export const CustomerFrontend = {
   currentCategory: 'all',
@@ -24,18 +25,18 @@ export const CustomerFrontend = {
         <!-- Customer Sidebar -->
         <div class="sidebar">
           <div class="sidebar-item active" data-view="discover">
-            <span>🔍</span> Discover Services
+            <span>🔍</span> ${t('cust_sidebar_discover', 'Discover Services')}
           </div>
           <div class="sidebar-item" data-view="bookings">
-            <span>📅</span> My Bookings (${bookings.length})
+            <span>📅</span> ${t('cust_sidebar_bookings', 'My Bookings')} (${bookings.length})
           </div>
           <div class="sidebar-item" data-view="compare" id="compare-sidebar-btn">
-            <span>⚖️</span> Compare Workers (${this.comparedWorkers.length}/3)
+            <span>⚖️</span> ${t('cust_sidebar_compare', 'Compare Workers')} (${this.comparedWorkers.length}/3)
           </div>
           <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Current Service Location:</div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">${t('cust_sidebar_location', 'Current Service Location:')}</div>
             <select id="locality-select" class="form-select" style="font-size: 0.85rem; padding: 0.5rem;">
-              ${LOCALITIES.map(l => `<option value="${esc(l.id)}" ${l.id === customerLocality ? 'selected' : ''}>${esc(l.name)} (${esc(l.zone)})</option>`).join('')}
+              ${LOCALITIES.map(l => `<option value="${esc(l.id)}" ${l.id === customerLocality ? 'selected' : ''}>${esc(i18n.tLocality(l.id, l.name))} (${esc(l.zone)})</option>`).join('')}
             </select>
           </div>
         </div>
@@ -48,6 +49,7 @@ export const CustomerFrontend = {
     `;
 
     this.attachEvents(container);
+    i18n.translateDOM(container);
   },
 
   sortWorkers(workers) {
@@ -67,18 +69,18 @@ export const CustomerFrontend = {
     return `
       <div class="dashboard-header">
         <div>
-          <h1>Find Verified Local Service Professionals</h1>
-          <p>Book expert electricians, plumbers, carpenters, cleaners, and technicians right around your corner in Mumbai.</p>
+          <h1>${t('cust_discover_title', 'Find Verified Local Service Professionals')}</h1>
+          <p>${t('cust_discover_subtitle', 'Book expert electricians, plumbers, carpenters, cleaners, and technicians right around your corner in Mumbai.')}</p>
         </div>
       </div>
 
       <!-- Categories Shortcuts -->
       <div style="margin-bottom: 2rem;">
-        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">Service Categories</h3>
+        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">${t('cust_categories_heading', 'Service Categories')}</h3>
         <div style="display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem;">
-          <button class="btn ${this.currentCategory === 'all' ? 'btn-primary' : 'btn-outline'} btn-sm cat-shortcut-btn" data-cat="all">🌟 All Categories</button>
+          <button class="btn ${this.currentCategory === 'all' ? 'btn-primary' : 'btn-outline'} btn-sm cat-shortcut-btn" data-cat="all">${t('cust_all_categories', '🌟 All Categories')}</button>
           ${CATEGORIES.map(c => `
-            <button class="btn ${this.currentCategory === c.id ? 'btn-primary' : 'btn-outline'} btn-sm cat-shortcut-btn" data-cat="${esc(c.id)}">${esc(c.icon)} ${esc(c.name)}</button>
+            <button class="btn ${this.currentCategory === c.id ? 'btn-primary' : 'btn-outline'} btn-sm cat-shortcut-btn" data-cat="${esc(c.id)}">${esc(c.icon)} ${esc(i18n.tCatName(c.id, c.name))}</button>
           `).join('')}
         </div>
       </div>
@@ -86,27 +88,27 @@ export const CustomerFrontend = {
       <!-- Search & Filters -->
       <div class="search-filter-bar">
         <div class="search-input-group">
-          <input type="text" id="service-search-input" placeholder="Search tasks like 'Wiring repair', 'Leaking tap', 'AC servicing'..." value="${esc(this.searchQuery)}">
+          <input type="text" id="service-search-input" placeholder="${esc(t('cust_search_placeholder', 'Search tasks like Wiring repair, Leaking tap, AC servicing...'))}" value="${esc(this.searchQuery)}">
         </div>
         <select id="sort-by-select" class="form-select" style="max-width: 180px;">
-          <option value="match" ${this.sortBy === 'match' ? 'selected' : ''}>✨ Best Match</option>
-          <option value="rating" ${this.sortBy === 'rating' ? 'selected' : ''}>⭐ Highest Rated</option>
-          <option value="price_low" ${this.sortBy === 'price_low' ? 'selected' : ''}>💵 Lowest Price</option>
-          <option value="distance" ${this.sortBy === 'distance' ? 'selected' : ''}>📍 Nearest First</option>
+          <option value="match" ${this.sortBy === 'match' ? 'selected' : ''}>${t('sort_best_match', '✨ Best Match')}</option>
+          <option value="rating" ${this.sortBy === 'rating' ? 'selected' : ''}>${t('sort_highest_rated', '⭐ Highest Rated')}</option>
+          <option value="price_low" ${this.sortBy === 'price_low' ? 'selected' : ''}>${t('sort_lowest_price', '💵 Lowest Price')}</option>
+          <option value="distance" ${this.sortBy === 'distance' ? 'selected' : ''}>${t('sort_nearest_first', '📍 Nearest First')}</option>
         </select>
       </div>
 
       <!-- Workers Results Grid -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3 style="font-size: 1.2rem; font-weight: 700;">Available Professionals Nearby (${eligibleWorkers.length})</h3>
-        ${this.comparedWorkers.length > 0 ? `<button class="btn btn-outline btn-sm" id="open-comparison-modal">View Comparison (${this.comparedWorkers.length})</button>` : ''}
+        ${this.comparedWorkers.length > 0 ? `<button class="btn btn-outline btn-sm" id="open-comparison-modal">${t('cust_view_comparison', 'View Comparison')} (${this.comparedWorkers.length})</button>` : ''}
       </div>
 
       ${eligibleWorkers.length === 0 ? `
         <div style="text-align: center; padding: 4rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius);">
           <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
           <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">No online professionals found for this category or location</h3>
-          <p style="color: var(--text-secondary); font-size: 0.95rem;">Try selecting another service category, choosing a different location, or turning a worker online!</p>
+          <p style="color: var(--text-secondary); font-size: 0.95rem;">${t('cust_no_workers_desc', 'Try selecting another service category, choosing a different location, or turning a worker online!')}</p>
         </div>
       ` : `
         <div class="workers-grid">
@@ -133,20 +135,20 @@ export const CustomerFrontend = {
 
                 <div class="worker-meta">
                   <div class="worker-meta-item">
-                    <span>Distance & ETA</span>
+                    <span>${t('meta_distance_eta', 'Distance & ETA')}</span>
                     <span>📍 ${w.distance} km (~${w.eta} mins)</span>
                   </div>
                   <div class="worker-meta-item">
-                    <span>Rating</span>
+                    <span>${t('meta_rating', 'Rating')}</span>
                     <span>⭐ ${w.ratingAverage} (${w.ratingCount} reviews)</span>
                   </div>
                   <div class="worker-meta-item">
-                    <span>Experience</span>
+                    <span>${t('meta_experience', 'Experience')}</span>
                     <span>🏆 ${w.experience} Years</span>
                   </div>
                   <div class="worker-meta-item">
-                    <span>Status</span>
-                    <span style="color: var(--success);">🟢 Online</span>
+                    <span>${t('meta_status', 'Status')}</span>
+                    <span style="color: var(--success);">${t('meta_online', '🟢 Online')}</span>
                   </div>
                 </div>
 
@@ -159,8 +161,8 @@ export const CustomerFrontend = {
                     ₹${specInfo.startingPrice} <span>${specInfo.pricingMethod === 'fixed' ? 'fixed' : '/ hr'}</span>
                   </div>
                   <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-outline btn-sm view-worker-profile-btn" data-id="${esc(w.id)}">Profile</button>
-                    <button class="btn btn-primary btn-sm book-worker-btn" data-id="${esc(w.id)}">Book Now</button>
+                    <button class="btn btn-outline btn-sm view-worker-profile-btn" data-id="${esc(w.id)}">${t('btn_profile', 'Profile')}</button>
+                    <button class="btn btn-primary btn-sm book-worker-btn" data-id="${esc(w.id)}">${t('btn_book_now', 'Book Now')}</button>
                   </div>
                 </div>
               </div>
@@ -178,8 +180,8 @@ export const CustomerFrontend = {
     return `
       <div class="dashboard-header">
         <div>
-          <h1>My Bookings & Appointments</h1>
-          <p>Track your active appointments, live job status updates, and transaction history.</p>
+          <h1>${t('bookings_header_title', 'My Bookings & Appointments')}</h1>
+          <p>${t('bookings_header_sub', 'Track your active appointments, live job status updates, and transaction history.')}</p>
         </div>
       </div>
 
@@ -187,17 +189,17 @@ export const CustomerFrontend = {
         <table class="data-table">
           <thead>
             <tr>
-              <th>Booking ID</th>
-              <th>Service & Professional</th>
-              <th>Appointment Slot</th>
-              <th>Agreed Price</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>${t('th_booking_id', 'Booking ID')}</th>
+              <th>${t('th_service_pro', 'Service & Professional')}</th>
+              <th>${t('th_slot', 'Appointment Slot')}</th>
+              <th>${t('th_agreed_price', 'Agreed Price')}</th>
+              <th>${t('th_status', 'Status')}</th>
+              <th>${t('th_actions', 'Actions')}</th>
             </tr>
           </thead>
           <tbody>
             ${bookings.length === 0 ? `
-              <tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No bookings found. Discover professionals and book an appointment!</td></tr>
+              <tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-secondary);">${t('bookings_empty', 'No bookings found. Discover professionals and book an appointment!')}</td></tr>
             ` : bookings.map(b => {
               const worker = workers.find(w => w.id === b.workerId) || { name: 'Professional', phone: '+91 99999 99999' };
               const statusBadgeClass = {
@@ -220,13 +222,13 @@ export const CustomerFrontend = {
                   </td>
                   <td>${esc(b.appointmentDate)} @ ${esc(b.appointmentTime)}</td>
                   <td><strong>₹${b.agreedPrice}</strong></td>
-                  <td><span class="badge ${statusBadgeClass}">${esc(b.status)}</span></td>
+                  <td><span class="badge ${statusBadgeClass}">${esc(i18n.tStatus(b.status))}</span></td>
                   <td>
-                    <button class="btn btn-outline btn-sm view-booking-details-btn" data-id="${esc(b.id)}">Details</button>
-                    ${['Pending confirmation', 'Confirmed'].includes(b.status) ? `<button class="btn btn-danger btn-sm cancel-booking-btn" data-id="${esc(b.id)}">Cancel</button>` : ''}
+                    <button class="btn btn-outline btn-sm view-booking-details-btn" data-id="${esc(b.id)}">${t('btn_details', 'Details')}</button>
+                    ${['Pending confirmation', 'Confirmed'].includes(b.status) ? `<button class="btn btn-danger btn-sm cancel-booking-btn" data-id="${esc(b.id)}">${t('btn_cancel', 'Cancel')}</button>` : ''}
                     ${b.status === 'Job completed' ? `
-                      <button class="btn btn-primary btn-sm invoice-btn" data-id="${esc(b.id)}">Invoice</button>
-                      ${!b.reviewId ? `<button class="btn btn-outline btn-sm review-booking-btn" data-id="${esc(b.id)}">Review</button>` : ''}
+                      <button class="btn btn-primary btn-sm invoice-btn" data-id="${esc(b.id)}">${t('btn_invoice', 'Invoice')}</button>
+                      ${!b.reviewId ? `<button class="btn btn-outline btn-sm review-booking-btn" data-id="${esc(b.id)}">${t('btn_review', 'Review')}</button>` : ''}
                     ` : ''}
                   </td>
                 </tr>
@@ -285,6 +287,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        i18n.translateDOM(container.querySelector('#customer-main-content'));
       });
     }
 
@@ -298,6 +301,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        i18n.translateDOM(container.querySelector('#customer-main-content'));
       });
     }
 
@@ -310,6 +314,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        i18n.translateDOM(container.querySelector('#customer-main-content'));
       });
     });
 
@@ -439,6 +444,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    i18n.translateDOM(modal);
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#close-btn').onclick = () => modal.remove();
     modal.querySelector('#modal-book-btn').onclick = () => {
@@ -538,6 +544,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    i18n.translateDOM(modal);
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#close-btn').onclick = () => modal.remove();
 
@@ -632,6 +639,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    i18n.translateDOM(modal);
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelectorAll('.book-worker-from-compare').forEach(btn => {
       btn.onclick = () => {
@@ -673,6 +681,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    i18n.translateDOM(modal);
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#close-btn').onclick = () => modal.remove();
   },
@@ -727,6 +736,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    i18n.translateDOM(modal);
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#close-inv').onclick = () => modal.remove();
   },
@@ -757,6 +767,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    i18n.translateDOM(modal);
     modal.querySelector('#close-modal').onclick = () => modal.remove();
 
     modal.querySelector('#review-form').onsubmit = (e) => {
