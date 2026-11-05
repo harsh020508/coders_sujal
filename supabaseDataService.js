@@ -162,30 +162,39 @@ export const DataMapper = {
 
   // Reviews
   reviewToDb(r) {
+    const overall = Number(r.overallRating || r.rating) || 5;
     return {
       id: r.id,
       booking_id: r.bookingId || r.booking_id,
       worker_id: r.workerId || r.worker_id,
       customer_id: r.customerId || r.customer_id || null,
       customer_name: r.customerName || r.customer_name || 'Customer',
-      rating: Number(r.rating) || 5,
+      rating: overall,
+      overall_rating: overall,
+      quality_rating: Number(r.qualityRating || overall) || 5,
+      behaviour_rating: Number(r.behaviourRating || overall) || 5,
+      punctuality_rating: Number(r.punctualityRating || overall) || 5,
+      communication_rating: Number(r.communicationRating || overall) || 5,
+      feedback_tags: r.feedbackTags || [],
       comment: r.comment || '',
       created_at: r.createdAt || r.created_at || new Date().toISOString()
     };
   },
 
   dbToReview(row) {
+    const overall = Number(row.overall_rating || row.rating) || 5;
     return {
       id: row.id,
       bookingId: row.booking_id,
       workerId: row.worker_id,
       customerId: row.customer_id,
       customerName: row.customer_name,
-      overallRating: Number(row.overall_rating) || 5,
-      qualityRating: Number(row.quality_rating) || 5,
-      behaviourRating: Number(row.behaviour_rating) || 5,
-      punctualityRating: Number(row.punctuality_rating) || 5,
-      communicationRating: Number(row.communication_rating) || 5,
+      rating: overall,
+      overallRating: overall,
+      qualityRating: Number(row.quality_rating) || overall,
+      behaviourRating: Number(row.behaviour_rating) || overall,
+      punctualityRating: Number(row.punctuality_rating) || overall,
+      communicationRating: Number(row.communication_rating) || overall,
       comment: row.comment,
       feedbackTags: Array.isArray(row.feedback_tags) ? row.feedback_tags : (row.feedback_tags ? JSON.parse(row.feedback_tags) : []),
       createdAt: row.created_at

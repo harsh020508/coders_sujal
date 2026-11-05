@@ -51,6 +51,14 @@ export const CustomerFrontend = {
               <span>Compare</span>
               <span class="sidebar-badge">${this.comparedWorkers.length}/3</span>
             </div>
+            <div class="sidebar-item" data-view="help-centre">
+              <span>❓</span>
+              <span>Help Centre</span>
+            </div>
+            <div class="sidebar-item" data-view="complaints">
+              <span>⚠️</span>
+              <span>Complaints</span>
+            </div>
           </div>
 
           <div class="sidebar-locality-box">
@@ -325,82 +333,58 @@ export const CustomerFrontend = {
       });
     }
 
-    const categoryList = SUPPORT_CATEGORIES.map(cat => `
-      <button class="btn ${this.helpCategory === cat.id ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="CustomerFrontend.setHelpCategory('${esc(cat.id)}')" style="justify-content: flex-start;">
-        ${this.getSupportCategoryIcon(cat.id)} ${esc(cat.name)}
-      </button>
-    `).join('');
+    container.querySelectorAll('.sidebar-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const view = item.getAttribute('data-view');
+        container.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
 
-    const faqs = this.getFAQsForCategory(this.helpCategory);
+        const mainContent = container.querySelector('#customer-main-content');
+        if (view === 'discover') {
+          const workers = StorageService.getWorkers();
+          const customerLocality = StorageService.getCustomerLocality();
+          let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+          eligible = this.sortWorkers(eligible);
+          mainContent.innerHTML = this.renderDiscoverView(eligible);
+          this.attachDiscoverEvents(container);
+        } else if (view === 'bookings') {
+          mainContent.innerHTML = this.renderBookingsView();
+          this.attachBookingsEvents(container);
+        } else if (view === 'compare') {
+          this.showComparisonModal(container);
+        } else if (view === 'help-centre') {
+          mainContent.innerHTML = this.renderHelpCentreView();
+          this.attachHelpEvents(container);
+        } else if (view === 'complaints') {
+          mainContent.innerHTML = this.renderComplaintsView();
+          this.attachComplaintEvents(container);
+        }
+      });
+    });
 
-    return `
-      <div class="dashboard-header">
-        <div>
-          <h1>Help Centre & Support</h1>
-          <p>Find answers, browse help articles, or get in touch with our support team.</p>
-        </div>
-        <button class="btn btn-primary" onclick="CustomerFrontend.showSupportTicketModal()">Contact Support</button>
-      </div>
-
-      <div style="display: grid; grid-template-columns: 250px 1fr; gap: 2rem; margin-bottom: 2rem;">
-        <div>
-          <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem;">Support Categories</h3>
-          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-            ${categoryList}
-          </div>
-        </div>
-        <div>
-          <div class="search-filter-bar" style="margin-bottom: 1.5rem;">
-            <div class="search-input-group">
-              <input type="text" id="help-search-input" placeholder="Search FAQs, help articles, or topics...">
-            </div>
-          </div>
-          <div id="help-faq-container">
-            ${this.renderFAQs(faqs)}
-          </div>
-        </div>
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-        <div>
-          <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Contact Support</h3>
-          <div class="help-contact-card">
-            <h4>Still need help?</h4>
-            <p>Our support team typically responds within 24 hours.</p>
-            <button class="btn btn-primary" onclick="CustomerFrontend.showSupportTicketModal()">Contact Support</button>
-          </div>
-        </div>
-        <div>
-          <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">My Support Tickets (${tickets.length})</h3>
-          <div class="support-tickets-list">
-            ${tickets.length === 0 ? `
-              <div style="text-align: center; padding: 2rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-secondary);">
-                No support tickets yet. Contact us if you need assistance.
-              </div>
-            ` : tickets.map(t => `
-              <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1rem; margin-bottom: 0.75rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                  <strong>${esc(t.id)}</strong>
-                  <span class="ticket-status-badge status-${t.status.toLowerCase()}">${esc(t.status)}</span>
-                </div>
-                <p style="font-size: 0.9rem; margin-bottom: 0.25rem;">${esc(t.subject)}</p>
-                <p style="font-size: 0.85rem; color: var(--text-secondary);">${esc(t.category)}</p>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </div>
-    `;
+    this.attachDiscoverEvents(container);
   },
 
   getSupportCategoryIcon(categoryId) {
-    const cat = SUPPORT_CATEGORIES.find(c => c.id === categoryId);
-    if (cat) {
-      const icons = {
-        booking: '📅', payment: '💰', late_no_show: '⏰', cancellation: '🚫',
-        quality: '⭐', account: '👤', safety: '🛡️', general: '❓'
-      };
-      return icons[cat.id] || '❓';
+    const icons = {
+      booking: '📅', payment: '💰', late_no_show: '⏰', cancellation: '🚫',
+      quality: '⭐', account: '👤', safety: '🛡️', general: '❓'
+    };
+    return icons[categoryId] || '❓';
+  },
+
+  attachDiscoverEvents(container) {
+    const searchInput = container.querySelector('#service-search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        this.searchQuery = e.target.value;
+        const workers = StorageService.getWorkers();
+        const customerLocality = StorageService.getCustomerLocality();
+        let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+        eligible = this.sortWorkers(eligible);
+        container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
+        this.attachDiscoverEvents(container);
+      });
     }
 
     const sortSelect = container.querySelector('#sort-by-select');
@@ -488,6 +472,106 @@ export const CustomerFrontend = {
     });
   },
 
+  renderHelpCentreView() {
+    const tickets = StorageService.getSupportTickets();
+    const categoryList = SUPPORT_CATEGORIES.map(cat => `
+      <button class="btn ${this.helpCategory === cat.id ? 'btn-primary' : 'btn-outline'} btn-sm help-cat-btn" data-cat="${esc(cat.id)}" style="justify-content: flex-start; width: 100%; text-align: left;">
+        ${this.getSupportCategoryIcon(cat.id)} ${esc(cat.name)}
+      </button>
+    `).join('');
+
+    const faqs = this.getFAQsForCategory(this.helpCategory);
+
+    return `
+      <div class="dashboard-header">
+        <div>
+          <h1>Help Centre &amp; Support</h1>
+          <p>Find answers, browse help articles, or get in touch with our support team.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" id="open-support-ticket-btn">Contact Support</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div>
+          <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">Support Categories</h3>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${categoryList}
+          </div>
+        </div>
+        <div>
+          <div class="search-filter-bar" style="margin-bottom: 1rem; padding: 0.75rem;">
+            <div class="search-input-group" style="width: 100%;">
+              <input type="text" id="help-search-input" class="form-control" placeholder="Search FAQs, help articles, or topics...">
+            </div>
+          </div>
+          <div id="help-faq-container">
+            ${this.renderFAQs(faqs)}
+          </div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+        <div class="help-contact-card" style="background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: var(--radius-cards); padding: 1.5rem;">
+          <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem;">Still need help?</h4>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">Our Mumbai customer support team typically responds within 24 hours.</p>
+          <button class="btn btn-primary btn-sm" id="card-contact-support-btn">Open Support Ticket</button>
+        </div>
+        <div>
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem;">My Support Tickets (${tickets.length})</h3>
+          <div class="support-tickets-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            ${tickets.length === 0 ? `
+              <div style="text-align: center; padding: 2rem; background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: var(--radius-cards); color: var(--text-secondary);">
+                No support tickets yet. Contact us if you need assistance.
+              </div>
+            ` : tickets.map(t => `
+              <div style="background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: var(--radius-cards); padding: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                  <strong>${esc(t.id)}</strong>
+                  <span class="badge ${t.status === 'Resolved' ? 'badge-completed' : 'badge-pending'}">${esc(t.status || 'Open')}</span>
+                </div>
+                <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem;">${esc(t.subject)}</p>
+                <small style="color: var(--text-muted);">${esc(t.category)} · ${new Date(t.createdAt).toLocaleDateString()}</small>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  attachHelpEvents(container) {
+    container.querySelectorAll('.help-cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.helpCategory = btn.getAttribute('data-cat');
+        container.querySelector('#customer-main-content').innerHTML = this.renderHelpCentreView();
+        this.attachHelpEvents(container);
+      });
+    });
+
+    const searchInput = container.querySelector('#help-search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        const allFaqs = this.getFAQsForCategory(this.helpCategory);
+        const filtered = query
+          ? allFaqs.filter(f => f.q.toLowerCase().includes(query) || f.a.toLowerCase().includes(query))
+          : allFaqs;
+        const faqBox = container.querySelector('#help-faq-container');
+        if (faqBox) faqBox.innerHTML = this.renderFAQs(filtered);
+      });
+    }
+
+    const openTicket = () => this.showSupportTicketModal(container);
+    container.querySelector('#open-support-ticket-btn')?.addEventListener('click', openTicket);
+    container.querySelector('#card-contact-support-btn')?.addEventListener('click', openTicket);
+  },
+
+  attachComplaintEvents(container) {
+    container.querySelector('#open-complaint-modal-btn')?.addEventListener('click', () => {
+      this.showComplaintModal(container);
+    });
+  },
+
   attachBookingsEvents(container) {
     const emptyDiscoverBtn = container.querySelector('#empty-discover-btn');
     if (emptyDiscoverBtn) {
@@ -567,6 +651,46 @@ export const CustomerFrontend = {
     });
   },
 
+  getFAQsForCategory(category) {
+    const faqs = {
+      booking: [
+        { q: 'How do I book a service on LocalKaam?', a: 'Select your locality, pick a service category, choose a verified worker, select an appointment date & time, and submit your request.' },
+        { q: 'Can I negotiate or make a counter-offer?', a: 'Yes! LocalKaam supports transparent price negotiation. You can propose your budget and the professional can accept or counter-offer.' },
+        { q: 'What if I need to reschedule my booking?', a: 'You can reschedule or cancel an appointment directly from your My Bookings dashboard.' }
+      ],
+      payment: [
+        { q: 'How does payment work?', a: 'Payments are settled directly with the professional upon satisfactory completion with 0% platform commission deductions.' },
+        { q: 'Are prices fixed or hourly?', a: 'Professionals list upfront starting rates (hourly or fixed task pricing) with transparent visiting charges.' },
+        { q: 'Can I get a digital invoice/receipt?', a: 'Yes, once a job is marked completed, a detailed digital invoice is generated under My Bookings.' }
+      ],
+      late_no_show: [
+        { q: 'What if my worker is delayed in Mumbai traffic?', a: 'You can view live status updates (Worker en route, Worker arrived) or call the professional directly.' },
+        { q: 'What if the worker does not show up?', a: 'You can cancel with zero fee and book another available professional in your locality immediately.' }
+      ],
+      cancellation: [
+        { q: 'Is there a cancellation charge?', a: 'No, LocalKaam provides free cancellations before the worker arrives at your doorstep.' },
+        { q: 'How do I cancel a confirmed booking?', a: 'Go to My Bookings, click Cancel Booking, and confirm. The professional is notified immediately.' }
+      ],
+      quality: [
+        { q: 'What if the service quality is unsatisfactory?', a: 'You can file a formal complaint under Complaints with photos/details. Our team will mediate resolution promptly.' },
+        { q: 'How are professionals vetted?', a: 'All professionals undergo identity verification, skill checks, and customer rating reviews.' }
+      ],
+      account: [
+        { q: 'How do I update my locality?', a: 'Use the Service Location dropdown in the sidebar or change locality in your customer settings anytime.' },
+        { q: 'Can I switch between Customer and Worker modes?', a: 'Yes, use the switch button or mobile navigation drawer to switch between customer and worker workspaces.' }
+      ],
+      safety: [
+        { q: 'What safety precautions are taken?', a: 'Verified badges confirm documented professionals, and you can share job status details with family members.' },
+        { q: 'How do I report an urgent issue?', a: 'File an urgent priority support ticket or contact Mumbai emergency services if safety is threatened.' }
+      ],
+      general: [
+        { q: 'What areas in Mumbai are covered?', a: 'LocalKaam covers Andheri, Bandra, Powai, Juhu, Malad, Colaba, Dadar, Thane, and surrounding localities.' },
+        { q: 'Does LocalKaam charge customer booking fees?', a: 'No! There are zero hidden platform taxes or surge convenience fees on LocalKaam.' }
+      ]
+    };
+    return faqs[category] || faqs.general;
+  },
+
   renderFAQs(faqs) {
     if (faqs.length === 0) {
       return '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">No FAQs found for this category.</div>';
@@ -584,61 +708,58 @@ export const CustomerFrontend = {
     this.renderHelpCentreView();
   },
 
-  showSupportTicketModal() {
+  showSupportTicketModal(container) {
+    const bookings = StorageService.getBookings();
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
-      <div class="modal-card" style="max-width: 680px;">
+      <div class="modal-card" style="max-width: 520px;">
         <button class="modal-close" id="close-modal" aria-label="Close modal">×</button>
-        <div style="display: flex; gap: 1.25rem; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap;">
-          <img src="${esc(worker.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150')}" alt="${esc(worker.name)}" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-primary);">
-          <div>
-            <h2 style="font-size: 1.4rem; font-weight: 800; display: flex; align-items: center; gap: 6px;">
-              ${esc(worker.name)}
-              ${worker.verificationStatus === 'Verified' ? '<span style="color: #10b981; font-size: 1rem;" title="Verified Pro">✓ Verified</span>' : ''}
-            </h2>
-            <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem;">
-              📍 Base: <strong>${esc(worker.baseLocality?.toUpperCase())}</strong> · Service Area: ${esc(worker.serviceArea)} · 🏆 ${worker.experience || 3} Yrs Exp
-            </p>
-            <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
-              <span style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">⭐ ${worker.ratingAverage || '4.8'}</span>
-              <span style="color: var(--text-muted); font-size: 0.8rem;">(${worker.ratingCount || 10} reviews)</span>
-            </div>
-          </div>
-        </div>
-
-        <p style="color: var(--text-secondary); margin-bottom: 1.25rem; line-height: 1.6; font-size: 0.9rem; background: var(--bg-secondary); padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
-          ${esc(worker.bio || 'Experienced local technician dedicated to quality home repairs with transparent pricing.')}
+        <h2 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 0.35rem;">Open Support Ticket</h2>
+        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1.25rem;">
+          Our Mumbai support team will review your query and reply within 24 hours.
         </p>
 
-        <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.75rem;">Services &amp; Transparent Rates</h3>
-        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; max-height: 260px; overflow-y: auto;">
-          ${Object.keys(specialities).map(sk => {
-            const info = specialities[sk];
-            const catObj = CATEGORIES.find(c => c.id === sk) || { name: sk };
-            return `
-              <div style="background: var(--bg-card); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap; gap: 4px;">
-                  <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--accent-primary);">${esc(catObj.name)}</h4>
-                  <span style="font-size: 1rem; font-weight: 800; color: var(--text-primary);">
-                    ₹${info.startingPrice} <small style="font-weight: 400; font-size: 0.8rem; color: var(--text-muted);">(${esc(info.pricingMethod || 'hourly')})</small>
-                  </span>
-                </div>
-                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                  Visiting Charge: ₹${info.visitingCharge || 100} · Est. Duration: ${esc(info.estDuration || '1-2 hours')}
-                </p>
-                <div class="worker-skills">
-                  ${(info.tasks || []).map(t => `<span class="skill-tag">${esc(t)}</span>`).join('')}
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
+        <form id="support-ticket-form" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div>
+            <label class="form-label">Category</label>
+            <select id="ticket-category" class="form-select" required>
+              ${SUPPORT_CATEGORIES.map(c => `<option value="${esc(c.id)}" ${c.id === this.helpCategory ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+            </select>
+          </div>
 
-        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
-          <button class="btn btn-outline btn-sm" id="close-btn">Close</button>
-          <button class="btn btn-primary btn-sm" id="modal-book-btn" data-id="${esc(worker.id)}">Book Appointment Now →</button>
-        </div>
+          <div>
+            <label class="form-label">Related Booking <small style="color: var(--text-muted);">(Optional)</small></label>
+            <select id="ticket-booking" class="form-select">
+              <option value="">None / General Inquiry</option>
+              ${bookings.map(b => `<option value="${esc(b.id)}">${esc(b.serviceTask || b.serviceCategory)} (${esc(b.id)}) - ₹${b.agreedPrice}</option>`).join('')}
+            </select>
+          </div>
+
+          <div>
+            <label class="form-label">Subject</label>
+            <input type="text" id="ticket-subject" class="form-control" placeholder="Brief summary of your issue..." required>
+          </div>
+
+          <div>
+            <label class="form-label">Description</label>
+            <textarea id="ticket-description" class="form-control" rows="4" placeholder="Please describe what happened in detail..." required></textarea>
+          </div>
+
+          <div>
+            <label class="form-label">Priority</label>
+            <select id="ticket-priority" class="form-select">
+              <option value="Low">Low - General query</option>
+              <option value="Medium" selected>Medium - Requires attention</option>
+              <option value="High">High - Urgent / Active appointment issue</option>
+            </select>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+            <button type="button" class="btn btn-outline btn-sm" id="close-ticket-btn">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Submit Ticket →</button>
+          </div>
+        </form>
       </div>
     `;
 
@@ -652,17 +773,20 @@ export const CustomerFrontend = {
       const subject = modal.querySelector('#ticket-subject').value;
       const description = modal.querySelector('#ticket-description').value;
       const bookingId = modal.querySelector('#ticket-booking').value;
+      const priority = modal.querySelector('#ticket-priority')?.value || 'Medium';
 
       const ticketId = `TKT-${Date.now().toString(36).toUpperCase()}`;
+      const profile = AuthService.getProfile();
       const ticket = {
         id: ticketId,
         bookingId: bookingId || null,
-        customerName: 'Customer',
+        customerId: profile?.id || null,
+        customerName: profile?.full_name || 'Customer',
         category: category,
-        subject: subject,
-        description: description,
+        subject: subject.trim(),
+        description: description.trim(),
         status: 'Open',
-        priority: this.supportTicketPriority,
+        priority: priority,
         response: '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -673,7 +797,12 @@ export const CustomerFrontend = {
       StorageService.saveSupportTickets(tickets);
       modal.remove();
       Toast.show(`Support ticket ${ticketId} submitted successfully!`, 'success');
-      this.renderHelpCentreView();
+
+      const mainContent = document.querySelector('#customer-main-content');
+      if (mainContent) {
+        mainContent.innerHTML = this.renderHelpCentreView();
+        this.attachHelpEvents(document.querySelector('.app-container') || document.body);
+      }
     };
   },
 
@@ -686,7 +815,7 @@ export const CustomerFrontend = {
           <h1>Complaint Centre</h1>
           <p>File and track complaints about service experiences.</p>
         </div>
-        <button class="btn btn-primary" onclick="CustomerFrontend.showComplaintModal()">File a Complaint</button>
+        <button class="btn btn-primary btn-sm" id="open-complaint-modal-btn">File a Complaint</button>
       </div>
 
       <div class="table-container">
@@ -803,7 +932,11 @@ export const CustomerFrontend = {
       StorageService.saveComplaints(complaints);
       modal.remove();
       Toast.show(`Complaint ${complaintId} submitted successfully!`, 'success');
-      this.renderComplaintsView();
+      const mainContent = document.querySelector('#customer-main-content');
+      if (mainContent) {
+        mainContent.innerHTML = this.renderComplaintsView();
+        this.attachComplaintEvents(document.querySelector('.app-container') || document.body);
+      }
     };
   },
 
@@ -1388,3 +1521,4 @@ export const CustomerFrontend = {
     };
   }
 };
+if (typeof window !== "undefined") window.CustomerFrontend = CustomerFrontend;

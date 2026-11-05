@@ -174,7 +174,7 @@ export const StorageService = {
         SupabaseDataService.fetchSupportTickets()
       ]);
 
-      const [wRes, bRes, rRes, cRes] = results;
+      const [wRes, bRes, rRes, cRes, tRes] = results;
 
       if (wRes.status === 'fulfilled' && wRes.value && wRes.value.length) {
         safeSetLocal(STORAGE_KEYS.WORKERS, wRes.value);
@@ -187,6 +187,9 @@ export const StorageService = {
       }
       if (cRes.status === 'fulfilled' && cRes.value && cRes.value.length) {
         safeSetLocal(STORAGE_KEYS.COMPLAINTS, cRes.value);
+      }
+      if (tRes && tRes.status === 'fulfilled' && tRes.value && tRes.value.length) {
+        safeSetLocal(STORAGE_KEYS.SUPPORT_TICKETS, tRes.value);
       }
 
       notifyChange('sync', {});
@@ -318,6 +321,20 @@ export const StorageService = {
     }
   },
 
+  // --- SUPPORT TICKETS ---
+  getSupportTickets() {
+    return safeGet(STORAGE_KEYS.SUPPORT_TICKETS, []);
+  },
+
+  saveSupportTickets(tickets) {
+    safeSetLocal(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+    notifyChange('support_tickets', tickets);
+
+    if (SupabaseService.isConfigured() && Array.isArray(tickets) && tickets.length > 0) {
+      SupabaseDataService.upsertSupportTicket(tickets[0]).catch(e => console.warn(e));
+    }
+  },
+
   // --- SESSION STATE ---
   getCurrentRole() {
     return safeGet(STORAGE_KEYS.CURRENT_ROLE, 'landing');
@@ -364,6 +381,7 @@ export const StorageService = {
     safeSetLocal(STORAGE_KEYS.BOOKINGS, INITIAL_BOOKINGS);
     safeSetLocal(STORAGE_KEYS.REVIEWS, INITIAL_REVIEWS);
     safeSetLocal(STORAGE_KEYS.COMPLAINTS, INITIAL_COMPLAINTS);
+    safeSetLocal(STORAGE_KEYS.SUPPORT_TICKETS, []);
     safeSetLocal(STORAGE_KEYS.CURRENT_ROLE, 'landing');
     safeSetLocal(STORAGE_KEYS.SELECTED_WORKER_ID, 'w1');
     safeSetLocal(STORAGE_KEYS.CUSTOMER_LOCALITY, 'andheri');

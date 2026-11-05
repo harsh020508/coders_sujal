@@ -111,7 +111,7 @@ export const WorkerFeedback = {
           </div>
         `}
 
-        ${needsImprovement.length > 0 && `
+        ${needsImprovement.length > 0 ? `
           <div style="background: var(--bg-primary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
             <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem;">Areas Needing Improvement</h4>
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
@@ -126,16 +126,16 @@ export const WorkerFeedback = {
               `).join('')}
             </div>
           </div>
-        )}
+        ` : ''}
 
-        ${satisfiedAreas.length > 0 && `
+        ${satisfiedAreas.length > 0 ? `
           <div style="background: var(--bg-primary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
             <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem;">Satisfaction Highlights</h4>
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
               ${satisfiedAreas.slice(0, 10).map(tag => `<span class="skill-tag">${esc(tag)}</span>`).join('')}
             </div>
           </div>
-        )}
+        ` : ''}
       </div>
     `;
   },

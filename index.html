@@ -42,16 +42,28 @@
               if (error) {
                 Toast.show('Sign-in error: ' + (error.message || 'Unknown error'), 'error');
               } else if (data.session) {
-                Toast.show('Signed in successfully!', 'success');
+                await AuthService.syncUserProfile(data.session.user);
+                Toast.show('Signed in as ' + (data.session.user.email || 'User') + '!', 'success');
               }
             }
           } catch (e) {
             Toast.show('Auth check failed: ' + e.message, 'error');
           }
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
         }
       } catch (e) {}
-      
-      App.init();
+
+      try {
+        App.init();
+      } catch (err) {
+        console.error('App init fatal error:', err);
+        const appDiv = document.getElementById('app');
+        if (appDiv) {
+          appDiv.innerHTML = '<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Please refresh the page to load the marketplace.</p><button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1a3300; color: white; border: none; border-radius: 8px; cursor: pointer;">Refresh App</button></div>';
+        }
+      }
     });
   </script>
 </body>

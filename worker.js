@@ -86,6 +86,18 @@ export const WorkerFrontend = {
               <span>👤</span>
               <span>My Profile</span>
             </div>
+            <div class="sidebar-item" data-view="feedback">
+              <span>⭐</span>
+              <span>Reviews & Ratings</span>
+            </div>
+            <div class="sidebar-item" data-view="help-centre">
+              <span>❓</span>
+              <span>Help Centre</span>
+            </div>
+            <div class="sidebar-item" data-view="complaints">
+              <span>⚠️</span>
+              <span>Complaints</span>
+            </div>
           </div>
         </aside>
 
@@ -99,14 +111,15 @@ export const WorkerFrontend = {
     this.attachEvents(container);
   },
 
-  renderMainContent(view, worker, pendingRequests, activeJobs, completedJobs, totalEarnings) {
+  renderMainContent(view, worker, pendingRequests, activeJobs, completedJobs, totalEarnings, bookings) {
+    const allBookings = bookings || StorageService.getBookings().filter(b => b.workerId === worker.id);
     switch (view) {
       case 'overview':
         return this.renderOverviewView(worker, pendingRequests, activeJobs, completedJobs, totalEarnings);
       case 'requests':
-        return this.renderRequestsView(worker, bookings);
+        return this.renderRequestsView(worker, allBookings);
       case 'active-jobs':
-        return this.renderActiveJobsView(worker, bookings);
+        return this.renderActiveJobsView(worker, allBookings);
       case 'schedule':
         return this.renderScheduleView(worker);
       case 'earnings':
@@ -320,7 +333,7 @@ export const WorkerFrontend = {
 
     // CSV Export button
     const csvExportBtn = `
-      <button class="csv-export-btn btn btn-outline" style="margin-bottom: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="window.WorkerFrontend.exportCSV(${workerId})">
+      <button class="csv-export-btn btn btn-outline" style="margin-bottom: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="window.WorkerFrontend.exportCSV(\'${workerId}\')">
         Export to CSV
       </button>
     `;
@@ -509,50 +522,7 @@ export const WorkerFrontend = {
     return WorkerFeedback.renderFeedbackSection(worker);
   },
 
-  renderHelpCentreView() {
-    return `
-      <div class="dashboard-header">
-        <div>
-          <h1>Earnings &amp; Completed Jobs (${completedJobs.length})</h1>
-          <p>Direct 100% payouts with zero platform commission deductions.</p>
-        </div>
 
-      <div class="metric-card accent" style="max-width: 320px; margin-bottom: 1.5rem;">
-        <span>Verified Total Direct Earnings</span>
-        <h2>₹${totalEarnings}</h2>
-      </div>
-
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Job ID</th>
-              <th>Task &amp; Customer</th>
-              <th>Completion Date</th>
-              <th>Agreed Payout</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${completedJobs.length === 0 ? `
-              <tr><td colspan="5" style="text-align: center; padding: 2.5rem; color: var(--text-secondary);">No completed jobs yet. Keep providing great service!</td></tr>
-            ` : completedJobs.map(b => `
-              <tr>
-                <td><strong>${esc(b.id)}</strong></td>
-                <td>
-                  <strong>${esc(b.serviceTask)}</strong><br>
-                  <small style="color: var(--text-secondary);">${esc(b.customerName)} · 📍 ${esc(b.address)}</small>
-                </td>
-                <td>${new Date(b.completedAt || b.createdAt).toLocaleDateString()}</td>
-                <td><strong style="color: var(--accent-primary); font-size: 1rem;">₹${b.agreedPrice}</strong></td>
-                <td><span class="badge badge-completed">✓ Completed</span></td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-  },
 
   renderProfileView(worker) {
     return `
@@ -689,10 +659,9 @@ export const WorkerFrontend = {
                   <div style="font-weight: 600; font-size: 0.85rem;">${esc(c.icon)} ${esc(c.name)}</div>
                   <div style="font-size: 0.75rem; color: var(--text-muted);">From ₹350</div>
                 </div>
-              `).join('')}
-            </div>
-          `}
-        </div>
+              </label>
+            `).join('')}
+          </div>
 
           <button type="submit" class="btn btn-primary btn-full" style="margin-top: 1rem; padding: 12px; font-size: 1rem;">
             Complete Onboarding &amp; Go Online →
@@ -700,7 +669,6 @@ export const WorkerFrontend = {
         </form>
       </div>
     `;
-  },
 
     container.querySelector('#onboarding-form').onsubmit = (e) => {
       e.preventDefault();
