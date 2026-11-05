@@ -18,7 +18,7 @@ export const CATEGORIES = [
     name: 'Electrician', 
     icon: '⚡',
     lucideIcon: 'zap',
-    image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=600&auto=format&fit=crop&q=80',
+    image: './assets/img/electrician.webp',
     description: 'Wiring, switches, appliance installation & fuse repairs.',
     subcategories: ['Wiring Repair', 'Switchboard Installation', 'Fan Installation', 'Lighting Installation', 'Electrical Fault Diagnosis', 'New Electrical Fittings']
   },
@@ -27,7 +27,7 @@ export const CATEGORIES = [
     name: 'Plumber', 
     icon: '🔧',
     lucideIcon: 'droplets',
-    image: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=600&auto=format&fit=crop&q=80',
+    image: './assets/img/plumber.webp',
     description: 'Leaking taps, pipe fittings, water tanks & bathroom fixes.',
     subcategories: ['Leaking Tap & Faucet', 'Pipe Fitting & Leakage', 'Water Tank Cleaning', 'Geyser Installation & Repair', 'Toilet & Flush Repair', 'Drainage Unclogging']
   },
@@ -36,7 +36,7 @@ export const CATEGORIES = [
     name: 'Carpenter', 
     icon: '🪚',
     lucideIcon: 'hammer',
-    image: 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=600&auto=format&fit=crop&q=80',
+    image: './assets/img/carpenter.webp',
     description: 'Furniture repair, door locks, custom cabinets & assembly.',
     subcategories: ['Door Locks & Hinges', 'Bed & Sofa Repair', 'Wardrobe Customization', 'Modular Kitchen Fitting', 'Wooden Shelves & Racks']
   },
@@ -45,7 +45,7 @@ export const CATEGORIES = [
     name: 'Painter', 
     icon: '🎨',
     lucideIcon: 'paint-roller',
-    image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600&auto=format&fit=crop&q=80',
+    image: './assets/img/painter.webp',
     description: 'Wall painting, touch-ups, waterproofing & polish.',
     subcategories: ['Interior Wall Painting', 'Exterior Waterproofing', 'Wood Polish & Varnishing', 'Texture & Accent Walls', 'Wall Putty & Primer']
   },
@@ -54,7 +54,7 @@ export const CATEGORIES = [
     name: 'AC repair & servicing', 
     icon: '❄️',
     lucideIcon: 'snowflake',
-    image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=600&auto=format&fit=crop&q=80',
+    image: './assets/img/ac_repair.webp',
     description: 'AC installation, gas refilling, deep servicing & repair.',
     subcategories: ['Split AC Servicing', 'Window AC Repair', 'Gas Refilling & Leak Check', 'AC Installation & Uninstallation', 'PCB Repair']
   },
@@ -63,7 +63,7 @@ export const CATEGORIES = [
     name: 'Appliance repair', 
     icon: '🔌',
     lucideIcon: 'plug-zap',
-    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80',
+    image: './assets/img/appliance_repair.webp',
     description: 'Washing machine, refrigerator, microwave & purifier repair.',
     subcategories: ['Washing Machine Repair', 'Refrigerator Servicing', 'Microwave Oven Repair', 'Water Purifier (RO) Service']
   },
@@ -72,7 +72,7 @@ export const CATEGORIES = [
     name: 'Cleaning & housekeeping', 
     icon: '🧹',
     lucideIcon: 'spray-can',
-    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&auto=format&fit=crop&q=80',
+    image: './assets/img/cleaning.webp',
     description: 'Deep home cleaning, sofa & mattress shampooing.',
     subcategories: ['Full Home Deep Cleaning', 'Kitchen & Bathroom Scrub', 'Sofa & Carpet Shampooing', 'Water Tank Deep Clean']
   },
@@ -81,7 +81,7 @@ export const CATEGORIES = [
     name: 'Home shifting', 
     icon: '📦',
     lucideIcon: 'truck',
-    image: 'https://images.unsplash.com/photo-1600518464441-9154a4dea21b?w=600&auto=format&fit=crop&q=80',
+    image: './assets/img/shifting.webp',
     description: 'Packers, movers, local shifting & furniture transport.',
     subcategories: ['Local Household Shifting', 'Office Relocation', 'Single Item Transport', 'Packing & Unpacking']
   },
@@ -90,7 +90,7 @@ export const CATEGORIES = [
     name: 'Pest control', 
     icon: '🐜',
     lucideIcon: 'bug',
-    image: 'https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=600&auto=format&fit=crop&q=80',
+    image: './assets/img/pest_control.webp',
     description: 'Cockroach, mosquito, termite & rodent extermination.',
     subcategories: ['Cockroach & Ant Treatment', 'Termite Proofing', 'Mosquito Fogging', 'Rodent Control']
   },
@@ -99,7 +99,7 @@ export const CATEGORIES = [
     name: 'Handyman & custom tasks', 
     icon: '🛠️',
     lucideIcon: 'drill',
-    image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600&auto=format&fit=crop&q=80',
+    image: './assets/img/other.webp',
     description: 'Bespoke handymen tasks, drill hanging, lock assembly & maintenance.',
     subcategories: ['Drilling & Wall Hanging', 'Curtain Rod Installation', 'General Handyman Support']
   }
