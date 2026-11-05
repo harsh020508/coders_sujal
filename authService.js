@@ -532,41 +532,52 @@ class AuthServiceManager {
     let session = null;
     let oauthError = null;
 
-    // 1. PKCE flow: Supabase returns ?code=xxx — getSession() alone
-    //    will never produce a session until the code is exchanged.
-    try {
-      const params = new URLSearchParams(window.location.search || '');
-      const code = params.get('code');
-      const urlError = params.get('error_description') || params.get('error');
-      if (urlError) oauthError = new Error(decodeURIComponent(urlError));
-      if (code && typeof client.auth.exchangeCodeForSession === 'function') {
-        console.log('[Auth] Exchanging PKCE code for session…');
-        const { data, error } = await client.auth.exchangeCodeForSession(code);
-        if (error) {
-          console.warn('[Auth] exchangeCodeForSession error:', error.message || error);
-          oauthError = oauthError || error;
-        } else if (data && data.session) {
-          session = data.session;
-          console.log('[Auth] PKCE exchange succeeded.');
-        }
-      }
-    } catch (e) {
-      console.warn('[Auth] PKCE exchange exception:', e);
-      oauthError = oauthError || e;
-    }
-
-    // 2. Implicit flow / persisted session / slow SDK parse: poll briefly.
-    if (!session) {
-      for (let i = 0; i < 20; i++) {
+    const pollForSession = async (tries, delayMs) => {
+      for (let i = 0; i < tries; i++) {
         try {
           const { data } = await client.auth.getSession();
-          if (data && data.session && data.session.user) {
-            session = data.session;
-            break;
-          }
+          if (data && data.session && data.session.user) return data.session;
         } catch (e) { /* keep polling */ }
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, delayMs));
       }
+      return null;
+    };
+
+    // 0. If the client's auto-exchange already produced a session, use it.
+    //    Calling exchangeCodeForSession again would replay an already-used
+    //    code and fail with "Unable to exchange external code".
+    session = await pollForSession(5, 400);
+
+    // 1. PKCE flow: Supabase returns ?code=xxx — getSession() alone
+    //    will never produce a session until the code is exchanged.
+    if (!session) {
+      try {
+        const params = new URLSearchParams(window.location.search || '');
+        const code = params.get('code');
+        const urlError = params.get('error_description') || params.get('error');
+        if (urlError) oauthError = new Error(decodeURIComponent(urlError));
+        if (code && typeof client.auth.exchangeCodeForSession === 'function') {
+          console.log('[Auth] Exchanging PKCE code for session…');
+          const { data, error } = await client.auth.exchangeCodeForSession(code);
+          if (error) {
+            // Code replay / verifier missing is often harmless when the
+            // auto-exchange succeeded — fall through to polling.
+            console.warn('[Auth] exchangeCodeForSession error (will still poll for session):', error.message || error);
+            oauthError = oauthError || error;
+          } else if (data && data.session) {
+            session = data.session;
+            console.log('[Auth] PKCE exchange succeeded.');
+          }
+        }
+      } catch (e) {
+        console.warn('[Auth] PKCE exchange exception (will still poll for session):', e);
+        oauthError = oauthError || e;
+      }
+    }
+
+    // 2. Implicit flow / persisted session / slow SDK parse: poll longer.
+    if (!session) {
+      session = await pollForSession(30, 400);
     }
 
     // Also honour a session already established by initSession().

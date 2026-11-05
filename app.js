@@ -26,7 +26,10 @@ export const App = {
     Settings.init();
     this._bindGlobalEvents();
 
-    // Handle initial URL hash or history state
+    // Handle initial URL hash or history state.
+    // Priority: explicit hash → authenticated profile role → landing.
+    // This rescues an OAuth login whose hash was stripped while the
+    // session finished exchanging after boot.
     let hash = (typeof window !== 'undefined' && window.location.hash) ? window.location.hash.replace('#', '') : '';
     if (hash === 'admin') {
       hash = 'landing';
@@ -37,7 +40,14 @@ export const App = {
     if (ROLES.includes(hash)) {
       StorageService.setCurrentRole(hash);
     } else {
-      StorageService.setCurrentRole('landing');
+      const profileRole = (() => {
+        try {
+          const p = AuthService.getProfile();
+          const r = p && (p.role || (p.user_metadata && p.user_metadata.role));
+          return (r === 'worker' || r === 'customer') && AuthService.isAuthenticated() ? r : null;
+        } catch (e) { return null; }
+      })();
+      StorageService.setCurrentRole(profileRole || 'landing');
     }
 
     this.render();
@@ -243,6 +253,16 @@ export const App = {
           this.updateProfileBadge();
           ProfileDropdown.refresh();
           this.setupSessionTimeout();
+          // If an auth session arrives while viewing landing (e.g. OAuth
+          // exchange finished after boot), go straight to the dashboard.
+          try {
+            const current = StorageService.getCurrentRole();
+            if ((current === 'landing' || current === 'role-select') && AuthService.isAuthenticated()) {
+              const p = AuthService.getProfile();
+              const r = p && (p.role || (p.user_metadata && p.user_metadata.role));
+              if (r === 'worker' || r === 'customer') this.navigateToRole(r);
+            }
+          } catch (e) {}
         }
       });
     } catch (e) {}
