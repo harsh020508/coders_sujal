@@ -12,6 +12,7 @@ const STORAGE_KEYS = {
   REVIEWS: 'localkaam_reviews',
   COMPLAINTS: 'localkaam_complaints',
   SUPPORT_TICKETS: 'localkaam_support_tickets',
+  NOTIFICATIONS: 'localkaam_notifications',
   CURRENT_ROLE: 'localkaam_current_role',
   SELECTED_WORKER_ID: 'localkaam_selected_worker_id',
   CUSTOMER_LOCALITY: 'localkaam_customer_locality',
@@ -165,6 +166,11 @@ export const StorageService = {
           safeSetLocal(STORAGE_KEYS.COMPLAINTS, complaints);
           notifyChange('complaints', incoming);
         }
+      } else if (table === 'notifications') {
+        if (payload.new && payload.new.id) {
+          const incoming = DataMapper.dbToNotification(payload.new);
+          this.addNotification(incoming);
+        }
       }
     });
   },
@@ -177,10 +183,11 @@ export const StorageService = {
         SupabaseDataService.fetchBookings(),
         SupabaseDataService.fetchReviews(),
         SupabaseDataService.fetchComplaints(),
-        SupabaseDataService.fetchSupportTickets()
+        SupabaseDataService.fetchSupportTickets(),
+        SupabaseDataService.fetchNotifications()
       ]);
 
-      const [wRes, bRes, rRes, cRes, tRes] = results;
+      const [wRes, bRes, rRes, cRes, tRes, nRes] = results;
 
       if (wRes.status === 'fulfilled' && wRes.value && wRes.value.length) {
         safeSetLocal(STORAGE_KEYS.WORKERS, wRes.value);
@@ -196,6 +203,16 @@ export const StorageService = {
       }
       if (tRes && tRes.status === 'fulfilled' && tRes.value && tRes.value.length) {
         safeSetLocal(STORAGE_KEYS.SUPPORT_TICKETS, tRes.value);
+      }
+      if (nRes && nRes.status === 'fulfilled' && nRes.value && nRes.value.length) {
+        const existing = safeGet(STORAGE_KEYS.NOTIFICATIONS, []);
+        const merged = [...nRes.value];
+        existing.forEach(e => {
+          if (!merged.some(m => m.id === e.id || (m.bookingId === e.bookingId && m.notificationType === e.notificationType))) {
+            merged.push(e);
+          }
+        });
+        safeSetLocal(STORAGE_KEYS.NOTIFICATIONS, merged);
       }
 
       notifyChange('sync', {});
@@ -263,31 +280,45 @@ export const StorageService = {
   },
 
   saveBookings(bookings) {
+    const prevBookings = this.getBookings();
     safeSetLocal(STORAGE_KEYS.BOOKINGS, bookings);
     notifyChange('bookings', bookings);
 
-    if (SupabaseService.isConfigured() && Array.isArray(bookings) && bookings.length > 0) {
-      // Find the newest or most recently modified booking to sync
-      const target = bookings[0];
-      SupabaseDataService.upsertBooking(target).then(({ error }) => {
-        if (error) {
-          console.error('[Storage] Supabase booking sync error:', error.message);
-          Toast.show(`Database Error: ${error.message}`, 'error');
+    // Identify which booking(s) were modified
+    if (Array.isArray(bookings)) {
+      bookings.forEach(b => {
+        const prev = prevBookings.find(p => p.id === b.id);
+        if (prev && prev.status !== b.status) {
+          this._handleStatusTransitionNotification(prev, b);
+          if (SupabaseService.isConfigured()) {
+            SupabaseDataService.upsertBooking(b).catch(err => console.warn('[Storage] Supabase sync error:', err));
+          }
         }
       });
+    }
+
+    if (SupabaseService.isConfigured() && Array.isArray(bookings) && bookings.length > 0) {
+      const target = bookings[0];
+      SupabaseDataService.upsertBooking(target).catch(err => console.warn('[Storage] Supabase sync error:', err));
     }
   },
 
   saveSingleBooking(booking) {
     const bookings = this.getBookings();
     const idx = bookings.findIndex(b => b.id === booking.id);
+    let prev = null;
     if (idx >= 0) {
+      prev = bookings[idx];
       bookings[idx] = { ...bookings[idx], ...booking };
     } else {
       bookings.unshift(booking);
     }
     safeSetLocal(STORAGE_KEYS.BOOKINGS, bookings);
     notifyChange('bookings', booking);
+
+    if (prev && prev.status !== booking.status) {
+      this._handleStatusTransitionNotification(prev, booking);
+    }
 
     if (SupabaseService.isConfigured()) {
       SupabaseDataService.upsertBooking(booking).then(({ error }) => {
@@ -296,6 +327,53 @@ export const StorageService = {
           Toast.show(`Booking sync error: ${error.message}`, 'error');
         }
       });
+    }
+  },
+
+  _handleStatusTransitionNotification(prevBooking, newBooking) {
+    if (!newBooking || !prevBooking) return;
+    const prevStatus = prevBooking.status;
+    const newStatus = newBooking.status;
+    if (!newStatus || prevStatus === newStatus) return;
+
+    const customerId = newBooking.customerId || newBooking.customer_id;
+    let eventType = null;
+    let title = '';
+    let message = '';
+
+    const isPrevPending = ['Pending confirmation', 'Pending'].includes(prevStatus);
+    const isNewAccepted = ['Confirmed', 'Accepted'].includes(newStatus);
+    const isPrevNotArrived = !['Worker arrived', 'Arrived'].includes(prevStatus);
+    const isNewArrived = ['Worker arrived', 'Arrived'].includes(newStatus);
+    const isPrevNotCompleted = !['Job completed', 'Completed'].includes(prevStatus);
+    const isNewCompleted = ['Job completed', 'Completed'].includes(newStatus);
+
+    if (isPrevPending && isNewAccepted) {
+      eventType = 'ORDER_ACCEPTED';
+      title = 'Order Accepted!';
+      message = 'Good news! Your service provider has accepted your order and will be arriving shortly.';
+    } else if (isPrevNotArrived && isNewArrived) {
+      eventType = 'WORKER_ARRIVED';
+      title = 'Your Worker Has Arrived!';
+      message = 'Your service provider has reached your location and is ready to start the service.';
+    } else if (isPrevNotCompleted && isNewCompleted) {
+      eventType = 'ORDER_COMPLETED';
+      title = 'Order Completed Successfully!';
+      message = 'Your service has been completed. Thank you for choosing LocalKaam!';
+    }
+
+    if (eventType) {
+      const notif = {
+        id: `notif_${newBooking.id}_${eventType}`,
+        userId: customerId,
+        bookingId: newBooking.id,
+        notificationType: eventType,
+        title,
+        message,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      };
+      this.addNotification(notif);
     }
   },
 
@@ -325,6 +403,139 @@ export const StorageService = {
     if (SupabaseService.isConfigured() && Array.isArray(complaints) && complaints.length > 0) {
       SupabaseDataService.upsertComplaint(complaints[0]).catch(e => console.warn(e));
     }
+  },
+
+  // --- NOTIFICATIONS ---
+  getNotifications(userId = null) {
+    const list = safeGet(STORAGE_KEYS.NOTIFICATIONS, []);
+    if (!userId) return list;
+    return list.filter(n => !n.userId || n.userId === userId);
+  },
+
+  saveNotifications(notifications) {
+    safeSetLocal(STORAGE_KEYS.NOTIFICATIONS, notifications);
+    notifyChange('notifications', notifications);
+  },
+
+  addNotification(notification) {
+    if (!notification || !notification.notificationType) return;
+    const current = safeGet(STORAGE_KEYS.NOTIFICATIONS, []);
+
+    // Prevent duplicate notification by stable identifier (bookingId + notificationType or id)
+    const exists = current.some(n => 
+      n.id === notification.id || 
+      (n.bookingId === notification.bookingId && n.notificationType === notification.notificationType)
+    );
+
+    if (exists) return;
+
+    current.unshift(notification);
+    safeSetLocal(STORAGE_KEYS.NOTIFICATIONS, current);
+    notifyChange('notifications', notification);
+
+    if (SupabaseService.isConfigured()) {
+      SupabaseDataService.upsertNotification(notification).catch(err => console.warn(err));
+    }
+  },
+
+  async markNotificationRead(id, userId = null) {
+    const list = safeGet(STORAGE_KEYS.NOTIFICATIONS, []);
+    let changed = false;
+    list.forEach(n => {
+      if (n.id === id) {
+        n.isRead = true;
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      safeSetLocal(STORAGE_KEYS.NOTIFICATIONS, list);
+      notifyChange('notifications', list);
+    }
+
+    if (SupabaseService.isConfigured()) {
+      await SupabaseDataService.markNotificationRead(id, userId);
+    }
+
+    // Try backend REST API if available
+    try {
+      const token = typeof window !== 'undefined' ? (window.AuthService?.getToken?.() || localStorage.getItem('sb-access-token')) : null;
+      if (token) {
+        await fetch(`/api/notifications/${encodeURIComponent(id)}/read`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
+    } catch (e) {}
+
+    return true;
+  },
+
+  async markAllNotificationsRead(userId = null) {
+    const list = safeGet(STORAGE_KEYS.NOTIFICATIONS, []);
+    list.forEach(n => {
+      if (!userId || !n.userId || n.userId === userId) {
+        n.isRead = true;
+      }
+    });
+
+    safeSetLocal(STORAGE_KEYS.NOTIFICATIONS, list);
+    notifyChange('notifications', list);
+
+    if (SupabaseService.isConfigured() && userId) {
+      await SupabaseDataService.markAllNotificationsRead(userId);
+    }
+
+    try {
+      const token = typeof window !== 'undefined' ? (window.AuthService?.getToken?.() || localStorage.getItem('sb-access-token')) : null;
+      if (token) {
+        await fetch('/api/notifications/mark-all-read', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
+    } catch (e) {}
+
+    return true;
+  },
+
+  async syncNotifications(userId = null) {
+    let synced = [];
+
+    // 1. Try Supabase
+    if (SupabaseService.isConfigured()) {
+      synced = await SupabaseDataService.fetchNotifications(userId);
+    }
+
+    // 2. If no Supabase or empty, try Backend API
+    if ((!synced || synced.length === 0) && typeof window !== 'undefined') {
+      try {
+        const token = window.AuthService?.getToken?.() || localStorage.getItem('sb-access-token');
+        if (token) {
+          const res = await fetch('/api/notifications', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            synced = await res.json();
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (Array.isArray(synced) && synced.length > 0) {
+      const existing = safeGet(STORAGE_KEYS.NOTIFICATIONS, []);
+      const merged = [...synced];
+      existing.forEach(e => {
+        if (!merged.some(m => m.id === e.id || (m.bookingId === e.bookingId && m.notificationType === e.notificationType))) {
+          merged.push(e);
+        }
+      });
+      safeSetLocal(STORAGE_KEYS.NOTIFICATIONS, merged);
+      notifyChange('notifications', merged);
+      return merged;
+    }
+
+    return this.getNotifications(userId);
   },
 
   // --- SUPPORT TICKETS ---
@@ -388,6 +599,7 @@ export const StorageService = {
     safeSetLocal(STORAGE_KEYS.REVIEWS, INITIAL_REVIEWS);
     safeSetLocal(STORAGE_KEYS.COMPLAINTS, INITIAL_COMPLAINTS);
     safeSetLocal(STORAGE_KEYS.SUPPORT_TICKETS, []);
+    safeSetLocal(STORAGE_KEYS.NOTIFICATIONS, []);
     safeSetLocal(STORAGE_KEYS.CURRENT_ROLE, 'landing');
     safeSetLocal(STORAGE_KEYS.SELECTED_WORKER_ID, 'w1');
     safeSetLocal(STORAGE_KEYS.CUSTOMER_LOCALITY, 'andheri');

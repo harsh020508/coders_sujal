@@ -265,6 +265,33 @@ export const DataMapper = {
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
+  },
+
+  // Notifications
+  notificationToDb(n) {
+    return {
+      id: n.id,
+      user_id: n.userId || n.user_id,
+      booking_id: n.bookingId || n.booking_id,
+      notification_type: n.notificationType || n.notification_type,
+      title: n.title,
+      message: n.message,
+      is_read: Boolean(n.isRead !== undefined ? n.isRead : n.is_read),
+      created_at: n.createdAt || n.created_at || new Date().toISOString()
+    };
+  },
+
+  dbToNotification(row) {
+    return {
+      id: row.id,
+      userId: row.user_id,
+      bookingId: row.booking_id,
+      notificationType: row.notification_type,
+      title: row.title,
+      message: row.message,
+      isRead: Boolean(row.is_read),
+      createdAt: row.created_at
+    };
   }
 };
 
@@ -473,6 +500,88 @@ export const SupabaseDataService = {
     }
   },
 
+  // NOTIFICATIONS
+  async fetchNotifications(userId) {
+    const client = await SupabaseService.getClient();
+    if (!client) return [];
+
+    try {
+      let query = client
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn('[Supabase] fetchNotifications warning:', error.message);
+        return [];
+      }
+      return (data || []).map(r => DataMapper.dbToNotification(r));
+    } catch (e) {
+      console.warn('[Supabase] fetchNotifications exception:', e);
+      return [];
+    }
+  },
+
+  async markNotificationRead(notificationId, userId) {
+    const client = await SupabaseService.getClient();
+    if (!client) return false;
+
+    try {
+      let query = client
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', notificationId);
+
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { error } = await query;
+      return !error;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  async markAllNotificationsRead(userId) {
+    const client = await SupabaseService.getClient();
+    if (!client || !userId) return false;
+
+    try {
+      const { error } = await client
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', userId);
+
+      return !error;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  async upsertNotification(notification) {
+    const client = await SupabaseService.getClient();
+    if (!client) return { error: new Error('Supabase client unavailable') };
+
+    const payload = DataMapper.notificationToDb(notification);
+    try {
+      const { data, error } = await client
+        .from('notifications')
+        .upsert(payload, { onConflict: 'booking_id,notification_type' })
+        .select()
+        .single();
+
+      return { data: data ? DataMapper.dbToNotification(data) : null, error };
+    } catch (err) {
+      return { data: null, error: err };
+    }
+  },
+
   // REALTIME SUBSCRIPTIONS
   subscribeRealtime(onUpdate) {
     SupabaseService.getClient().then(client => {
@@ -493,6 +602,10 @@ export const SupabaseDataService = {
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'complaints' }, payload => {
             if (onUpdate) onUpdate('complaints', payload);
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, payload => {
+            console.log('[Realtime] Notification received:', payload.eventType, payload.new?.notification_type);
+            if (onUpdate) onUpdate('notifications', payload);
           })
           .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {

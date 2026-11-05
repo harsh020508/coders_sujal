@@ -27,6 +27,8 @@ export const CustomerFrontend = {
   render(container) {
     const workers = StorageService.getWorkers();
     const bookings = StorageService.getBookings();
+    const notifications = StorageService.getNotifications();
+    const unreadNotifsCount = notifications.filter(n => !n.isRead).length;
     const customerLocality = StorageService.getCustomerLocality();
     let eligibleWorkers = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
     eligibleWorkers = this.sortWorkers(eligibleWorkers);
@@ -45,6 +47,11 @@ export const CustomerFrontend = {
               <span>📅</span>
               <span>My Bookings</span>
               <span class="sidebar-badge">${bookings.length}</span>
+            </div>
+            <div class="sidebar-item" data-view="notifications">
+              <span>🔔</span>
+              <span>Notifications</span>
+              ${unreadNotifsCount > 0 ? `<span class="sidebar-badge" style="background:#ef4444;color:#fff;">${unreadNotifsCount}</span>` : ''}
             </div>
             <div class="sidebar-item" data-view="compare" id="compare-sidebar-btn">
               <span>⚖️</span>
@@ -355,6 +362,10 @@ export const CustomerFrontend = {
         } else if (view === 'bookings') {
           mainContent.innerHTML = this.renderBookingsView();
           this.attachBookingsEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+        } else if (view === 'notifications') {
+          mainContent.innerHTML = this.renderNotificationsView();
+          this.attachNotificationsEvents(container);
         if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         } else if (view === 'compare') {
           this.showComparisonModal(container);
@@ -1534,6 +1545,101 @@ export const CustomerFrontend = {
       container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
       this.attachEvents(container);
     };
+  },
+
+  renderNotificationsView() {
+    const notifications = StorageService.getNotifications();
+    const unreadCount = notifications.filter(n => !n.isRead).length;
+
+    const configMap = {
+      ORDER_ACCEPTED: { icon: 'check-circle', color: '#10b981', bg: '#ecfdf5', label: 'Accepted' },
+      WORKER_ARRIVED: { icon: 'map-pin', color: '#2563eb', bg: '#eff6ff', label: 'Arrived' },
+      ORDER_COMPLETED: { icon: 'check-circle', color: '#7c3aed', bg: '#f5f3ff', label: 'Completed' }
+    };
+
+    return `
+      <div class="dashboard-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div>
+          <h1>Order Updates &amp; Notifications</h1>
+          <p>Real-time milestones automatically generated from your worker's verified status changes.</p>
+        </div>
+        ${unreadCount > 0 ? `
+          <button class="btn btn-outline btn-sm" id="customer-mark-all-read-btn">
+            <i data-lucide="check-check" class="lucide-xs"></i> Mark All as Read (${unreadCount})
+          </button>
+        ` : ''}
+      </div>
+
+      ${notifications.length === 0 ? `
+        <div class="empty-state">
+          <div class="empty-state-icon"><i data-lucide="bell-off" class="lucide-lg" style="color: var(--text-muted);"></i></div>
+          <h3>No notifications yet</h3>
+          <p>When you place an order, you will receive real-time popups and history records here when your worker accepts, arrives, and completes the service.</p>
+        </div>
+      ` : `
+        <div style="display:flex;flex-direction:column;gap:12px;max-width:900px;">
+          ${notifications.map(n => {
+            const c = configMap[n.notificationType] || configMap.ORDER_ACCEPTED;
+            return `
+              <div class="card notif-center-card ${n.isRead ? 'read' : 'unread'}" data-id="${esc(n.id)}" style="padding:16px 20px;border-radius:12px;border:1.5px solid var(--border-color);background:var(--bg-card);display:flex;align-items:flex-start;gap:14px;position:relative;${!n.isRead ? 'border-left:4px solid ' + c.color + ';background:rgba(255,233,92,0.06);' : ''}">
+                <div style="width:42px;height:42px;border-radius:10px;background:${c.bg};color:${c.color};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <i data-lucide="${c.icon}" class="lucide-sm"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <strong style="font-size:1rem;color:var(--text-primary);">${esc(n.title)}</strong>
+                      <span class="badge" style="background:${c.bg};color:${c.color};font-size:0.72rem;padding:2px 8px;">${c.label}</span>
+                    </div>
+                    <span style="font-size:0.75rem;color:var(--text-muted);">${new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${new Date(n.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <p style="margin:6px 0 10px;font-size:0.875rem;color:var(--text-secondary);line-height:1.45;">${esc(n.message)}</p>
+                  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                    ${n.bookingId ? `
+                      <span class="badge" style="background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-color);font-size:0.75rem;">
+                        <i data-lucide="tag" class="lucide-xs"></i> Booking #${esc(n.bookingId)}
+                      </span>
+                    ` : '<span></span>'}
+                    <div style="display:flex;gap:8px;align-items:center;">
+                      ${!n.isRead ? `
+                        <button class="btn btn-outline btn-xs mark-single-read-btn" data-id="${esc(n.id)}" style="font-size:0.72rem;padding:2px 8px;">
+                          Mark as read
+                        </button>
+                      ` : `
+                        <span style="font-size:0.72rem;color:var(--text-muted);">Read</span>
+                      `}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `}
+    `;
+  },
+
+  attachNotificationsEvents(container) {
+    const markAllBtn = container.querySelector('#customer-mark-all-read-btn');
+    if (markAllBtn) {
+      markAllBtn.addEventListener('click', async () => {
+        await StorageService.markAllNotificationsRead();
+        container.querySelector('#customer-main-content').innerHTML = this.renderNotificationsView();
+        this.attachNotificationsEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+      });
+    }
+
+    container.querySelectorAll('.mark-single-read-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        await StorageService.markNotificationRead(id);
+        container.querySelector('#customer-main-content').innerHTML = this.renderNotificationsView();
+        this.attachNotificationsEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+      });
+    });
   }
 };
 if (typeof window !== "undefined") window.CustomerFrontend = CustomerFrontend;
