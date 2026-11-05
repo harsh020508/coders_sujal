@@ -225,14 +225,21 @@ CREATE TRIGGER trg_validate_booking_transition
 -- ==============================================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_role TEXT;
 BEGIN
+  v_role := LOWER(COALESCE(NEW.raw_user_meta_data->>'role', 'customer'));
+  IF v_role NOT IN ('customer', 'worker') THEN
+    v_role := 'customer';
+  END IF;
+
   INSERT INTO public.profiles (id, email, full_name, phone, role, locality)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
     COALESCE(NEW.raw_user_meta_data->>'phone', ''),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'customer'),
+    v_role,
     COALESCE(NEW.raw_user_meta_data->>'locality', 'andheri')
   )
   ON CONFLICT (id) DO UPDATE SET

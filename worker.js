@@ -873,6 +873,88 @@ export const WorkerFrontend = {
     }
   },
 
+  attachActionEvents(container) {
+    container.querySelectorAll('.accept-request-btn').forEach(btn => {
+      btn.onclick = () => {
+        const bookingId = btn.getAttribute('data-id');
+        let bookings = StorageService.getBookings();
+        bookings = bookings.map(b => b.id === bookingId ? BookingService.acceptBooking(b, true) : b);
+        StorageService.saveBookings(bookings);
+        Toast.show(`Booking ${bookingId} confirmed!`, 'success');
+        this.render(container);
+      };
+    });
+
+    container.querySelectorAll('.reject-request-btn').forEach(btn => {
+      btn.onclick = () => {
+        const bookingId = btn.getAttribute('data-id');
+        let bookings = StorageService.getBookings();
+        bookings = bookings.map(b => b.id === bookingId ? BookingService.rejectBooking(b) : b);
+        StorageService.saveBookings(bookings);
+        Toast.show(`Booking ${bookingId} rejected.`, 'info');
+        this.render(container);
+      };
+    });
+
+    container.querySelectorAll('.counter-request-btn').forEach(btn => {
+      btn.onclick = () => {
+        const bookingId = btn.getAttribute('data-id');
+        const amount = prompt('Enter counter offer amount (₹):');
+        if (!amount) return;
+        const note = prompt('Add optional note for customer (e.g. "Parts cost extra"):') || 'Counter-offer';
+        let bookings = StorageService.getBookings();
+        bookings = bookings.map(b => b.id === bookingId ? BookingService.workerCounterOffer(b, amount, note) : b);
+        StorageService.saveBookings(bookings);
+        Toast.show(`Counter offer of ₹${amount} sent to customer!`, 'success');
+        this.render(container);
+      };
+    });
+
+    container.querySelectorAll('.enroute-job-btn').forEach(btn => {
+      btn.onclick = () => {
+        const bookingId = btn.getAttribute('data-id');
+        let bookings = StorageService.getBookings();
+        bookings = bookings.map(b => b.id === bookingId ? BookingService.setEnRoute(b) : b);
+        StorageService.saveBookings(bookings);
+        Toast.show('Status updated: Worker en route.', 'info');
+        this.render(container);
+      };
+    });
+
+    container.querySelectorAll('.arrived-job-btn').forEach(btn => {
+      btn.onclick = () => {
+        const bookingId = btn.getAttribute('data-id');
+        let bookings = StorageService.getBookings();
+        bookings = bookings.map(b => b.id === bookingId ? BookingService.setArrived(b) : b);
+        StorageService.saveBookings(bookings);
+        Toast.show('Status updated: Worker arrived at location.', 'info');
+        this.render(container);
+      };
+    });
+
+    container.querySelectorAll('.start-job-btn').forEach(btn => {
+      btn.onclick = () => {
+        const bookingId = btn.getAttribute('data-id');
+        let bookings = StorageService.getBookings();
+        bookings = bookings.map(b => b.id === bookingId ? BookingService.startJob(b) : b);
+        StorageService.saveBookings(bookings);
+        Toast.show(`Job ${bookingId} started!`, 'success');
+        this.render(container);
+      };
+    });
+
+    container.querySelectorAll('.complete-job-btn').forEach(btn => {
+      btn.onclick = () => {
+        const bookingId = btn.getAttribute('data-id');
+        let bookings = StorageService.getBookings();
+        bookings = bookings.map(b => b.id === bookingId ? BookingService.completeJob(b) : b);
+        StorageService.saveBookings(bookings);
+        Toast.show(`Job ${bookingId} completed successfully!`, 'success');
+        this.render(container);
+      };
+    });
+  },
+
   attachEarningsEvents(container, worker) {
     // Earnings events are handled via inline onclick for CSV export
   },

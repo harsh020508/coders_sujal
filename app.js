@@ -385,6 +385,7 @@ export const App = {
 
   renderAppShell(activeRole) {
     const theme = StorageService.getTheme();
+    const isAuthed = AuthService.isAuthenticated();
     const profile = AuthService.getProfile();
     const userName = profile ? (profile.full_name || profile.email || 'User') : 'User';
     // Truncate long usernames for display
@@ -418,6 +419,7 @@ export const App = {
             </span>
           </div>
           <div class="nav-actions">
+            ${isAuthed ? '<button class="btn btn-outline btn-sm" id="logout-btn" title="Sign Out">🚪 Sign Out</button>' : ''}
             <button class="btn btn-outline btn-sm" id="switch-role-btn">⇄ Switch</button>
             <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️' : '🌙'}</button>
             <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Demo Data" style="font-size:0.75rem;">🔄</button>
@@ -507,9 +509,8 @@ export const App = {
     }
 
     root.querySelectorAll('.category-card').forEach(card => {
-      const handleClick = () => {
-        const profile = AuthService.getProfile();
-        if (profile && profile.role === 'customer') {
+      card.addEventListener('click', () => {
+        if (AuthService.isAuthenticated() && AuthService.getProfile()?.role === 'customer') {
           this.navigateToRole('customer');
           CustomerFrontend.currentCategory = card.getAttribute('data-category');
           this.render();
@@ -520,9 +521,8 @@ export const App = {
             this.render();
           });
         }
-      };
-      card.addEventListener('click', handleClick);
-      card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); });
+      });
+      card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') card.click(); });
     });
   },
 
@@ -536,8 +536,7 @@ export const App = {
       this.navigateToRole('landing');
     });
     root.querySelector('#select-customer-role')?.addEventListener('click', () => {
-      const profile = AuthService.getProfile();
-      if (profile && profile.role === 'customer') {
+      if (AuthService.isAuthenticated() && AuthService.getProfile()?.role === 'customer') {
         this.navigateToRole('customer');
       } else {
         AuthModal.show('customer', () => {
@@ -546,8 +545,7 @@ export const App = {
       }
     });
     root.querySelector('#select-worker-role')?.addEventListener('click', () => {
-      const profile = AuthService.getProfile();
-      if (profile && profile.role === 'worker') {
+      if (AuthService.isAuthenticated() && AuthService.getProfile()?.role === 'worker') {
         this.navigateToRole('worker');
       } else {
         AuthModal.show('worker', () => {
@@ -568,6 +566,24 @@ export const App = {
 
   attachShellEvents(root) {
     this._attachMobileNav(root);
+
+    const logoutBtn = root.querySelector('#logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        logoutBtn.disabled = true;
+        logoutBtn.textContent = 'Signing out...';
+        const res = await AuthService.signOut();
+        if (res.success) {
+          Toast.show('Signed out successfully.', 'info');
+          StorageService.setCurrentRole('landing');
+          this.render();
+        } else {
+          logoutBtn.disabled = false;
+          logoutBtn.textContent = '🚪 Sign Out';
+          Toast.show('Sign out failed: ' + (res.error?.message || 'Unknown error'), 'error');
+        }
+      });
+    }
 
     root.querySelector('#nav-brand-dashboard')?.addEventListener('click', () => {
       this.navigateToRole('landing');

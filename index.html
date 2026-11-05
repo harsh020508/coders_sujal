@@ -39,15 +39,20 @@
             const client = await SupabaseService.getClient();
             if (client) {
               const { data, error } = await client.auth.getSession();
-              if (error) {
-                Toast.show('Sign-in error: ' + (error.message || 'Unknown error'), 'error');
+              if (error || !data?.session) {
+                AuthService.clearSessionState();
+                const errMsg = error?.message || 'Google OAuth failed or was cancelled by user.';
+                console.error('OAuth session error:', errMsg);
+                Toast.show(errMsg, 'error');
               } else if (data.session) {
                 await AuthService.syncUserProfile(data.session.user);
                 Toast.show('Signed in as ' + (data.session.user.email || 'User') + '!', 'success');
               }
             }
-          } catch (e) {
-            Toast.show('Auth check failed: ' + e.message, 'error');
+          } catch (err) {
+            AuthService.clearSessionState();
+            console.error('OAuth callback processing error:', err);
+            Toast.show('Authentication error occurred.', 'error');
           }
           if (window.history && window.history.replaceState) {
             window.history.replaceState(null, '', window.location.pathname + window.location.search);
