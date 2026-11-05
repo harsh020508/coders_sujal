@@ -56,48 +56,29 @@
                         search.includes('code=') || search.includes('error=');
         if (isOAuth) {
           let oauthTargetRole = null;
+          let oauthError = null;
           const appDiv = document.getElementById('app');
           if (appDiv) {
             appDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;"><div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div><p style="font-size:1.1rem;font-weight:600;color:var(--text-primary);">Completing Secure Sign-In...</p></div>';
           }
+          // Explicit PKCE exchange + role resolution. getSession() alone
+          // never produces a session for ?code= callbacks, which previously
+          // dropped the user back on the landing page.
           try {
-            const client = await SupabaseService.getClient();
-            if (client) {
-              let session = null;
-              // Poll up to 3.2s for Supabase PKCE / URL hash exchange
-              for (let i = 0; i < 8; i++) {
-                const { data } = await client.auth.getSession();
-                if (data && data.session) {
-                  session = data.session;
-                  break;
-                }
-                await new Promise(r => setTimeout(r, 400));
-              }
-
-              if (session && session.user) {
-                let targetRole = 'customer';
-                try {
-                  const pending = localStorage.getItem('localkaam_pending_auth_role');
-                  if (pending && ['customer', 'worker'].includes(pending)) {
-                    targetRole = pending;
-                    localStorage.removeItem('localkaam_pending_auth_role');
-                  }
-                } catch (e) {}
-
-                AuthService.currentSession = session;
-                AuthService.currentUser = session.user;
-
-                await AuthService.syncUserProfile(session.user);
-                AuthService.setRole(targetRole);
-                StorageService.setCurrentRole(targetRole);
-                oauthTargetRole = targetRole;
-
-                Toast.show('Signed in as ' + (session.user.email || 'User') + '!', 'success');
-              }
+            const result = await AuthService.handleOAuthCallback();
+            if (result && result.session) {
+              oauthTargetRole = result.targetRole || 'customer';
+              StorageService.setCurrentRole(oauthTargetRole);
+              Toast.show('Signed in as ' + (result.session.user?.email || 'User') + '!', 'success');
+            } else {
+              oauthError = result && result.error ? result.error : new Error('Sign-in could not be completed. Please try again.');
             }
           } catch (err) {
             console.error('OAuth callback processing error:', err);
-            Toast.show('Authentication error occurred.', 'error');
+            oauthError = err;
+          }
+          if (oauthError && !oauthTargetRole) {
+            Toast.show('Sign-in failed: ' + (oauthError.message || 'please try again'), 'error');
           }
           if (window.history && window.history.replaceState) {
             window.history.replaceState(null, '', window.location.pathname + (oauthTargetRole ? '#' + oauthTargetRole : ''));

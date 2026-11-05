@@ -20,14 +20,22 @@ export const WorkerFrontend = {
     let currentWorkerId = StorageService.getSelectedWorkerId();
 
     if (authProfile && authProfile.role === 'worker') {
+      const authId = String(authProfile.id || '');
+      const partial = authId ? authId.substring(0, 8) : '';
       const myWorker = workers.find(w =>
-        (w.user_id && w.user_id === authProfile.id) ||
-        w.id === `w_${authProfile.id.substring(0, 8)}` ||
-        (authProfile.phone && w.phone === authProfile.phone)
+        (w.user_id && String(w.user_id) === authId) ||
+        (w.userId && String(w.userId) === authId) ||
+        (partial && w.id === `w_${partial}`) ||
+        (authProfile.phone && w.phone && w.phone === authProfile.phone && AuthService.isGuest())
       );
       if (myWorker) {
         currentWorkerId = myWorker.id;
         StorageService.setSelectedWorkerId(myWorker.id);
+      } else if (AuthService.isAuthenticated() && !AuthService.isGuest() && authId) {
+        // Real (e.g. Google) worker with no local entry yet: force onboarding
+        // instead of showing another sample worker's jobs.
+        this.renderOnboarding(container, null);
+        return;
       }
     }
 
@@ -42,13 +50,14 @@ export const WorkerFrontend = {
     const allBookings = StorageService.getBookings();
     const bookings = allBookings.filter(b => b.workerId === worker.id);
 
-    const pendingRequests = bookings.filter(b => b.status === 'Pending confirmation');
-    const activeJobs = bookings.filter(b => !['Pending confirmation', 'Job completed', 'Cancelled', 'Disputed'].includes(b.status));
+    // Treat both historical status spellings as pending so accepted jobs
+    // reliably move out of Requests and into Active Jobs.
+    const pendingRequests = bookings.filter(b => ['Pending confirmation', 'Pending'].includes(b.status));
+    const activeJobs = bookings.filter(b => !['Pending confirmation', 'Pending', 'Job completed', 'Cancelled', 'Disputed'].includes(b.status));
     const completedJobs = bookings.filter(b => b.status === 'Job completed');
     const totalEarnings = completedJobs.reduce((sum, b) => sum + (b.agreedPrice || 0), 0);
-    const currentView = this.activeView || 'profile';
 
-    const view = this.currentView || 'overview';
+    const view = this.currentView || this.activeView || 'overview';
     const isOnline = worker.available && !worker.pauseNewBookings;
 
     container.innerHTML = `
@@ -67,49 +76,49 @@ export const WorkerFrontend = {
 
           <div class="sidebar-section-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; margin-bottom: 8px;">NAVIGATION</div>
           <div class="sidebar-nav-list">
-            <div class="sidebar-item active" data-view="overview">
+            <div class="sidebar-item ${view === 'overview' ? 'active dash-active' : ''}" data-view="overview">
               <i data-lucide="layout-grid" class="lucide-xs"></i>
               <span>Dashboard</span>
             </div>
-            <div class="sidebar-item" data-view="requests">
+            <div class="sidebar-item ${view === 'requests' ? 'active dash-active' : ''}" data-view="requests">
               <i data-lucide="inbox" class="lucide-xs"></i>
               <span>Requests</span>
               <span class="sidebar-badge">${pendingRequests.length}</span>
             </div>
-            <div class="sidebar-item" data-view="active-jobs">
+            <div class="sidebar-item ${view === 'active-jobs' ? 'active dash-active' : ''}" data-view="active-jobs">
               <i data-lucide="briefcase" class="lucide-xs"></i>
               <span>Active Jobs</span>
               <span class="sidebar-badge">${activeJobs.length}</span>
             </div>
-            <div class="sidebar-item" data-view="clients">
+            <div class="sidebar-item ${view === 'clients' ? 'active dash-active' : ''}" data-view="clients">
               <i data-lucide="users" class="lucide-xs"></i>
               <span>Clients</span>
             </div>
-            <div class="sidebar-item" data-view="services">
+            <div class="sidebar-item ${view === 'services' ? 'active dash-active' : ''}" data-view="services">
               <i data-lucide="wrench" class="lucide-xs"></i>
               <span>My Services</span>
             </div>
-            <div class="sidebar-item" data-view="schedule">
+            <div class="sidebar-item ${view === 'schedule' ? 'active dash-active' : ''}" data-view="schedule">
               <i data-lucide="clock" class="lucide-xs"></i>
               <span>Availability</span>
             </div>
-            <div class="sidebar-item" data-view="earnings">
+            <div class="sidebar-item ${view === 'earnings' ? 'active dash-active' : ''}" data-view="earnings">
               <i data-lucide="wallet" class="lucide-xs"></i>
               <span>Earnings</span>
             </div>
-            <div class="sidebar-item" data-view="profile">
+            <div class="sidebar-item ${view === 'profile' ? 'active dash-active' : ''}" data-view="profile">
               <i data-lucide="user" class="lucide-xs"></i>
               <span>My Profile</span>
             </div>
-            <div class="sidebar-item" data-view="feedback">
+            <div class="sidebar-item ${view === 'feedback' ? 'active dash-active' : ''}" data-view="feedback">
               <i data-lucide="star" class="lucide-xs"></i>
               <span>Reviews & Ratings</span>
             </div>
-            <div class="sidebar-item" data-view="help-centre">
+            <div class="sidebar-item ${view === 'help-centre' ? 'active dash-active' : ''}" data-view="help-centre">
               <i data-lucide="help-circle" class="lucide-xs"></i>
               <span>Help Centre</span>
             </div>
-            <div class="sidebar-item" data-view="complaints">
+            <div class="sidebar-item ${view === 'complaints' ? 'active dash-active' : ''}" data-view="complaints">
               <i data-lucide="triangle-alert" class="lucide-xs"></i>
               <span>Complaints</span>
             </div>
@@ -158,6 +167,11 @@ export const WorkerFrontend = {
       default:
         return this.renderOverviewView(worker, pendingRequests, activeJobs, completedJobs, totalEarnings, bookings);
     }
+  },
+
+  isAwaitingCustomerCounter(booking) {
+    if (!booking || !Array.isArray(booking.counterOfferHistory) || booking.counterOfferHistory.length === 0) return false;
+    return booking.counterOfferHistory[booking.counterOfferHistory.length - 1].sender === 'worker';
   },
 
   // ------------------------------------------------------------------------
@@ -300,12 +314,16 @@ export const WorkerFrontend = {
                   </div>
                 </div>
                 <div class="request-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
-                  <button class="ui-btn ui-btn--accent ui-btn--sm accept-request-btn" data-id="${esc(b.id)}">
-                    Accept Job (₹${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))})
-                  </button>
-                  <button class="ui-btn ui-btn--secondary ui-btn--sm counter-request-btn" data-id="${esc(b.id)}" data-current="${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))}">
-                    Counter Offer
-                  </button>
+                  ${this.isAwaitingCustomerCounter(b) ? `
+                    <span class="ui-badge ui-badge--warn" title="You sent a counter-offer. The customer must accept it before the job becomes active.">⏳ Counter sent — waiting for customer (₹${b.agreedPrice})</span>
+                  ` : `
+                    <button class="ui-btn ui-btn--accent ui-btn--sm accept-request-btn" data-id="${esc(b.id)}">
+                      Accept Job (₹${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))})
+                    </button>
+                    <button class="ui-btn ui-btn--secondary ui-btn--sm counter-request-btn" data-id="${esc(b.id)}" data-current="${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))}">
+                      Counter Offer
+                    </button>
+                  `}
                   <button class="ui-btn ui-btn--danger ui-btn--sm reject-request-btn" data-id="${esc(b.id)}">
                     Decline
                   </button>
@@ -789,7 +807,7 @@ export const WorkerFrontend = {
   // 3. OTHER CORE VIEWS (CLEAN & ERROR-FREE)
   // ------------------------------------------------------------------------
   renderActiveJobsView(worker, bookings) {
-    const active = bookings.filter(b => !['Pending confirmation', 'Job completed', 'Cancelled', 'Disputed'].includes(b.status));
+    const active = bookings.filter(b => !['Pending confirmation', 'Pending', 'Job completed', 'Cancelled', 'Disputed'].includes(b.status));
     return `
       <div class="dash-wrapper">
         <div class="dash-top-bar">
@@ -845,7 +863,7 @@ export const WorkerFrontend = {
   },
 
   renderRequestsView(worker, bookings) {
-    const pending = bookings.filter(b => b.status === 'Pending confirmation');
+    const pending = bookings.filter(b => ['Pending confirmation', 'Pending'].includes(b.status));
     return `
       <div class="dash-wrapper">
         <div class="dash-top-bar">
@@ -882,8 +900,12 @@ export const WorkerFrontend = {
                     </td>
                     <td>
                       <div style="display: flex; gap: 4px;">
-                        <button class="btn btn-primary btn-xs accept-request-btn" data-id="${esc(b.id)}">Accept</button>
-                        <button class="btn btn-outline btn-xs counter-request-btn" data-id="${esc(b.id)}" data-current="${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))}">Counter</button>
+                        ${this.isAwaitingCustomerCounter(b) ? `
+                          <span class="badge badge-pending" title="You sent a counter-offer. The customer must accept it before the job becomes active.">⏳ Waiting for customer (₹${b.agreedPrice})</span>
+                        ` : `
+                          <button class="btn btn-primary btn-xs accept-request-btn" data-id="${esc(b.id)}">Accept</button>
+                          <button class="btn btn-outline btn-xs counter-request-btn" data-id="${esc(b.id)}" data-current="${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))}">Counter</button>
+                        `}
                         <button class="btn btn-danger btn-xs reject-request-btn" data-id="${esc(b.id)}">Decline</button>
                       </div>
                     </td>
@@ -965,18 +987,45 @@ export const WorkerFrontend = {
     `;
   },
 
-  renderServicesView(worker) {
+  // Effective specialities: fall back to category/hourlyRate/skills when the
+  // stored object is empty (Supabase rows only carry category + hourly_rate).
+  getEffectiveSpecialities(worker) {
     const specialities = worker.specialities || {};
+    if (specialities && Object.keys(specialities).length) return specialities;
+    const fallbackKey = worker.category || 'general';
+    return {
+      [fallbackKey]: {
+        tasks: (Array.isArray(worker.skills) && worker.skills.length ? worker.skills : ['General Repair']),
+        pricingMethod: 'hourly',
+        startingPrice: Number(worker.hourlyRate || worker.hourly_rate) || 350,
+        visitingCharge: 100,
+        estDuration: '1-2 hours',
+        experience: Number(worker.experience) || 1
+      }
+    };
+  },
+
+  renderServicesView(worker) {
+    const specialities = this.getEffectiveSpecialities(worker);
     const specEntries = Object.entries(specialities);
+    const hasOwn = Boolean(worker.specialities && Object.keys(worker.specialities).length);
+    const availableCats = CATEGORIES.filter(c => !specialities[c.id]);
 
     return `
       <div class="dash-wrapper">
         <div class="dash-top-bar">
           <div>
             <h1 style="font-size: 1.75rem; font-weight: 800; margin: 0;">Services &amp; Pricing Tiers</h1>
-            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px;">Set starting rates, hourly charges, and visiting fees.</p>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px;">Set starting rates, hourly charges, and visiting fees.${hasOwn ? '' : ' Saving will store these as your own services.'}</p>
           </div>
         </div>
+        ${specEntries.length === 0 ? `
+          <div class="ui-empty ui-card ui-card--pad" style="padding: 2.5rem 1rem; text-align: center;">
+            <div class="ui-empty__icon"><i data-lucide="wrench" class="lucide-md"></i></div>
+            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem;">No services yet</h4>
+            <p class="ui-muted" style="font-size: 0.85rem; margin: 0;">Add a service below to start receiving bookings.</p>
+          </div>
+        ` : `
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
           ${specEntries.map(([catKey, info]) => {
             const catObj = CATEGORIES.find(c => c.id === catKey);
@@ -992,15 +1041,18 @@ export const WorkerFrontend = {
                   </div>
                   <span class="badge badge-accepted">Active</span>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 8px; margin: 12px 0; font-size: 0.88rem;">
-                  <div style="display: flex; justify-content: space-between;">
-                    <span style="color: var(--text-muted);">Starting Rate:</span>
-                    <strong>₹${info.startingPrice || 350}/hr</strong>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0;">
+                  <div>
+                    <label class="form-label">Starting rate (₹/hr)</label>
+                    <input type="number" class="form-control service-start-input" data-cat="${esc(catKey)}" value="${info.startingPrice || 350}" min="50" max="10000">
                   </div>
-                  <div style="display: flex; justify-content: space-between;">
-                    <span style="color: var(--text-muted);">Visiting Charge:</span>
-                    <strong>₹${info.visitingCharge || 100}</strong>
+                  <div>
+                    <label class="form-label">Visiting charge (₹)</label>
+                    <input type="number" class="form-control service-visit-input" data-cat="${esc(catKey)}" value="${info.visitingCharge || 100}" min="0" max="5000">
                   </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end;">
+                  <button type="button" class="btn btn-primary btn-sm save-service-btn" data-cat="${esc(catKey)}">Save</button>
                 </div>
                 <div style="margin-top: 10px; border-top: 1px solid var(--border-light); padding-top: 10px;">
                   <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">ACTIVE TASKS:</span>
@@ -1012,8 +1064,90 @@ export const WorkerFrontend = {
             `;
           }).join('')}
         </div>
+        `}
+        <div class="dash-card" style="margin-top: 1.5rem;">
+          <h3 style="font-size: 1.05rem; font-weight: 800; margin-bottom: 8px;">Add a service</h3>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 12px;">Choose a category and set your rates to receive bookings for it.</p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end;">
+            <div>
+              <label class="form-label">Category</label>
+              <select id="new-service-category" class="form-select">
+                ${availableCats.length ? availableCats.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('') : '<option value="">All categories added</option>'}
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Starting rate (₹/hr)</label>
+              <input id="new-service-start" type="number" class="form-control" value="350" min="50" max="10000">
+            </div>
+            <div>
+              <label class="form-label">Visiting charge (₹)</label>
+              <input id="new-service-visit" type="number" class="form-control" value="100" min="0" max="5000">
+            </div>
+            <div>
+              <button type="button" class="btn btn-primary btn-sm" id="add-service-btn" ${availableCats.length ? '' : 'disabled'} style="width: 100%;">Add service</button>
+            </div>
+          </div>
+        </div>
       </div>
     `;
+  },
+
+  attachServicesEvents(container, worker) {
+    container.querySelectorAll('.save-service-btn').forEach(btn => {
+      btn.onclick = () => {
+        const cat = btn.getAttribute('data-cat');
+        const startEl = container.querySelector(`.service-start-input[data-cat="${CSS.escape(cat)}"]`);
+        const visitEl = container.querySelector(`.service-visit-input[data-cat="${CSS.escape(cat)}"]`);
+        const startingPrice = Math.max(50, Math.min(10000, parseFloat(startEl?.value) || 350));
+        const visitingCharge = Math.max(0, Math.min(5000, parseFloat(visitEl?.value) || 0));
+        const workers = StorageService.getWorkers();
+        const target = workers.find(w => w.id === worker.id);
+        if (!target) return;
+        target.specialities = { ...(target.specialities || {}), ...(this.getEffectiveSpecialities(target)) };
+        target.specialities[cat] = {
+          ...(target.specialities[cat] || {}),
+          pricingMethod: 'hourly',
+          startingPrice,
+          visitingCharge
+        };
+        if (!Object.keys(target.specialities).length) {
+          target.specialities[cat] = { tasks: ['General Repair'], pricingMethod: 'hourly', startingPrice, visitingCharge };
+        }
+        if (cat && !target.skills) target.skills = [];
+        if (target.category !== cat) target.category = target.category || cat;
+        StorageService.saveWorkers(workers);
+        StorageService.setSelectedWorkerId(target.id);
+        Toast.show('Service pricing saved.', 'success');
+        if (container && container.isConnected) this.render(container);
+      };
+    });
+
+    container.querySelector('#add-service-btn')?.addEventListener('click', () => {
+      const cat = container.querySelector('#new-service-category')?.value;
+      if (!cat) { Toast.show('All categories are already added.', 'info'); return; }
+      const startingPrice = Math.max(50, Math.min(10000, parseFloat(container.querySelector('#new-service-start')?.value) || 350));
+      const visitingCharge = Math.max(0, Math.min(5000, parseFloat(container.querySelector('#new-service-visit')?.value) || 0));
+      const catObj = CATEGORIES.find(c => c.id === cat);
+      const workers = StorageService.getWorkers();
+      const target = workers.find(w => w.id === worker.id);
+      if (!target) return;
+      target.specialities = { ...(target.specialities || {}), ...(this.getEffectiveSpecialities(target)) };
+      target.specialities[cat] = {
+        tasks: catObj ? catObj.subcategories : ['General Repair'],
+        pricingMethod: 'hourly',
+        startingPrice,
+        visitingCharge,
+        estDuration: '1-2 hours',
+        experience: 5
+      };
+      if (!target.skills) target.skills = [];
+      if (!target.skills.includes(cat)) target.skills = [...target.skills, cat];
+      if (!target.category) target.category = cat;
+      StorageService.saveWorkers(workers);
+      StorageService.setSelectedWorkerId(target.id);
+      Toast.show(`${catObj?.name || cat} service added.`, 'success');
+      if (container && container.isConnected) this.render(container);
+    });
   },
 
   renderScheduleView(worker) {
@@ -1347,6 +1481,7 @@ export const WorkerFrontend = {
       item.addEventListener('click', () => {
         const view = item.getAttribute('data-view');
         this.currentView = view;
+        this.activeView = view;
         container.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active', 'dash-active'));
         item.classList.add('active', 'dash-active');
 
@@ -1354,8 +1489,8 @@ export const WorkerFrontend = {
         const worker = workers.find(w => w.id === StorageService.getSelectedWorkerId()) || workers[0];
         const allBookings = StorageService.getBookings();
         const bookings = allBookings.filter(b => b.workerId === worker.id);
-        const pendingRequests = bookings.filter(b => b.status === 'Pending confirmation');
-        const activeJobs = bookings.filter(b => !['Pending confirmation', 'Job completed', 'Cancelled', 'Disputed'].includes(b.status));
+        const pendingRequests = bookings.filter(b => ['Pending confirmation', 'Pending'].includes(b.status));
+        const activeJobs = bookings.filter(b => !['Pending confirmation', 'Pending', 'Job completed', 'Cancelled', 'Disputed'].includes(b.status));
         const completedJobs = bookings.filter(b => b.status === 'Job completed');
         const totalEarnings = completedJobs.reduce((sum, b) => sum + (b.agreedPrice || 0), 0);
 
@@ -1404,6 +1539,7 @@ export const WorkerFrontend = {
     if (jumpEarnings) {
       jumpEarnings.onclick = () => {
         this.currentView = 'earnings';
+        this.activeView = 'earnings';
         this.render(container);
       };
     }
@@ -1425,6 +1561,9 @@ export const WorkerFrontend = {
       case 'earnings':
       case 'transactions':
         this.attachEarningsEvents(container, worker);
+        break;
+      case 'services':
+        this.attachServicesEvents(container, worker);
         break;
       case 'schedule':
         this.attachScheduleEvents(container, worker);
@@ -1766,11 +1905,25 @@ export const WorkerFrontend = {
     container.querySelectorAll('.accept-request-btn').forEach(btn => {
       btn.onclick = () => {
         const bookingId = btn.getAttribute('data-id');
+        const before = StorageService.getBookings().find(b => b.id === bookingId);
+        // Navigate to Active Jobs *before* saving so the storage-change
+        // re-render (and our own render) lands on the active list.
+        this.currentView = 'active-jobs';
+        this.activeView = 'active-jobs';
         let bookings = StorageService.getBookings();
         bookings = bookings.map(b => b.id === bookingId ? BookingService.acceptBooking(b) : b);
+        const after = bookings.find(b => b.id === bookingId);
+        if (!after || after.status === before?.status) {
+          // No-op (e.g. waiting on a customer counter acceptance)
+          Toast.show('This job is waiting for the customer to accept your counter-offer.', 'warning');
+        } else {
+          Toast.show(`Booking accepted! Moved to Active Projects.`, 'success');
+        }
         StorageService.saveBookings(bookings);
-        Toast.show(`Booking accepted! Moved to Active Projects.`, 'success');
-        this.render(container);
+        // App re-renders on storage change, detaching this container.
+        // Only re-render directly when the container is still in the DOM
+        // (standalone/test renders without the app shell).
+        if (container && container.isConnected) this.render(container);
       };
     });
 
@@ -1782,7 +1935,7 @@ export const WorkerFrontend = {
         bookings = bookings.map(b => b.id === bookingId ? BookingService.rejectBooking(b) : b);
         StorageService.saveBookings(bookings);
         Toast.show(`Booking declined.`, 'info');
-        this.render(container);
+        if (container && container.isConnected) this.render(container);
       };
     });
 
@@ -1803,7 +1956,7 @@ export const WorkerFrontend = {
         bookings = bookings.map(b => b.id === bookingId ? BookingService.setEnRoute(b) : b);
         StorageService.saveBookings(bookings);
         Toast.show(`Status: En route to customer.`, 'info');
-        this.render(container);
+        if (container && container.isConnected) this.render(container);
       };
     });
 
@@ -1815,7 +1968,7 @@ export const WorkerFrontend = {
         bookings = bookings.map(b => b.id === bookingId ? BookingService.setArrived(b) : b);
         StorageService.saveBookings(bookings);
         Toast.show(`Status: Arrived at location.`, 'info');
-        this.render(container);
+        if (container && container.isConnected) this.render(container);
       };
     });
 
@@ -1827,7 +1980,7 @@ export const WorkerFrontend = {
         bookings = bookings.map(b => b.id === bookingId ? BookingService.startJob(b) : b);
         StorageService.saveBookings(bookings);
         Toast.show(`Job in progress!`, 'success');
-        this.render(container);
+        if (container && container.isConnected) this.render(container);
       };
     });
 
@@ -1846,7 +1999,7 @@ export const WorkerFrontend = {
         });
         StorageService.saveBookings(bookings);
         Toast.show(`🎉 Job completed! Verified earnings credited.`, 'success');
-        this.render(container);
+        if (container && container.isConnected) this.render(container);
       };
     });
   },
@@ -2740,6 +2893,7 @@ export const WorkerFrontend = {
     if (seeAllReq) {
       seeAllReq.onclick = () => {
         this.currentView = 'requests';
+        this.activeView = 'requests';
         this.render(container);
       };
     }
@@ -2748,6 +2902,7 @@ export const WorkerFrontend = {
     if (seeAllJobs) {
       seeAllJobs.onclick = () => {
         this.currentView = 'active-jobs';
+        this.activeView = 'active-jobs';
         this.render(container);
       };
     }
@@ -2756,6 +2911,7 @@ export const WorkerFrontend = {
     if (nextJobBtn) {
       nextJobBtn.onclick = () => {
         this.currentView = 'active-jobs';
+        this.activeView = 'active-jobs';
         this.render(container);
       };
     }

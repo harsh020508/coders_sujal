@@ -85,6 +85,7 @@ export const App = {
       ProfileDropdown.close(false);
     }
     if (role === 'worker') {
+      WorkerFrontend.currentView = 'overview';
       WorkerFrontend.activeView = 'overview';
       if (options.openSetupModal !== false) {
         WorkerFrontend.shouldOpenSetupModal = true;

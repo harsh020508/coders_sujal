@@ -98,12 +98,14 @@ export const CustomerFrontend = {
   },
 
   sortWorkers(workers) {
+    const minPrice = (w) => {
+      const vals = Object.values(w.specialities || {}).map(s => s.startingPrice || 350);
+      return vals.length ? Math.min(...vals) : (Number(w.hourlyRate || w.hourly_rate) || 350);
+    };
     return [...workers].sort((a, b) => {
       if (this.sortBy === 'rating') return (b.ratingAverage || 0) - (a.ratingAverage || 0);
       if (this.sortBy === 'price_low') {
-        const aMin = Math.min(...Object.values(a.specialities || {}).map(s => s.startingPrice || 350));
-        const bMin = Math.min(...Object.values(b.specialities || {}).map(s => s.startingPrice || 350));
-        return aMin - bMin;
+        return minPrice(a) - minPrice(b);
       }
       if (this.sortBy === 'distance') return (a.distance || 0) - (b.distance || 0);
       return (a.matchScore || 0) - (b.matchScore || 0);
