@@ -79,6 +79,7 @@ export const CustomerFrontend = {
     `;
 
     this.attachEvents(container);
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
   },
 
   sortWorkers(workers) {
@@ -110,10 +111,10 @@ export const CustomerFrontend = {
           <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Browse by Category</span>
         </div>
         <div class="cat-scroll-row" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; -webkit-overflow-scrolling: touch;">
-          <button class="chip ${this.currentCategory === 'all' ? 'active' : ''} cat-shortcut-btn" data-cat="all">🌟 All Categories</button>
+          <button class="chip ${this.currentCategory === 'all' ? 'active' : ''} cat-shortcut-btn" data-cat="all"><i data-lucide="layout-grid" class="lucide-xs"></i> All Categories</button>
           ${CATEGORIES.map(c => `
             <button class="chip ${this.currentCategory === c.id ? 'active' : ''} cat-shortcut-btn" data-cat="${esc(c.id)}">
-              <span>${esc(c.icon)}</span> ${esc(c.name)}
+              <i data-lucide="${esc(c.lucideIcon || 'wrench')}" class="lucide-xs"></i> ${esc(c.name)}
             </button>
           `).join('')}
         </div>
@@ -140,15 +141,15 @@ export const CustomerFrontend = {
           Available Professionals Nearby (${eligibleWorkers.length})
         </h3>
         ${this.comparedWorkers.length > 0 ? `
-          <button class="btn btn-outline btn-sm" id="open-comparison-modal" style="font-size: 0.8rem;">
-            ⚖️ View Comparison (${this.comparedWorkers.length})
+          <button class="btn btn-outline btn-sm" id="open-comparison-modal" style="font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px;">
+            <i data-lucide="scale" class="lucide-xs"></i> View Comparison (${this.comparedWorkers.length})
           </button>
         ` : ''}
       </div>
 
       ${eligibleWorkers.length === 0 ? `
         <div class="empty-state">
-          <div class="empty-state-icon">🔍</div>
+          <div class="empty-state-icon"><i data-lucide="search-x" class="lucide-lg" style="color: var(--text-muted);"></i></div>
           <h3>No online professionals found</h3>
           <p>Try selecting a different service category, expanding your location, or switching worker online in worker mode.</p>
           <button class="btn btn-outline btn-sm" id="reset-filter-btn" style="margin-top: 0.5rem;">Reset Filters</button>
@@ -164,7 +165,10 @@ export const CustomerFrontend = {
             return `
               <div class="worker-card">
                 <div class="worker-header">
-                  <img src="${esc(w.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150')}" alt="${esc(w.name)}" class="worker-avatar" loading="lazy">
+                  <div class="worker-avatar-box">
+                    <img src="${esc(w.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150')}" alt="${esc(w.name)}" class="worker-avatar" loading="lazy">
+                    <div class="worker-online-dot" title="Online & Discoverable"></div>
+                  </div>
                   <div class="worker-info">
                     <h3>
                       ${esc(w.name)}
@@ -236,7 +240,7 @@ export const CustomerFrontend = {
 
       ${bookings.length === 0 ? `
         <div class="empty-state">
-          <div class="empty-state-icon">📅</div>
+          <div class="empty-state-icon"><i data-lucide="calendar" class="lucide-lg" style="color: var(--text-muted);"></i></div>
           <h3>No bookings found yet</h3>
           <p>Browse our verified home service experts and book your first service in minutes!</p>
           <button class="btn btn-primary btn-sm" id="empty-discover-btn">Discover Services</button>
@@ -347,9 +351,11 @@ export const CustomerFrontend = {
           eligible = this.sortWorkers(eligible);
           mainContent.innerHTML = this.renderDiscoverView(eligible);
           this.attachDiscoverEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         } else if (view === 'bookings') {
           mainContent.innerHTML = this.renderBookingsView();
           this.attachBookingsEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         } else if (view === 'compare') {
           this.showComparisonModal(container);
         } else if (view === 'help-centre') {
@@ -363,6 +369,7 @@ export const CustomerFrontend = {
     });
 
     this.attachDiscoverEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
   },
 
   getSupportCategoryIcon(categoryId) {
@@ -384,6 +391,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     }
 
@@ -397,6 +405,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     }
 
@@ -409,6 +418,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     });
 
@@ -424,6 +434,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     }
 
@@ -584,6 +595,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     }
 
@@ -604,6 +616,7 @@ export const CustomerFrontend = {
         Toast.show(`Counter-offer accepted! Appointment confirmed.`, 'success');
         container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
         this.attachBookingsEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     });
 
@@ -618,6 +631,7 @@ export const CustomerFrontend = {
           Toast.show('Counter-offer declined. Booking cancelled.', 'info');
           container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
           this.attachBookingsEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         }
       });
     });
@@ -632,6 +646,7 @@ export const CustomerFrontend = {
           Toast.show('Booking cancelled successfully', 'info');
           container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
           this.attachBookingsEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         }
       });
     });

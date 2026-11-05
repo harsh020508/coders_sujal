@@ -54,7 +54,7 @@ export const WorkerFrontend = {
               ${workers.map(w => `<option value="${esc(w.id)}" ${w.id === worker.id ? 'selected' : ''}>${esc(w.name)} (${Object.keys(w.specialities || {}).join(', ') || 'Pro'})</option>`).join('')}
             </select>
             <button class="btn btn-outline btn-xs" id="create-new-worker-btn">
-              + Register New Worker
+              <i data-lucide="user-plus" class="lucide-xs"></i> Register New Worker
             </button>
           </div>
 
@@ -109,6 +109,7 @@ export const WorkerFrontend = {
     `;
 
     this.attachEvents(container);
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
   },
 
   renderMainContent(view, worker, pendingRequests, activeJobs, completedJobs, totalEarnings, bookings) {
@@ -154,7 +155,7 @@ export const WorkerFrontend = {
         </div>
         <div>
           <button class="btn ${isOnline ? 'btn-primary' : 'btn-outline'} btn-sm" id="quick-toggle-online">
-            ${isOnline ? '🟢 You Are Online' : '🔴 Go Online'}
+            <i data-lucide="power" class="lucide-xs"></i> ${isOnline ? 'You Are Online' : 'Go Online'}
           </button>
         </div>
       </div>
@@ -269,13 +270,13 @@ export const WorkerFrontend = {
                     <button class="btn btn-outline btn-sm enroute-job-btn" data-id="${esc(b.id)}">🚗 I'm On My Way</button>
                   ` : ''}
                   ${b.status === 'Worker en route' ? `
-                    <button class="btn btn-outline btn-sm arrived-job-btn" data-id="${esc(b.id)}">📍 Confirm Arrival</button>
+                    <button class="btn btn-outline btn-sm arrived-job-btn" data-id="${esc(b.id)}"><i data-lucide="map-pin" class="lucide-xs"></i> Confirm Arrival</button>
                   ` : ''}
                   ${['Confirmed', 'Worker en route', 'Worker arrived'].includes(b.status) ? `
-                    <button class="btn btn-primary btn-sm start-job-btn" data-id="${esc(b.id)}">▶️ Start Job</button>
+                    <button class="btn btn-primary btn-sm start-job-btn" data-id="${esc(b.id)}"><i data-lucide="play" class="lucide-xs"></i> Start Job</button>
                   ` : ''}
                   ${b.status === 'Job in progress' ? `
-                    <button class="btn btn-success btn-sm complete-job-btn" data-id="${esc(b.id)}">✅ Complete Job</button>
+                    <button class="btn btn-success btn-sm complete-job-btn" data-id="${esc(b.id)}"><i data-lucide="check-circle" class="lucide-xs"></i> Complete Job</button>
                   ` : ''}
                 </div>
               </div>
@@ -706,7 +707,7 @@ export const WorkerFrontend = {
             <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">When offline, your profile will not appear in customer searches.</p>
           </div>
           <button class="btn ${isOnline ? 'btn-primary' : 'btn-outline'} btn-sm" id="toggle-online-status">
-            ${isOnline ? '🟢 You Are Online' : '🔴 You Are Offline'}
+            <i data-lucide="power" class="lucide-xs"></i> ${isOnline ? 'You Are Online' : 'You Are Offline'}
           </button>
         </div>
 
@@ -716,7 +717,7 @@ export const WorkerFrontend = {
             <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">Temporarily pause new requests while you finish existing jobs.</p>
           </div>
           <button class="btn ${worker.pauseNewBookings ? 'btn-danger' : 'btn-outline'} btn-sm" id="toggle-pause-bookings">
-            ${worker.pauseNewBookings ? '⏸️ Bookings Paused' : '▶️ Accepting Requests'}
+            <i data-lucide="pause-circle" class="lucide-xs"></i> ${worker.pauseNewBookings ? 'Bookings Paused' : 'Accepting Requests'}
           </button>
         </div>
 
@@ -817,7 +818,7 @@ export const WorkerFrontend = {
 
         <form id="onboarding-form" style="background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: var(--radius-xl); padding: clamp(20px, 3.5vw, 36px); display: flex; flex-direction: column; gap: 1.25rem; box-shadow: var(--shadow-card); width: 100%;">
           <h3 style="font-size: 1.1rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-            Step 1 — Basic Profile Information
+            <i data-lucide="user" class="lucide-sm"></i> Step 1 — Basic Profile Information
           </h3>
 
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
@@ -865,7 +866,7 @@ export const WorkerFrontend = {
           </div>
 
           <h3 style="font-size: 1.1rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 0.5rem;">
-            Step 2 — Select Specialities &amp; Services
+            <i data-lucide="wrench" class="lucide-sm"></i> Step 2 — Select Specialities &amp; Services
           </h3>
           <p style="font-size: 0.85rem; color: var(--text-secondary); margin: -0.5rem 0 0;">
             Select one or more categories you provide services for:
@@ -876,7 +877,7 @@ export const WorkerFrontend = {
               <label style="display: flex; align-items: center; gap: 0.6rem; background: var(--bg-secondary); padding: 0.65rem 0.85rem; border-radius: 8px; border: 1.5px solid var(--border-color); cursor: pointer; transition: all 0.15s ease;">
                 <input type="checkbox" name="speciality" value="${esc(c.id)}" style="width: 16px; height: 16px;" ${c.id === 'electrician' ? 'checked' : ''}>
                 <div>
-                  <div style="font-weight: 600; font-size: 0.85rem;">${esc(c.icon)} ${esc(c.name)}</div>
+                  <div style="font-weight: 600; font-size: 0.85rem;"><i data-lucide="${esc(c.lucideIcon || 'wrench')}" class="lucide-xs"></i> ${esc(c.name)}</div>
                   <div style="font-size: 0.75rem; color: var(--text-muted);">From ₹350</div>
                 </div>
               </label>
@@ -1065,6 +1066,7 @@ export const WorkerFrontend = {
     }
 
     this.attachActionEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
   },
 
   attachViewEvents(view, container, worker) {
