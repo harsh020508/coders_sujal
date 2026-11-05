@@ -386,6 +386,20 @@ setInterval(() => {
   }
 }, 15000);
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`LocalKaam backend server running at http://localhost:${PORT}/ (and on local network)`);
+let currentPort = Number(PORT);
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    currentPort += 1;
+    console.log('Port in use, automatically retrying on port ' + currentPort + '...');
+    setTimeout(() => { server.listen(currentPort, '0.0.0.0'); }, 250);
+  } else {
+    console.error('Server error:', err);
+  }
+});
+server.listen(currentPort, '0.0.0.0', () => {
+  try { fs.writeFileSync(path.join(__dirname, 'active_port.txt'), String(currentPort), 'utf8'); } catch(e){}
+  console.log('LocalKaam backend server running at http://localhost:' + currentPort + '/ (and on local network)');
+  import('node:child_process').then(({ exec }) => {
+    exec('start http://localhost:' + currentPort + '/#worker');
+  }).catch(() => {});
 });
