@@ -4,7 +4,8 @@
 // displays structured diagnosis with INR price range, safety alerts, and materials,
 // and integrates directly with Map discovery and Booking negotiation.
 
-import { CATEGORIES } from './data.js';
+import { CATEGORIES, INITIAL_WORKERS } from './data.js';
+import { getPricingForTask } from './pricingTable.js';
 import { Toast } from './toast.js';
 import { esc } from './utils.js';
 
@@ -83,7 +84,7 @@ export const PhotoDiagnosis = {
                   <label style="font-size: 0.88rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">
                     Additional Notes (Optional):
                   </label>
-                  <textarea id="photo-note-input" class="form-control" rows="3" placeholder="Describe symptoms: e.g. dripping under the sink for 2 days, clicking noise, burning smell, or water valve stuck..." style="width: 100%; font-size: 0.88rem; resize: vertical;"></textarea>
+                  <textarea id="photo-note-input" class="form-control" rows="3" placeholder="Describe the problem: e.g. kitchen tap drips all day, switch sparks, door lock broken... We'll pick the right professional for this." style="width: 100%; font-size: 0.88rem; resize: vertical;">${esc(this.currentNote || '')}</textarea>
                 </div>
 
                 <div style="display: flex; gap: 0.75rem; align-items: center;">
@@ -138,129 +139,128 @@ export const PhotoDiagnosis = {
     this.attachEvents(container);
   },
 
+  getFallbackFixSteps(category, materials = []) {
+    const steps = {
+      electrician: ['Turn OFF the breaker and check wires are dead with a tester', 'Remove the burnt switch/socket and damaged wires', 'Fit the new part, tighten terminals and use tape', 'Turn ON the breaker and test for sparking'],
+      plumber: ['Turn off the water valve', 'Remove the leaking tap part and clean the joint', 'Fit the new washer/seal with Teflon tape', 'Turn water ON and check for leaks'],
+      painter: ['Scrape loose paint and sand the wall', 'Apply primer and let it dry', 'Apply paint / waterproofing coat', 'Check the finish and clean up'],
+      carpenter: ['Remove the damaged part and measure replacements', 'Fit new hinges/lock with screws', 'Check the door/drawer moves smoothly', 'Finish and tidy up'],
+      cleaner: ['Clear the area', 'Scrub / deep-clean the surface', 'Rinse, disinfect and dry', 'Final check'],
+      appliance_repair: ['Unplug the appliance', 'Replace the faulty part', 'Test run for noise / leak / heat', 'Clean up and check with you']
+    };
+    const base = steps[category] || steps.plumber;
+    if (materials && materials.length) base[1] = base[1] + ' using ' + materials.slice(0, 2).join(', ');
+    return base;
+  },
+
+  // Best worker from local storage, with catalog fallback (works even without the Node backend)
+  pickClientBestWorker(category) {
+    try {
+      let workers = INITIAL_WORKERS || [];
+      try {
+        const raw = localStorage.getItem('localkaam_workers');
+        const stored = raw ? JSON.parse(raw) : null;
+        if (Array.isArray(stored) && stored.length) workers = stored;
+      } catch (e) { /* use catalog */ }
+      const wanted = category === 'cleaner' ? ['cleaner', 'cleaning'] : [category];
+      const scored = workers
+        .filter((w) => w && wanted.some((c) => (w.specialities && w.specialities[c]) || w.category === c))
+        .sort((a, b) => (b.ratingAverage || 0) - (a.ratingAverage || 0) || (b.ratingCount || 0) - (a.ratingCount || 0))
+        .slice(0, 3)
+        .map((w) => {
+          const spec = wanted.map((c) => w.specialities && w.specialities[c]).find(Boolean) || {};
+          return { id: w.id, name: w.name, phone: w.phone, ratingAverage: w.ratingAverage, ratingCount: w.ratingCount, experience: w.experience, baseLocality: w.baseLocality, serviceArea: w.serviceArea, avatar: w.avatar || null, startingPrice: spec.startingPrice || null, visitingCharge: spec.visitingCharge || null, certifications: spec.certifications || null };
+        });
+      return scored;
+    } catch (e) {
+      return [];
+    }
+  },
+
+  // Fill in missing cause / fix_steps / best worker so the result is always complete
+  enrichDiagnosis(d) {
+    if (!d) return d;
+    // Wrong / unclear image: do NOT invent a fix, price or worker
+    if (d.problem_found === false) {
+      d.fix_steps = [];
+      d.best_worker = null;
+      d.recommended_workers = [];
+      return d;
+    }
+    if (!d.fix_steps || !d.fix_steps.length) d.fix_steps = this.getFallbackFixSteps(d.service_category, d.likely_materials || []);
+    if (!d.cause) d.cause = d.issue ? `Likely cause: ${d.issue}` : 'Needs on-site inspection.';
+    if (!d.best_worker && d.service_category) {
+      const all = this.pickClientBestWorker(d.service_category);
+      if (!d.recommended_workers || !d.recommended_workers.length) d.recommended_workers = all;
+      d.best_worker = all[0] || null;
+    }
+    return d;
+  },
+
   renderDiagnosisCard(diag) {
-    const urgencyBadge = {
-      emergency: { label: '🚨 EMERGENCY HAZARD', bg: '#fee2e2', color: '#dc2626', pulse: true },
-      high: { label: '⚠️ High Urgency', bg: '#ffedd5', color: '#c2410c', pulse: false },
-      medium: { label: '⚡ Medium Urgency', bg: '#e0f2fe', color: '#0369a1', pulse: false },
-      low: { label: 'ℹ️ Low Urgency', bg: '#f0fdf4', color: '#15803d', pulse: false }
-    }[diag.urgency] || { label: 'Normal', bg: '#f3f4f6', color: '#374151' };
-
+    const urgencyText = { emergency: 'Emergency', high: 'High', medium: 'Medium', low: 'Low' }[diag.urgency] || 'Normal';
     const catObj = CATEGORIES.find(c => c.id === diag.service_category) || { name: diag.service_category, icon: '🛠️' };
+    const bw = diag.best_worker || null;
+    const fixSteps = Array.isArray(diag.fix_steps) ? diag.fix_steps : [];
+    const materials = Array.isArray(diag.likely_materials) ? diag.likely_materials : [];
 
-    return `
-      <div style="border: 2px solid var(--accent-primary); border-radius: 12px; padding: 1.5rem; background: var(--bg-primary); box-shadow: var(--shadow-subtle);">
-        
-        <!-- Header with Urgency and Category -->
-        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span class="badge" style="background: ${urgencyBadge.bg}; color: ${urgencyBadge.color}; font-weight: 700; font-size: 0.82rem; padding: 4px 10px; border-radius: 6px; ${urgencyBadge.pulse ? 'animation: pulseRing 1.5s infinite;' : ''}">
-              ${urgencyBadge.label}
-            </span>
-            <span style="font-size: 0.8rem; color: var(--text-secondary);">
-              Confidence: <strong>${diag.confidence ? diag.confidence.toUpperCase() : 'HIGH'}</strong>
-            </span>
-          </div>
-
-          <!-- Editable Detected Service Category -->
-          <div style="display: flex; align-items: center; gap: 0.4rem;">
-            <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">Service Needed:</label>
-            <select id="edit-detected-category" class="form-select" style="font-size: 0.85rem; padding: 0.35rem 0.65rem; font-weight: 700; color: var(--accent-primary);">
-              <option value="plumber" ${diag.service_category === 'plumber' ? 'selected' : ''}>🔧 Plumber</option>
-              <option value="electrician" ${diag.service_category === 'electrician' ? 'selected' : ''}>⚡ Electrician</option>
-              <option value="carpenter" ${diag.service_category === 'carpenter' ? 'selected' : ''}>🪚 Carpenter</option>
-              <option value="painter" ${diag.service_category === 'painter' ? 'selected' : ''}>🎨 Painter</option>
-              <option value="cleaner" ${diag.service_category === 'cleaner' ? 'selected' : ''}>🧹 Cleaner</option>
-              <option value="appliance_repair" ${diag.service_category === 'appliance_repair' ? 'selected' : ''}>🔌 Appliance Repair</option>
+    // Wrong / unclear image: show the retake message BUT keep the flow usable —
+    // the user can pick a service and book anyway (no dead end for anyone).
+    if (diag.problem_found === false) {
+      const defaultCat = diag.service_category || 'plumber';
+      const pricing = getPricingForTask(defaultCat, diag.issue || '');
+      return `
+        <div style="border: 1.5px solid #f59e0b; border-radius: 12px; padding: 1.25rem; background: var(--bg-primary); text-align: center;">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
+          <h2 style="font-size: 1.2rem; font-weight: 800; margin: 0 0 0.5rem 0;">Could not fully read this photo</h2>
+          <div style="font-size: 0.92rem; color: var(--text-secondary); max-width: 520px; margin: 0 auto 1rem auto;">${esc(diag.follow_up_question || 'Please upload a clear, well-lit photo of the broken thing (tap, switch, wall, door, appliance) and try again.')}</div>
+          <div style="max-width: 460px; margin: 0 auto; text-align: left; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.9rem 1rem;">
+            <div style="font-size: 0.88rem; margin-bottom: 0.5rem;"><strong>Or continue anyway:</strong> pick the closest service and book — a worker will confirm on site.</div>
+            <select id="unknown-category" class="form-select" style="width: 100%; font-weight: 700;">
+              <option value="plumber" ${defaultCat === 'plumber' ? 'selected' : ''}>🔧 Plumber</option>
+              <option value="electrician" ${defaultCat === 'electrician' ? 'selected' : ''}>⚡ Electrician</option>
+              <option value="carpenter" ${defaultCat === 'carpenter' ? 'selected' : ''}>🪚 Carpenter</option>
+              <option value="painter" ${defaultCat === 'painter' ? 'selected' : ''}>🎨 Painter</option>
+              <option value="cleaner" ${defaultCat === 'cleaner' ? 'selected' : ''}>🧹 Cleaner</option>
+              <option value="appliance_repair" ${defaultCat === 'appliance_repair' ? 'selected' : ''}>🔌 Appliance Repair</option>
             </select>
+            <div id="unknown-price" style="font-size: 1.3rem; font-weight: 800; color: #15803d; margin: 0.6rem 0;">₹${pricing.price_min} – ₹${pricing.price_max}</div>
+            <button class="btn btn-primary" id="btn-book-unknown" style="width: 100%;">Book Now — ₹${pricing.price_min}</button>
+            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.5rem;">For a sharper diagnosis, retake the photo close-up in good light.</div>
           </div>
         </div>
+      `;
+    }
 
-        <!-- Prominent Safety Warning Alert Box (if present) -->
-        ${diag.safety_warning ? `
-          <div style="background: #fef2f2; border: 1.5px solid #ef4444; border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1.25rem; display: flex; gap: 0.75rem; align-items: flex-start;">
-            <span style="font-size: 1.5rem; flex-shrink: 0;">⚡</span>
-            <div>
-              <div style="font-weight: 800; color: #b91c1c; font-size: 0.92rem; margin-bottom: 2px;">CRITICAL SAFETY HAZARD DETECTED</div>
-              <div style="color: #991b1b; font-size: 0.85rem; line-height: 1.4;">${esc(diag.safety_warning)}</div>
-            </div>
+    // ONE simple result card: issue, cause, fix, price, best worker
+    return `
+      <div style="border: 2px solid var(--accent-primary); border-radius: 12px; padding: 1.25rem; background: var(--bg-primary);">
+        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem;">${catObj.icon} ${esc(catObj.name)} · ${urgencyText} urgency · ~${diag.estimated_duration_minutes || 45} mins</div>
+        <h2 style="font-size: 1.3rem; font-weight: 800; margin: 0 0 0.5rem 0;">${esc(diag.issue)}</h2>
+        ${diag.safety_warning ? `<div style="background:#fef2f2; border:1px solid #ef4444; border-radius:8px; padding:0.7rem 0.9rem; color:#b91c1c; font-size:0.88rem; margin-bottom:0.75rem;">⚠️ ${esc(diag.safety_warning)}</div>` : ''}
+        ${diag.cause ? `<div style="font-size:0.92rem; margin-bottom:0.75rem;"><strong>Why:</strong> ${esc(diag.cause)}</div>` : ''}
+        ${fixSteps.length ? `
+          <div style="font-size:0.92rem; margin-bottom:0.75rem;">
+            <strong>How it will be fixed:</strong>
+            <ol style="margin:0.35rem 0 0 1.2rem; line-height:1.55;">${fixSteps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>
+          </div>` : ''}
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; background:var(--bg-card); border:1px solid var(--border-color); border-radius:8px; padding:0.8rem 1rem; margin-bottom:0.75rem;">
+          <div>
+            <div style="font-size:0.75rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.05em;">Estimated price</div>
+            <div style="font-size:1.6rem; font-weight:800; color:#15803d;">₹${diag.price_min} – ₹${diag.price_max}</div>
+            ${materials.length ? `<div style="font-size:0.8rem; color:var(--text-secondary);">Materials: ${esc(materials.join(', '))}</div>` : ''}
           </div>
-        ` : ''}
-
-        <!-- Issue Title -->
-        <div style="margin-bottom: 1.25rem;">
-          <h2 style="font-size: 1.25rem; font-weight: 800; margin: 0 0 0.35rem 0; color: var(--text-primary);">
-            ${esc(diag.issue)}
-          </h2>
-          ${!diag.problem_found && diag.follow_up_question ? `
-            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.75rem; color: #92400e; font-size: 0.85rem; margin-top: 0.5rem;">
-              <strong>Clarification Needed:</strong> ${esc(diag.follow_up_question)}
-            </div>
-          ` : ''}
         </div>
-
-        <!-- Metrics Grid: Price Range & Duration -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
-          
-          <!-- Price Estimate Box -->
-          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
-            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 0.25rem;">
-              Estimated Labor Cost
+        ${bw ? `
+          <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; background:var(--accent-light, var(--bg-card)); border:1px solid var(--accent-primary); border-radius:8px; padding:0.8rem 1rem;">
+            ${bw.avatar ? `<img src="${esc(bw.avatar)}" alt="" style="width:48px; height:48px; border-radius:50%; object-fit:cover;" />` : ''}
+            <div style="flex:1; min-width:160px;">
+              <div style="font-weight:800;">⭐ Best worker: ${esc(bw.name)}</div>
+              <div style="font-size:0.85rem; color:var(--text-secondary);">⭐ ${bw.ratingAverage ?? '—'} (${bw.ratingCount ?? 0} reviews)${bw.experience ? ` · ${bw.experience} yrs` : ''}${bw.startingPrice ? ` · From ₹${bw.startingPrice}` : ''}${bw.serviceArea ? ` · ${esc(bw.serviceArea)}` : ''}</div>
             </div>
-            <div style="font-size: 1.75rem; font-weight: 800; color: #15803d; line-height: 1.2;">
-              ₹${diag.price_min} – ₹${diag.price_max}
-            </div>
-            <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.25rem;">
-              * AI estimate based on Mumbai market rates; final price is negotiated with worker
-            </div>
-          </div>
-
-          <!-- Job Duration Box -->
-          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
-            <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 0.25rem;">
-              Estimated Job Time
-            </div>
-            <div style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary); line-height: 1.2;">
-              ~${diag.estimated_duration_minutes || 45} mins
-            </div>
-            <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.25rem;">
-              Standard residential completion time
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Likely Materials Needed -->
-        ${Array.isArray(diag.likely_materials) && diag.likely_materials.length > 0 ? `
-          <div style="margin-bottom: 1.5rem;">
-            <label style="font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">
-              Likely Parts & Materials Needed:
-            </label>
-            <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
-              ${diag.likely_materials.map(m => `
-                <span class="badge" style="background: var(--bg-secondary); border: 1px solid var(--border-color); font-size: 0.78rem; padding: 4px 10px; border-radius: 20px;">
-                  📦 ${esc(m)}
-                </span>
-              `).join('')}
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- Next Step Action Buttons -->
-        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; pt-3; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-          
-          <!-- CTA 1: Find on Map -->
-          <button class="btn btn-outline" id="btn-find-service-map" style="flex: 1; min-width: 200px; display: flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.65rem 1rem;">
-            <span>🗺️</span> Find ${esc(catObj.name)} on Live Map
-          </button>
-
-          <!-- CTA 2: Book Service Now with Pre-fill -->
-          <button class="btn btn-primary" id="btn-book-with-diagnosis" style="flex: 1.3; min-width: 240px; display: flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.65rem 1rem; font-weight: 700;">
-            <span>⚡</span> Book Now with AI Estimate (₹${diag.price_min})
-          </button>
-
-        </div>
-
+            <button class="btn btn-primary" id="btn-book-best-worker" data-worker-id="${esc(bw.id || '')}">Book ${esc((bw.name || 'worker').split(' ')[0])} — ₹${diag.price_min}</button>
+          </div>` : `
+          <button class="btn btn-primary" id="btn-book-with-diagnosis" style="width:100%;">Book Now — ₹${diag.price_min}</button>`}
       </div>
     `;
   },
@@ -318,13 +318,16 @@ export const PhotoDiagnosis = {
       return;
     }
 
+    // Capture the description box BEFORE re-rendering (render() wipes the textarea,
+    // so reading it afterwards always returned "" and the note was ignored).
+    const noteInput0 = container.querySelector('#photo-note-input');
+    const note = noteInput0 ? noteInput0.value.trim() : '';
+    this.currentNote = note;
+
     this.isLoading = true;
     this.errorMessage = null;
     this.activeDiagnosis = null;
     this.render(container);
-
-    const noteInput = container.querySelector('#photo-note-input');
-    const note = noteInput ? noteInput.value.trim() : '';
 
     try {
       let data = null;
@@ -354,21 +357,33 @@ export const PhotoDiagnosis = {
       let diagnosis = (data && data.diagnosis) ? data.diagnosis : data;
 
       // Ensure valid diagnosis structure; if missing or invalid, use client demo fallback
-      if (!diagnosis || (!diagnosis.problem_found && !diagnosis.issue)) {
+      // NOTE: problem_found===false IS valid (wrong / unclear image) — accept it
+      // and show the "please retake" message instead of inventing a problem.
+      if (!diagnosis || typeof diagnosis.problem_found !== 'boolean') {
         diagnosis = this.getClientFallbackDiagnosis(note);
       }
 
-      this.activeDiagnosis = diagnosis;
-      Toast.show('Diagnosis complete! Verified Mumbai estimate generated.', 'success');
+      // Always complete the result (cause, fix steps, best worker)
+      this.activeDiagnosis = this.enrichDiagnosis(diagnosis);
+      if (this.activeDiagnosis.problem_found === false) {
+        Toast.show('Please upload a clear photo of the broken item', 'info');
+      } else {
+        Toast.show('Diagnosis complete! Verified Mumbai estimate generated.', 'success');
+      }
 
     } catch (err) {
       console.error('[Diagnosis error]', err);
       // Safe fallback so demo never fails
-      this.activeDiagnosis = this.getClientFallbackDiagnosis(note);
+      this.activeDiagnosis = this.enrichDiagnosis(this.getClientFallbackDiagnosis(note));
       Toast.show('Diagnosis complete (Demo Mode)', 'info');
     } finally {
       this.isLoading = false;
       this.render(container);
+      // Show the result right away — scroll to the single result card
+      const resultEl = container.querySelector('#photo-result-container');
+      if (resultEl && this.activeDiagnosis) {
+        resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
   },
 
@@ -381,11 +396,13 @@ export const PhotoDiagnosis = {
       return {
         problem_found: true,
         issue: 'Faulty electrical switchboard with exposed wiring',
+        cause: 'Loose terminals and a burnt switch/socket causing overheating and sparking risk',
         service_category: 'electrician',
         urgency: 'emergency',
         price_min: 800,
         price_max: 2500,
         likely_materials: ['MCB breaker', 'Electrical tape', 'Wire connectors'],
+        fix_steps: this.getFallbackFixSteps('electrician', ['MCB breaker', 'Electrical tape']),
         estimated_duration_minutes: 45,
         safety_warning: 'Do NOT touch exposed wires. Turn off the main breaker immediately.',
         confidence: 'high',
@@ -396,11 +413,13 @@ export const PhotoDiagnosis = {
       return {
         problem_found: true,
         issue: 'Damp wall with paint peeling and possible seepage',
+        cause: 'Water seepage trapped behind paint',
         service_category: 'painter',
         urgency: 'medium',
         price_min: 1500,
         price_max: 5000,
         likely_materials: ['Primer', 'Waterproof putty', 'Emulsion paint'],
+        fix_steps: this.getFallbackFixSteps('painter', ['Primer', 'Waterproof putty']),
         estimated_duration_minutes: 180,
         safety_warning: null,
         confidence: 'high',
@@ -411,30 +430,52 @@ export const PhotoDiagnosis = {
       return {
         problem_found: true,
         issue: 'Damaged wooden door hinge and frame repair needed',
+        cause: 'Loose/worn hinges and screws holding the door frame',
         service_category: 'carpenter',
         urgency: 'low',
         price_min: 500,
         price_max: 2000,
         likely_materials: ['Door hinges', 'Wood screws', 'Wood filler'],
+        fix_steps: this.getFallbackFixSteps('carpenter', ['Door hinges', 'Wood screws']),
         estimated_duration_minutes: 60,
         safety_warning: null,
         confidence: 'high',
         follow_up_question: null
       };
     }
-    // Default: leaking tap / plumber
+    // Default: leaking tap / plumber (only when the note mentions plumbing)
+    if (n.includes('leak') || n.includes('tap') || n.includes('drip') || n.includes('pipe') || n.includes('water')) {
+      return {
+        problem_found: true,
+        issue: 'Leaking kitchen tap with worn-out washer',
+        cause: 'Worn-out rubber washer / loose spindle causing constant dripping',
+        service_category: 'plumber',
+        urgency: 'medium',
+        price_min: 300,
+        price_max: 800,
+        likely_materials: ['Tap washer', 'Teflon tape', 'Adjustable wrench'],
+        fix_steps: this.getFallbackFixSteps('plumber', ['Tap washer', 'Teflon tape']),
+        estimated_duration_minutes: 30,
+        safety_warning: null,
+        confidence: 'high',
+        follow_up_question: null
+      };
+    }
+    // Unknown / wrong image: do NOT invent a problem
     return {
-      problem_found: true,
-      issue: 'Leaking kitchen tap with worn-out washer',
-      service_category: 'plumber',
-      urgency: 'medium',
-      price_min: 300,
-      price_max: 800,
-      likely_materials: ['Tap washer', 'Teflon tape', 'Adjustable wrench'],
-      estimated_duration_minutes: 30,
+      problem_found: false,
+      issue: null,
+      cause: null,
+      service_category: null,
+      urgency: null,
+      price_min: null,
+      price_max: null,
+      likely_materials: [],
+      fix_steps: [],
+      estimated_duration_minutes: null,
       safety_warning: null,
-      confidence: 'high',
-      follow_up_question: null
+      confidence: 'low',
+      follow_up_question: 'I could not identify a clear household repair problem in this photo. Please upload a clear, well-lit photo of the broken item (tap, switch, wall, door, appliance) and try again.'
     };
   },
 
@@ -559,6 +600,9 @@ export const PhotoDiagnosis = {
         this.compressedDataUrl = this.loadSampleLeakingTapPhoto();
         Toast.show('Sample leaking tap photo loaded!', 'success');
         this.render(container);
+        // Pre-fill the note so the keyword demo recognises this one correctly
+        const noteEl = container.querySelector('#photo-note-input');
+        if (noteEl && !noteEl.value.trim()) noteEl.value = 'leaking tap dripping';
       });
     }
 
@@ -617,6 +661,65 @@ export const PhotoDiagnosis = {
           detail: {
             diagnosis: this.activeDiagnosis,
             photoUrl: this.compressedDataUrl
+          }
+        }));
+      });
+    }
+
+    // Unknown-photo flow: category picker + price update + "book anyway"
+    const unknownCat = container.querySelector('#unknown-category');
+    if (unknownCat) {
+      unknownCat.addEventListener('change', () => {
+        if (!this.activeDiagnosis) return;
+        this.activeDiagnosis.service_category = unknownCat.value;
+        this.activeDiagnosis.problem_found = true;
+        this.activeDiagnosis.issue = this.activeDiagnosis.issue || 'Home repair inspection (photo unclear)';
+        const pricing = getPricingForTask(unknownCat.value, '');
+        this.activeDiagnosis.price_min = pricing.price_min;
+        this.activeDiagnosis.price_max = pricing.price_max;
+        this.activeDiagnosis.likely_materials = pricing.materials || this.activeDiagnosis.likely_materials || [];
+        this.enrichDiagnosis(this.activeDiagnosis);
+        this.render(container);
+      });
+    }
+    const bookUnknownBtn = container.querySelector('#btn-book-unknown');
+    if (bookUnknownBtn) {
+      bookUnknownBtn.addEventListener('click', () => {
+        if (!this.activeDiagnosis) return;
+        const cat = unknownCat ? unknownCat.value : (this.activeDiagnosis.service_category || 'plumber');
+        const pricing = getPricingForTask(cat, '');
+        const bestGuess = {
+          ...this.activeDiagnosis,
+          problem_found: true,
+          issue: this.activeDiagnosis.issue || 'Home repair inspection (photo unclear)',
+          service_category: cat,
+          price_min: pricing.price_min,
+          price_max: pricing.price_max,
+          likely_materials: pricing.materials || [],
+          fix_steps: this.getFallbackFixSteps(cat, pricing.materials || [])
+        };
+        this.enrichDiagnosis(bestGuess);
+        window.dispatchEvent(new CustomEvent('localkaam:book-with-diagnosis', {
+          detail: { diagnosis: bestGuess, photoUrl: this.compressedDataUrl }
+        }));
+      });
+    }
+
+    // Action 3: "Book best worker" (server-ranked pick for this issue)
+    const bookBestBtn = container.querySelector('#btn-book-best-worker');
+    if (bookBestBtn) {
+      bookBestBtn.addEventListener('click', () => {
+        if (!this.activeDiagnosis) return;
+        const workerId = bookBestBtn.getAttribute('data-worker-id');
+        window.dispatchEvent(new CustomEvent('localkaam:book-worker', {
+          detail: { workerId }
+        }));
+        // Also fire the diagnosis-context booking so the modal keeps the AI estimate
+        window.dispatchEvent(new CustomEvent('localkaam:book-with-diagnosis', {
+          detail: {
+            diagnosis: this.activeDiagnosis,
+            photoUrl: this.compressedDataUrl,
+            preferredWorkerId: workerId
           }
         }));
       });

@@ -2,90 +2,51 @@
 <html class="scroll-smooth" lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-  <meta name="description" content="LocalKaam — Hyperlocal Blue-Collar Services Marketplace in Mumbai. Connect with verified electricians, plumbers, carpenters, and technicians with transparent pricing and direct payouts.">
-  <meta name="theme-color" content="#1a3300">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LocalKaam — Hyperlocal Blue-Collar Services Marketplace</title>
-
-  <!-- Favicon SVG -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23ffe95c'/%3E%3Ctext x='16' y='21' font-size='14' font-weight='900' font-family='sans-serif' text-anchor='middle' fill='%231a3300'%3ELK%3C/text%3E%3C/svg%3E" type="image/svg+xml">
-
   <link rel="stylesheet" href="./styles.css">
-  <link rel="stylesheet" href="./css_enhancements.css">
-  <link rel="stylesheet" href="./ui.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Inter:wght@400..700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <!-- Leaflet Maps (OpenStreetMap, Free & Open Source) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
   <!-- Lucide Icons -->
-  <script defer src="https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.min.js"></script>
-
-  <script defer src="./config.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
-  <div id="app" class="app-container"></div>
+<body class="bg-[#fbf9f4] text-[#1b1c19] antialiased min-h-screen flex flex-col">
+  <div id="app" class="flex flex-col min-h-screen"></div>
 
   <script type="module">
     import { App } from './app.js';
     import { autoRefreshIcons } from './icons.js';
     import { SupabaseService } from './supabaseClient.js';
     import { AuthService } from './authService.js';
-    import { StorageService } from './storage.js';
     import { Toast } from './toast.js';
-    import { NotificationService } from './notificationService.js';
-
-    window.NotificationService = NotificationService;
-
-    // Global helper to refresh Lucide icons whenever DOM updates
-    window.refreshIcons = () => {
-      try {
-        if (typeof lucide !== 'undefined' && lucide.createIcons) {
-          lucide.createIcons();
-        }
-      } catch (e) {
-        console.warn('Lucide icon refresh warning:', e);
-      }
-    };
 
     async function boot() {
       try {
-        const hash = window.location.hash || '';
-        const search = window.location.search || '';
-        const isOAuth = hash.includes('access_token') || hash.includes('error') ||
-                        search.includes('code=') || search.includes('error=');
-        if (isOAuth) {
-          let oauthTargetRole = null;
-          let oauthError = null;
+        const hash = window.location.hash;
+        if (hash && (hash.includes('access_token') || hash.includes('error'))) {
           const appDiv = document.getElementById('app');
           if (appDiv) {
-            appDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;"><div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div><p style="font-size:1.1rem;font-weight:600;color:var(--text-primary);">Completing Secure Sign-In...</p></div>';
+            appDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;"><div style="font-size:2rem;margin-bottom:1rem;">⏳</div><p style="font-size:1.1rem;font-weight:600;color:#333;">Completing Sign-In...</p></div>';
           }
-          // Explicit PKCE exchange + role resolution. getSession() alone
-          // never produces a session for ?code= callbacks, which previously
-          // dropped the user back on the landing page.
           try {
-            const result = await AuthService.handleOAuthCallback();
-            if (result && result.session) {
-              oauthTargetRole = result.targetRole || 'customer';
-              StorageService.setCurrentRole(oauthTargetRole);
-              Toast.show('Signed in as ' + (result.session.user?.email || 'User') + '!', 'success');
-            } else {
-              oauthError = result && result.error ? result.error : new Error('Sign-in could not be completed. Please try again.');
+            const client = await SupabaseService.getClient();
+            if (client) {
+              const { data, error } = await client.auth.getSession();
+              if (error) {
+                Toast.show('Sign-in error: ' + (error.message || 'Unknown error'), 'error');
+              } else if (data.session) {
+                await AuthService.syncUserProfile(data.session.user);
+                Toast.show('Signed in as ' + (data.session.user.email || 'User') + '!', 'success');
+              }
             }
-          } catch (err) {
-            console.error('OAuth callback processing error:', err);
-            oauthError = err;
-          }
-          if (oauthError && !oauthTargetRole) {
-            Toast.show('Sign-in failed: ' + (oauthError.message || 'please try again'), 'error');
-          }
+          } catch (err) {}
           if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, '', window.location.pathname + (oauthTargetRole ? '#' + oauthTargetRole : ''));
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
           }
         }
       } catch (e) {}
@@ -93,7 +54,6 @@
       try {
         autoRefreshIcons(document.body);
         App.init();
-        window.refreshIcons();
       } catch (err) {
         console.error('App init fatal error:', err);
         const appDiv = document.getElementById('app');
