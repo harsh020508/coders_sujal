@@ -29,6 +29,25 @@
   --z-sticky:50; --z-nav:60; --z-modal:1000; --z-toast:1100;
 }
 
+/* ---------- dark theme (ui tokens shadow the light set above) ---------- */
+[data-theme="dark"]{
+  --ink:#f2efe8; --ink-2:#d8dcd2; --muted:#9aa593;
+  --line:#2e352b; --line-strong:#454f40;
+  --bg:#0f120e; --surface:#1e231c; --surface-2:#252b20;
+  --ok:#34d399; --ok-bg:rgba(16,185,129,.16); --warn:#f5b544; --warn-bg:rgba(245,181,68,.16);
+  --bad:#f87171; --bad-bg:rgba(239,68,68,.18); --info:#7cb3f5; --info-bg:rgba(31,91,196,.22);
+  --peacock-50:rgba(168,216,121,.14); --peacock-100:rgba(168,216,121,.22);
+  --peacock-500:#a8d879; --peacock-600:#bded8b; --peacock-700:#d9f2a6;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4),0 1px 1px rgba(0,0,0,.3);
+  --shadow-2:0 8px 20px -6px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.35);
+  --shadow-3:0 28px 56px -14px rgba(0,0,0,.65);
+  --focus:0 0 0 3px rgba(168,216,121,.35);
+}
+
+[data-theme="dark"] .ui-topbar{ background:rgba(20,24,18,.92); }
+[data-theme="dark"] .ui-topbar__inner{ background:transparent; }
+[data-theme="dark"] .ui-cat__icon{ background:rgba(20,24,18,.94); color:#a8d879; }
+
 /* ---------- base ---------- */
 html{ -webkit-text-size-adjust:100%; scroll-behavior:smooth; }
 body{ background:var(--bg); color:var(--ink); font:400 var(--fs-base)/1.55 var(--font-body); -webkit-font-smoothing:antialiased; }

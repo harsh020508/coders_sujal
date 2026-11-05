@@ -441,7 +441,7 @@ export const App = {
         <!-- Hero Section -->
         <section class="landing-hero">
           <div class="hero-content">
-            <div style="display:inline-flex;align-items:center;gap:8px;background:var(--color-highlighter-yellow);color:var(--color-forest-ink);padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:700;margin-bottom:20px;border:1px solid rgba(0,0,0,0.08);letter-spacing:0.02em;">
+            <div style="display:inline-flex;align-items:center;gap:8px;background:var(--color-highlighter-yellow);color:#1a3300;padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:700;margin-bottom:20px;border:1px solid rgba(0,0,0,0.08);letter-spacing:0.02em;">
               <i data-lucide="sparkles" class="lucide-xs"></i> Verified Local Experts &nbsp;•&nbsp; Hyperlocal Marketplace
             </div>
             <h1>
