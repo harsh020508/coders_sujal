@@ -3,8 +3,10 @@
 [![Live Demo](https://img.shields.io/badge/Live-Deployment-brightgreen?style=for-the-badge)](https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing)
 [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
 [![Sync](https://img.shields.io/badge/Realtime-WebSockets-blue?style=for-the-badge)](https://supabase.com/docs/guides/realtime)
+[![UI/UX](https://img.shields.io/badge/Design%20System-v3.0%20Peacock%20%26%20Marigold-0E7C86?style=for-the-badge)](./ui.css)
 
-LocalKaam is a production-ready hyperlocal services marketplace connecting households with trustworthy neighborhood blue-collar professionals (plumbers, electricians, carpenters, cleaners, AC technicians, and more) across Mumbai with transparent pricing, direct pay, multi-step worker onboarding, and real-time appointment tracking.
+> **Problem:** Traditional gig aggregators charge 25–40% commissions, squeeze worker earnings, enforce rigid fixed rates, and mask direct contact between urban households and pros.  
+> **Solution:** LocalKaam is a direct hyperlocal marketplace with zero platform tax, upfront transparent pricing, built-in price counter-offers, background-verified neighborhood pros, and real-time appointment milestone tracking across Mumbai.
 
 ---
 
@@ -21,43 +23,33 @@ You can sign in immediately using either the 1-click Quick Login buttons in the 
 | Account Type | Email | Password | Persona & Role |
 | :--- | :--- | :--- | :--- |
 | **Customer** | `customer.demo@localkaam.in` | `Password@123` | **Aarav Mehta** (Andheri West Household) |
-| **Worker** | `ramesh.worker@localkaam.in` | `Password@123` | **Ramesh Kumar** (Verified Plumber & Electrician, ID: `w1`) |
+| **Worker** | `ramesh.worker@localkaam.in` | `Password@123` | **Rajesh Kumar** (Verified Plumber & Electrician, ID: `w1`) |
+
+*(Instant 1-click guest access buttons are also built directly into the Auth Modal).*
 
 ---
 
-## ⚙️ Environment Variables
+## 🛡️ Honesty & Trust: What is Real vs. Simulated
 
-Set these environment variables in your Vercel Project Settings (`Settings > Environment Variables`) and locally in `.env`:
-
-| Variable Name | Required | Description | Example / Current Production Value |
-| :--- | :---: | :--- | :--- |
-| `VITE_SUPABASE_URL` | **Yes** | Your Supabase Project HTTPS URL | `https://dcijrqwoxkazggouvhdn.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | **Yes** | Public Supabase Anon API key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Optional | Supabase publishable identifier | `sb_publishable_OWfosp_8VvcCS0Exlwm1vA_EFjLBBjP` |
-
-*(See `.env.example` in the repository root for the ready-to-copy template).*
-
----
-
-## 🛠️ Architecture & Cross-Device Sync
-
-1. **Frontend Hosting (Vercel CDN):** Deployed as a high-speed static web app serving ES6+ modules (`app.js`, `customer.js`, `worker.js`, etc.) with zero cold starts.
-2. **Database (Supabase PostgreSQL):** Relational schema spanning 6 tables (`profiles`, `workers`, `worker_services`, `bookings`, `reviews`, `complaints`) with foreign keys, constraints, and performance indexes.
-3. **Cross-Device Live Sync (Supabase Realtime):** Uses native WebSocket channels (`localkaam-realtime-sync`) on Postgres publication events (`postgres_changes`). When a customer books or a worker accepts on Device A, Device B receives the update in <100ms without polling.
-4. **Server-Side Security & State Enforcement:**
-   - **Row Level Security (RLS):** Enabled on all tables. Offline workers are strictly hidden from customer discovery; customers see their own bookings; workers see assigned jobs.
-   - **Trigger Validation (`validate_booking_transition`):** Enforces legal state machine transitions server-side (`Pending confirmation` → `Confirmed` → `Worker en route` → `Worker arrived` → `Job in progress` → `Job completed`).
-   - **Price Lock:** Enforces that once an appointment is confirmed, `agreed_price` is strictly locked in the database against tampering.
+| Feature | Implementation Status | Technical Details |
+| :--- | :---: | :--- |
+| **Supabase PostgreSQL & RLS** | **Real** | 6 relational tables with Row-Level Security, custom triggers, and foreign keys |
+| **Cross-Device Realtime Sync** | **Real** | Native WebSocket channels (`localkaam-realtime-sync`) with <100ms sync |
+| **Authentication & Sessions** | **Real** | Supabase Auth (Email/Password, Google OAuth, session token validation) |
+| **Price Negotiation Engine** | **Real** | Interactive proposal and counter-offer state machine with price locking |
+| **Distance & ETA Calculation** | **Real** | Haversine formula calculation over Mumbai GPS coordinates |
+| **Verification Milestones** | **Demo Simulation** | Phone OTP and Aadhaar ID checks are simulated in demo mode for presentation |
 
 ---
 
-## 🚀 Supabase Database Setup (1-Minute Step)
+## 💎 Design System & UI Architecture
 
-If setting up a fresh database:
-1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard).
-2. Go to **SQL Editor** > **New Query**.
-3. Open [`supabase_schema.sql`](./supabase_schema.sql) in this repo, copy its entire contents, paste it into the SQL editor, and click **Run**.
-4. The script is completely **idempotent**: it creates tables, triggers, RLS policies, realtime publications, and pre-seeds 8 verified Mumbai service professionals.
+LocalKaam's frontend follows the **"Trust you can see"** design specification:
+- **Palette:** Peacock `#0E7C86` (brand/actions), Marigold `#F2A33A` (single focal CTA), Verified Green `#0F7A4F`, Paper surfaces `#FFFFFF` / `#F6F8F9`.
+- **Typography:** Bricolage Grotesque (display headings), Inter (clean body UI), JetBrains Mono (OTP/ID codes).
+- **The Signature Verification Seal:** Verified pros get a distinctive green double-ring around their avatar with an anchored check seal. The worker dashboard features an interactive verification milestone stepper.
+- **Icon Mutation Observer (`icons.js`):** Automatically detects newly injected Lucide icons in any modal, dropdown, or async view and renders crisp SVGs without blank icons.
+- **Offline & Resilience Layer:** Local WebP images under 75 KB each with `onerror` fallbacks to initials avatars, plus fallback data cache when Supabase is offline.
 
 ---
 
@@ -65,43 +57,45 @@ If setting up a fresh database:
 
 ```tree
 repo/
-├── index.html              # Main HTML entry point (CDN scripts & config)
+├── index.html              # Main HTML entry point (pinned CDNs & metadata)
+├── ui.css                  # Modern design system (tokens, buttons, modals, seals, steppers)
+├── ui.js                   # UI component helpers (avatar, rating, searchTasks, trapFocus)
+├── icons.js                # MutationObserver for automatic Lucide icon updates
 ├── config.js               # Client runtime environment configuration
-├── .env.example            # Environment variables template
-├── app.js                  # Client-side router, role management, and navigation
-├── customer.js             # Customer discovery, worker comparison, booking modal, invoice
-├── worker.js               # Worker dashboard, multi-step onboarding, active job controls
+├── app.js                  # Client router, hero task-search, and category grid
+├── customer.js             # Customer discovery, worker cards, booking modal, invoices
+├── worker.js               # Worker dashboard, stat tiles, verification stepper, job controls
 ├── matching.js             # Haversine distance, ETA, and matching score algorithm
 ├── bookings.js             # Booking lifecycle state machine & price negotiation rules
 ├── storage.js              # Unified storage layer (local cache + Supabase Realtime sync)
 ├── authService.js          # Authentication service (Email/Password, Google OAuth, Demo logins)
-├── authModal.js            # Customer & worker sign-in / registration modal
+├── authModal.js            # Customer & worker sign-in / registration modal with trapFocus
 ├── supabaseClient.js       # Supabase client manager & connection tester
 ├── supabaseDataService.js  # Supabase PostgreSQL CRUD data mapper & realtime listener
-├── supabaseSetupModal.js   # In-app setup modal with connection test & schema copy
-├── supabase_schema.sql     # Complete PostgreSQL DDL, triggers, RLS, and seed data
-├── data.js                 # Initial Mumbai localities, categories, and professionals
-├── toast.js                # Animated feedback toast notifications
+├── data.js                 # 10 Mumbai categories & 19 seeded neighborhood professionals
+├── toast.js                # Accessible toast notification system
 ├── utils.js                # XSS sanitization and debounce utilities
-├── styles.css              # Stitch Sketchbook Editorial design tokens
-└── package.json            # Node configuration
+├── styles.css              # Core typography and baseline stylesheets
+├── assets/img/             # Localized high-speed WebP category imagery
+└── package.json            # Node configuration & test runner
 ```
 
 ---
 
-## 👥 Demo Sequence (Evaluating Cross-Device Sync)
+## 👥 Demo Sequence (90-Second Golden Path)
 
-1. **Device / Window 1 (Customer):**
-   - Open [coderssujal-rgvepzub3-lucky21.vercel.app](https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing).
-   - Click **Get Started** → **Continue as Customer** (or sign in as `customer.demo@localkaam.in`).
-   - Search for **"Leaking Tap"** or click **Plumber**.
-   - Select **Ramesh Kumar** → click **Book Now**.
-   - Enter problem details and propose an offer (e.g. ₹400) → click **Confirm & Request Booking**.
-2. **Device / Window 2 (Worker):**
-   - Open the site in a separate browser window or phone as **Worker** (or sign in as `ramesh.worker@localkaam.in`).
-   - Go to **Booking Requests** tab: The request from Aarav Mehta appears live!
-   - Click **Accept Request** (or send a counter-offer).
-3. **Live Status Flow:**
-   - On the Worker device, click **En Route** → **Arrived** → **Start Job** → **Complete Job**.
-   - Watch the Customer's **My Bookings** view update instantly in real-time across both screens!
-   - On the Customer device, click **Invoice** to view the itemized digital invoice, then submit a 5-star review.
+1. **Discover Service via Task Search:**
+   - On the landing page, type **"tap"** in the hero search box and select **"Leaking Tap & Faucet"** (or click the quick chip).
+2. **Review Verified Professionals:**
+   - The worker list loads verified neighborhood pros first, showing the **green verification seal**, rating stars, and starting rates.
+3. **Request a Visit:**
+   - Click **Request a visit** on Rajesh Kumar. Review the 3-step modal, add problem details or a custom price offer, and click **Send request**.
+   - Watch the smooth confirmation view with verified check animation and success toast.
+4. **Switch to Worker Dashboard:**
+   - Switch to Worker role (`ramesh.worker@localkaam.in`). The incoming request appears immediately in **Incoming Requests**.
+   - Click **Accept Job** (or send a counter-offer).
+5. **Live Verification Stepper:**
+   - Observe the **"Your Verification"** stepper on the worker dashboard illustrating the complete trust verification pipeline.
+6. **Cross-Device Status Progression:**
+   - Step through **I'm On My Way** → **Confirm Arrival** → **Start Job** → **Complete Job**.
+   - Digital invoice is generated and earnings dashboard updates in real time.

@@ -281,7 +281,823 @@ export const INITIAL_WORKERS = [
       }
     },
     skills: ['Full Home Deep Cleaning', 'Kitchen & Bathroom Scrub', 'Sofa & Carpet Shampooing']
-  }
+  },
+  {
+  "id": "w5",
+  "name": "Amit Chawla",
+  "phone": "+91 98199 55667",
+  "bio": "Residential electrician and lighting specialist. Fast fault diagnosis and safe fittings in Dadar and South Mumbai.",
+  "city": "Mumbai",
+  "baseLocality": "dadar",
+  "serviceArea": "Dadar West, Matunga, Prabhadevi",
+  "serviceRadius": 8,
+  "experience": 7,
+  "languages": [
+    "Hindi",
+    "Marathi",
+    "English"
+  ],
+  "workingHours": {
+    "start": "09:00",
+    "end": "19:00"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.8,
+  "ratingCount": 31,
+  "avatar": "",
+  "specialities": {
+    "electrician": {
+      "tasks": [
+        "Electrical Fault Diagnosis",
+        "Lighting Installation",
+        "New Electrical Fittings"
+      ],
+      "pricingMethod": "hourly",
+      "startingPrice": 320,
+      "visitingCharge": 100,
+      "estDuration": "1-2 hours",
+      "experience": 7,
+      "certifications": "Wireman License A Grade"
+    }
+  },
+  "skills": [
+    "Electrical Fault Diagnosis",
+    "Lighting Installation",
+    "New Electrical Fittings"
+  ]
+},
+  {
+  "id": "w6",
+  "name": "Manoj Yadav",
+  "phone": "+91 98205 66778",
+  "bio": "Expert plumber handling drainage unclogging, water tank sanitization, and flush repairs in Malad and Kandivali.",
+  "city": "Mumbai",
+  "baseLocality": "malad",
+  "serviceArea": "Malad West, Kandivali, Goregaon",
+  "serviceRadius": 9,
+  "experience": 9,
+  "languages": [
+    "Hindi",
+    "Bhojpuri"
+  ],
+  "workingHours": {
+    "start": "08:00",
+    "end": "20:00"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.7,
+  "ratingCount": 45,
+  "avatar": "",
+  "specialities": {
+    "plumber": {
+      "tasks": [
+        "Drainage Unclogging",
+        "Water Tank Cleaning",
+        "Toilet & Flush Repair"
+      ],
+      "pricingMethod": "hourly",
+      "startingPrice": 280,
+      "visitingCharge": 100,
+      "estDuration": "1-2 hours",
+      "experience": 9,
+      "certifications": "Certified Sanitary Technician"
+    }
+  },
+  "skills": [
+    "Drainage Unclogging",
+    "Water Tank Cleaning",
+    "Toilet & Flush Repair"
+  ]
+},
+  {
+  "id": "w7",
+  "name": "Santosh Mhatre",
+  "phone": "+91 98337 77889",
+  "bio": "Custom woodwork, bed & sofa repair, and modular kitchen fittings across Thane and Central Suburbs.",
+  "city": "Mumbai",
+  "baseLocality": "thane",
+  "serviceArea": "Thane West, Mulund, Bhandup",
+  "serviceRadius": 10,
+  "experience": 12,
+  "languages": [
+    "Marathi",
+    "Hindi"
+  ],
+  "workingHours": {
+    "start": "09:00",
+    "end": "19:30"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.9,
+  "ratingCount": 62,
+  "avatar": "",
+  "specialities": {
+    "carpenter": {
+      "tasks": [
+        "Bed & Sofa Repair",
+        "Wooden Shelves & Racks",
+        "Door Locks & Hinges"
+      ],
+      "pricingMethod": "fixed",
+      "startingPrice": 380,
+      "visitingCharge": 120,
+      "estDuration": "2-3 hours",
+      "experience": 12,
+      "certifications": "Senior Carpenter Guild"
+    }
+  },
+  "skills": [
+    "Bed & Sofa Repair",
+    "Wooden Shelves & Racks",
+    "Door Locks & Hinges"
+  ]
+},
+  {
+  "id": "w8",
+  "name": "Dilip Sawant",
+  "phone": "+91 98920 88990",
+  "bio": "Interior wall painting, texture accent walls, and waterproofing specialist with 11 years in Mumbai high-rises.",
+  "city": "Mumbai",
+  "baseLocality": "andheri",
+  "serviceArea": "Andheri West, Bandra, Goregaon",
+  "serviceRadius": 12,
+  "experience": 11,
+  "languages": [
+    "Marathi",
+    "Hindi",
+    "English"
+  ],
+  "workingHours": {
+    "start": "08:30",
+    "end": "18:30"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.8,
+  "ratingCount": 39,
+  "avatar": "",
+  "specialities": {
+    "painter": {
+      "tasks": [
+        "Interior Wall Painting",
+        "Texture & Accent Walls",
+        "Wall Putty & Primer"
+      ],
+      "pricingMethod": "fixed",
+      "startingPrice": 750,
+      "visitingCharge": 150,
+      "estDuration": "4-8 hours",
+      "experience": 11,
+      "certifications": "Master Painter Certification (Asian Paints)"
+    }
+  },
+  "skills": [
+    "Interior Wall Painting",
+    "Texture & Accent Walls",
+    "Wall Putty & Primer"
+  ]
+},
+  {
+  "id": "w9",
+  "name": "Arvind Tambe",
+  "phone": "+91 98218 99001",
+  "bio": "Exterior waterproofing, wall touch-ups, and wood polish varnishing for vintage and modern homes.",
+  "city": "Mumbai",
+  "baseLocality": "colaba",
+  "serviceArea": "Colaba, Fort, Marine Lines",
+  "serviceRadius": 8,
+  "experience": 8,
+  "languages": [
+    "Hindi",
+    "Marathi"
+  ],
+  "workingHours": {
+    "start": "09:00",
+    "end": "18:00"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.6,
+  "ratingCount": 24,
+  "avatar": "",
+  "specialities": {
+    "painter": {
+      "tasks": [
+        "Exterior Waterproofing",
+        "Wood Polish & Varnishing",
+        "Interior Wall Painting"
+      ],
+      "pricingMethod": "fixed",
+      "startingPrice": 650,
+      "visitingCharge": 100,
+      "estDuration": "3-6 hours",
+      "experience": 8,
+      "certifications": "Waterproofing Specialist"
+    }
+  },
+  "skills": [
+    "Exterior Waterproofing",
+    "Wood Polish & Varnishing",
+    "Interior Wall Painting"
+  ]
+},
+  {
+  "id": "w10",
+  "name": "Imran Shaikh",
+  "phone": "+91 98335 11002",
+  "bio": "Certified HVAC cooling expert. Split AC deep servicing, PCB repair, and gas refilling across Bandra and Juhu.",
+  "city": "Mumbai",
+  "baseLocality": "bandra",
+  "serviceArea": "Bandra West, Khar, Santacruz, Juhu",
+  "serviceRadius": 10,
+  "experience": 9,
+  "languages": [
+    "Hindi",
+    "Urdu",
+    "English"
+  ],
+  "workingHours": {
+    "start": "08:00",
+    "end": "20:30"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+    "Sun"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.9,
+  "ratingCount": 78,
+  "avatar": "",
+  "specialities": {
+    "ac_repair": {
+      "tasks": [
+        "Split AC Servicing",
+        "PCB Repair",
+        "AC Installation & Uninstallation"
+      ],
+      "pricingMethod": "fixed",
+      "startingPrice": 499,
+      "visitingCharge": 150,
+      "estDuration": "1-2 hours",
+      "experience": 9,
+      "certifications": "Daikin & Voltas Authorized Service Partner"
+    }
+  },
+  "skills": [
+    "Split AC Servicing",
+    "PCB Repair",
+    "AC Installation & Uninstallation"
+  ]
+},
+  {
+  "id": "w11",
+  "name": "Deepak Jadhav",
+  "phone": "+91 98192 22113",
+  "bio": "Washing machine, refrigerator, and microwave oven repair specialist with multi-brand parts in stock.",
+  "city": "Mumbai",
+  "baseLocality": "powai",
+  "serviceArea": "Powai, Ghatkopar, Kanjurmarg",
+  "serviceRadius": 10,
+  "experience": 7,
+  "languages": [
+    "Marathi",
+    "Hindi",
+    "English"
+  ],
+  "workingHours": {
+    "start": "09:00",
+    "end": "19:00"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.7,
+  "ratingCount": 36,
+  "avatar": "",
+  "specialities": {
+    "appliance_repair": {
+      "tasks": [
+        "Washing Machine Repair",
+        "Refrigerator Servicing",
+        "Microwave Oven Repair"
+      ],
+      "pricingMethod": "fixed",
+      "startingPrice": 350,
+      "visitingCharge": 150,
+      "estDuration": "1-2 hours",
+      "experience": 7,
+      "certifications": "Consumer Appliance Technical Guild"
+    }
+  },
+  "skills": [
+    "Washing Machine Repair",
+    "Refrigerator Servicing",
+    "Microwave Oven Repair"
+  ]
+},
+  {
+  "id": "w12",
+  "name": "Rakesh Verma",
+  "phone": "+91 97022 33224",
+  "bio": "Water purifier (RO) installation & filter replacements. Fast doorstep diagnostics in Andheri and Jogeshwari.",
+  "city": "Mumbai",
+  "baseLocality": "andheri",
+  "serviceArea": "Andheri West, Jogeshwari, Oshiwara",
+  "serviceRadius": 8,
+  "experience": 4,
+  "languages": [
+    "Hindi",
+    "English"
+  ],
+  "workingHours": {
+    "start": "09:30",
+    "end": "18:30"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Pending",
+  "ratingAverage": 4.5,
+  "ratingCount": 14,
+  "avatar": "",
+  "specialities": {
+    "appliance_repair": {
+      "tasks": [
+        "Water Purifier (RO) Service",
+        "Microwave Oven Repair"
+      ],
+      "pricingMethod": "fixed",
+      "startingPrice": 300,
+      "visitingCharge": 100,
+      "estDuration": "1 hour",
+      "experience": 4,
+      "certifications": "Water Filtration Technician"
+    }
+  },
+  "skills": [
+    "Water Purifier (RO) Service",
+    "Microwave Oven Repair"
+  ]
+},
+  {
+  "id": "w13",
+  "name": "Meena Kamble",
+  "phone": "+91 98201 44335",
+  "bio": "Kitchen & bathroom scrub specialist. Deep cleaning, carpet shampooing, and water tank sanitation.",
+  "city": "Mumbai",
+  "baseLocality": "dadar",
+  "serviceArea": "Dadar, Parel, Worli",
+  "serviceRadius": 9,
+  "experience": 6,
+  "languages": [
+    "Marathi",
+    "Hindi"
+  ],
+  "workingHours": {
+    "start": "08:00",
+    "end": "17:00"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.8,
+  "ratingCount": 52,
+  "avatar": "",
+  "specialities": {
+    "cleaning": {
+      "tasks": [
+        "Kitchen & Bathroom Scrub",
+        "Full Home Deep Cleaning",
+        "Water Tank Deep Clean"
+      ],
+      "pricingMethod": "fixed",
+      "startingPrice": 799,
+      "visitingCharge": 0,
+      "estDuration": "3-4 hours",
+      "experience": 6,
+      "certifications": "Professional Housekeeping Certified"
+    }
+  },
+  "skills": [
+    "Kitchen & Bathroom Scrub",
+    "Full Home Deep Cleaning",
+    "Water Tank Deep Clean"
+  ]
+},
+  {
+  "id": "w14",
+  "name": "Ganesh Shinde",
+  "phone": "+91 98925 55446",
+  "bio": "Local household shifting, single item transport, and careful furniture packing with covered tempo vehicles.",
+  "city": "Mumbai",
+  "baseLocality": "thane",
+  "serviceArea": "Thane West, Mulund, Powai, Airoli",
+  "serviceRadius": 20,
+  "experience": 8,
+  "languages": [
+    "Marathi",
+    "Hindi"
+  ],
+  "workingHours": {
+    "start": "07:30",
+    "end": "20:00"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+    "Sun"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.9,
+  "ratingCount": 67,
+  "avatar": "",
+  "specialities": {
+    "shifting": {
+      "tasks": [
+        "Local Household Shifting",
+        "Single Item Transport",
+        "Packing & Unpacking"
+      ],
+      "pricingMethod": "fixed",
+      "startingPrice": 1499,
+      "visitingCharge": 200,
+      "estDuration": "3-6 hours",
+      "experience": 8,
+      "certifications": "Commercial Goods Carrier Permit"
+    }
+  },
+  "skills": [
+    "Local Household Shifting",
+    "Single Item Transport",
+    "Packing & Unpacking"
+  ]
+},
+  {
+  "id": "w15",
+  "name": "Bharat Movers",
+  "phone": "+91 98338 66557",
+  "bio": "Apartment and office relocation. Complete packing, unpacking, and heavy furniture transport across Greater Mumbai.",
+  "city": "Mumbai",
+  "baseLocality": "andheri",
+  "serviceArea": "Andheri West, Bandra, Goregaon, Borivali",
+  "serviceRadius": 25,
+  "experience": 10,
+  "languages": [
+    "Hindi",
+    "Gujarati",
+    "English"
+  ],
+  "workingHours": {
+    "start": "07:00",
+    "end": "21:00"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+    "Sun"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.7,
+  "ratingCount": 84,
+  "avatar": "",
+  "specialities": {
+    "shifting": {
+      "tasks": [
+        "Office Relocation",
+        "Local Household Shifting",
+        "Packing & Unpacking"
+      ],
+      "pricingMethod": "fixed",
+      "startingPrice": 2200,
+      "visitingCharge": 300,
+      "estDuration": "4-8 hours",
+      "experience": 10,
+      "certifications": "Registered Mumbai Movers Guild"
+    }
+  },
+  "skills": [
+    "Office Relocation",
+    "Local Household Shifting",
+    "Packing & Unpacking"
+  ]
+},
+  {
+  "id": "w16",
+  "name": "Naresh Solanki",
+  "phone": "+91 98210 77668",
+  "bio": "Safe odorless cockroach & ant gel treatment, termite proofing, and rodent control for residential apartments.",
+  "city": "Mumbai",
+  "baseLocality": "juhu",
+  "serviceArea": "Juhu, Vile Parle, Santacruz, Khar",
+  "serviceRadius": 10,
+  "experience": 8,
+  "languages": [
+    "Gujarati",
+    "Hindi",
+    "English"
+  ],
+  "workingHours": {
+    "start": "08:30",
+    "end": "19:00"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.8,
+  "ratingCount": 43,
+  "avatar": "",
+  "specialities": {
+    "pest_control": {
+      "tasks": [
+        "Cockroach & Ant Treatment",
+        "Termite Proofing",
+        "Mosquito Fogging"
+      ],
+      "pricingMethod": "fixed",
+      "startingPrice": 699,
+      "visitingCharge": 100,
+      "estDuration": "1-2 hours",
+      "experience": 8,
+      "certifications": "CIB&RC Government Approved Pest Operator"
+    }
+  },
+  "skills": [
+    "Cockroach & Ant Treatment",
+    "Termite Proofing",
+    "Mosquito Fogging"
+  ]
+},
+  {
+  "id": "w17",
+  "name": "Prakash D'Souza",
+  "phone": "+91 98196 88779",
+  "bio": "Termite proofing, mosquito fogging, and residential rodent control using child-safe and pet-safe products.",
+  "city": "Mumbai",
+  "baseLocality": "bandra",
+  "serviceArea": "Bandra West, Khar, Mahim",
+  "serviceRadius": 8,
+  "experience": 6,
+  "languages": [
+    "English",
+    "Hindi",
+    "Konkani"
+  ],
+  "workingHours": {
+    "start": "09:00",
+    "end": "18:30"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.7,
+  "ratingCount": 30,
+  "avatar": "",
+  "specialities": {
+    "pest_control": {
+      "tasks": [
+        "Termite Proofing",
+        "Rodent Control",
+        "Cockroach & Ant Treatment"
+      ],
+      "pricingMethod": "fixed",
+      "startingPrice": 750,
+      "visitingCharge": 120,
+      "estDuration": "1-3 hours",
+      "experience": 6,
+      "certifications": "IPCA Certified Pest Specialist"
+    }
+  },
+  "skills": [
+    "Termite Proofing",
+    "Rodent Control",
+    "Cockroach & Ant Treatment"
+  ]
+},
+  {
+  "id": "w18",
+  "name": "Sanjay Kadam",
+  "phone": "+91 97003 99880",
+  "bio": "Handyman for wall drilling, television mounting, curtain rods, mirror hanging, and custom household fixtures.",
+  "city": "Mumbai",
+  "baseLocality": "andheri",
+  "serviceArea": "Andheri West, Lokhandwala, Oshiwara, Versova",
+  "serviceRadius": 9,
+  "experience": 7,
+  "languages": [
+    "Marathi",
+    "Hindi"
+  ],
+  "workingHours": {
+    "start": "08:30",
+    "end": "19:30"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.8,
+  "ratingCount": 47,
+  "avatar": "",
+  "specialities": {
+    "other": {
+      "tasks": [
+        "Drilling & Wall Hanging",
+        "Curtain Rod Installation",
+        "General Handyman Support"
+      ],
+      "pricingMethod": "hourly",
+      "startingPrice": 250,
+      "visitingCharge": 100,
+      "estDuration": "1-2 hours",
+      "experience": 7,
+      "certifications": "Bosch Power Tools Certified Handyman"
+    }
+  },
+  "skills": [
+    "Drilling & Wall Hanging",
+    "Curtain Rod Installation",
+    "General Handyman Support"
+  ]
+},
+  {
+  "id": "w19",
+  "name": "Babu Lal",
+  "phone": "+91 98207 00991",
+  "bio": "Reliable neighborhood handyman. Mirror hanging, lock replacement, curtain fitting, and all quick household repairs.",
+  "city": "Mumbai",
+  "baseLocality": "malad",
+  "serviceArea": "Malad West, Goregaon, Kandivali",
+  "serviceRadius": 8,
+  "experience": 10,
+  "languages": [
+    "Hindi",
+    "Rajasthani"
+  ],
+  "workingHours": {
+    "start": "09:00",
+    "end": "20:00"
+  },
+  "workingDays": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "available": true,
+  "pauseNewBookings": false,
+  "profileCompleted": true,
+  "verificationStatus": "Verified",
+  "ratingAverage": 4.7,
+  "ratingCount": 35,
+  "avatar": "",
+  "specialities": {
+    "other": {
+      "tasks": [
+        "Drilling & Wall Hanging",
+        "General Handyman Support"
+      ],
+      "pricingMethod": "hourly",
+      "startingPrice": 220,
+      "visitingCharge": 100,
+      "estDuration": "1-2 hours",
+      "experience": 10,
+      "certifications": "Experienced Urban Handyman"
+    }
+  },
+  "skills": [
+    "Drilling & Wall Hanging",
+    "General Handyman Support"
+  ]
+}
 ];
 
 export const INITIAL_BOOKINGS = [
