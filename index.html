@@ -19,7 +19,7 @@
     import { AuthService } from './authService.js';
     import { Toast } from './toast.js';
 
-    window.addEventListener('DOMContentLoaded', async () => {
+    async function boot() {
       try {
         const hash = window.location.hash;
         if (hash && (hash.includes('access_token') || hash.includes('error'))) {
@@ -54,7 +54,13 @@
           appDiv.innerHTML = '<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Please refresh the page to load the marketplace.</p><button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1a3300; color: white; border: none; border-radius: 8px; cursor: pointer;">Refresh App</button></div>';
         }
       }
-    });
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', boot);
+    } else {
+      boot();
+    }
   </script>
 </body>
 </html>

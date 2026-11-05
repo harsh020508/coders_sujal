@@ -198,14 +198,14 @@ class AuthServiceManager {
           console.warn('Profile upsert failed (table may not exist yet):', profileErr);
         }
 
-        // If registering as a worker, also create initial worker entry
+        // If registering as a worker, create initial worker entry with Pending verification
         if (role === 'worker') {
           try {
             await client.from('workers').upsert({
               id: `w_${data.user.id.substring(0, 8)}`,
               user_id: data.user.id,
               name: fullName,
-              category: 'plumber',
+              category: 'general',
               skills: ['General Service'],
               experience: 1,
               hourly_rate: 300,
@@ -213,12 +213,12 @@ class AuthServiceManager {
               service_radius: 10,
               working_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
               working_hours: { start: '09:00', end: '18:00' },
-              available: true,
-              verification_status: 'Verified',
-              rating_average: 5.0,
-              rating_count: 1,
+              available: false,
+              verification_status: 'Pending',
+              rating_average: 0,
+              rating_count: 0,
               phone,
-              bio: `${fullName} - Verified local service professional in ${locality}.`
+              bio: `${fullName} - Service professional in ${locality}. Verification pending.`
             });
           } catch (workerErr) {
             console.warn('Worker upsert failed (table may not exist yet):', workerErr);
@@ -334,6 +334,36 @@ class AuthServiceManager {
     const mockId = 'usr_' + Math.random().toString(36).substring(2, 9);
     const mockUser = { id: mockId, email, user_metadata: { full_name: fullName, phone, role, locality } };
     const mockProfile = { id: mockId, email, full_name: fullName, phone, role, locality };
+
+    // If worker, create initial worker state with Pending verification
+    if (role === 'worker') {
+      try {
+        const workers = JSON.parse(localStorage.getItem('localkaam_workers') || '[]');
+        const newWorker = {
+          id: `w_${mockId.substring(4, 10)}`,
+          userId: mockId,
+          user_id: mockId,
+          name: fullName,
+          category: 'general',
+          skills: ['General Service'],
+          experience: 1,
+          hourlyRate: 300,
+          baseLocality: locality,
+          serviceRadius: 10,
+          workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+          workingHours: { start: '09:00', end: '18:00' },
+          available: false,
+          verificationStatus: 'Pending',
+          ratingAverage: 0,
+          ratingCount: 0,
+          phone,
+          bio: `${fullName} - Service professional in ${locality}. Verification pending.`
+        };
+        workers.unshift(newWorker);
+        localStorage.setItem('localkaam_workers', JSON.stringify(workers));
+      } catch (e) {}
+    }
+
     this.saveCachedUser(mockUser, mockProfile);
     this.notifyListeners('SIGNED_IN', { user: mockUser });
     return { data: { user: mockUser, profile: mockProfile }, error: null };
@@ -342,14 +372,19 @@ class AuthServiceManager {
   _demoSignIn(email) {
     const mockId = 'usr_' + Math.random().toString(36).substring(2, 9);
     const isWorker = email.toLowerCase().includes('worker');
+    const role = isWorker ? 'worker' : 'customer';
+    const emailPrefix = (email.split('@')[0] || '').replace(/[._-]/g, ' ');
+    const formatted = emailPrefix ? emailPrefix.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '';
+    const name = formatted || (isWorker ? 'Local Professional' : 'Local Customer');
+
     const mockUser = {
       id: mockId, email,
-      user_metadata: { full_name: isWorker ? 'Ramesh Kumar' : 'Aarav Mehta', role: isWorker ? 'worker' : 'customer' }
+      user_metadata: { full_name: name, role }
     };
     const mockProfile = {
       id: mockId, email,
-      role: isWorker ? 'worker' : 'customer',
-      full_name: isWorker ? 'Ramesh Kumar' : 'Aarav Mehta',
+      role,
+      full_name: name,
       phone: '+91 98765 43210', locality: 'andheri'
     };
     this.saveCachedUser(mockUser, mockProfile);
@@ -462,16 +497,16 @@ class AuthServiceManager {
           </div>
           <div>
             <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem;">Full Name</label>
-            <input type="text" id="signup-fullname" class="form-control" placeholder="e.g. Ramesh Kumar" required>
+            <input type="text" id="signup-fullname" class="form-control" placeholder="Enter your full name" required>
           </div>
           <div>
             <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem;">Email Address</label>
-            <input type="email" id="signup-email" class="form-control" placeholder="ramesh@example.com" required>
+            <input type="email" id="signup-email" class="form-control" placeholder="name@example.com" required>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
             <div>
               <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem;">Phone</label>
-              <input type="tel" id="signup-phone" class="form-control" placeholder="+91 98211 44551" required>
+              <input type="tel" id="signup-phone" class="form-control" placeholder="+91 98765 43210" required>
             </div>
             <div>
               <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem;">Locality</label>

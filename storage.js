@@ -170,10 +170,16 @@ export const StorageService = {
   },
 
   getCurrentRole() {
-    return sessionGetItem(STORAGE_KEYS.CURRENT_ROLE, 'landing');
+    const role = sessionGetItem(STORAGE_KEYS.CURRENT_ROLE, 'landing');
+    if (!['landing', 'role-select', 'customer', 'worker'].includes(role)) {
+      sessionSetItem(STORAGE_KEYS.CURRENT_ROLE, 'landing');
+      return 'landing';
+    }
+    return role;
   },
   setCurrentRole(role) {
-    sessionSetItem(STORAGE_KEYS.CURRENT_ROLE, role);
+    const validRole = ['landing', 'role-select', 'customer', 'worker'].includes(role) ? role : 'landing';
+    sessionSetItem(STORAGE_KEYS.CURRENT_ROLE, validRole);
   },
 
   getSelectedWorkerId() {

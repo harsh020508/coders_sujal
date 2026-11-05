@@ -6,19 +6,26 @@ export const DataMapper = {
   workerToDb(w) {
     return {
       id: w.id,
+      user_id: w.userId || w.user_id || null,
       name: w.name,
-      category: w.category,
+      category: w.category || (w.specialities ? Object.keys(w.specialities)[0] : 'general'),
       skills: w.skills || [],
       experience: w.experience || 0,
-      hourly_rate: w.hourlyRate || 0,
+      hourly_rate: w.hourlyRate || 300,
       base_locality: w.baseLocality || 'andheri',
       service_radius: w.serviceRadius || 10,
       working_days: w.workingDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       working_hours: w.workingHours || { start: '09:00', end: '18:00' },
-      available: w.available !== undefined ? w.available : true,
-      verification_status: w.verificationStatus || 'Verified',
-      rating_average: w.ratingAverage || 5.0,
-      rating_count: w.ratingCount || 0,
+      available: Boolean(w.available),
+      verification_status: w.verificationStatus || 'Pending',
+      verification_submitted_at: w.verificationSubmittedAt || null,
+      verification_reviewed_at: w.verificationReviewedAt || null,
+      verified_at: w.verifiedAt || null,
+      reviewed_by: w.reviewedBy || null,
+      rejection_reason: w.rejectionReason || null,
+      is_suspended: Boolean(w.isSuspended),
+      rating_average: Number(w.ratingAverage) || 0,
+      rating_count: Number(w.ratingCount) || 0,
       avatar: w.avatar || '',
       phone: w.phone || '',
       bio: w.bio || ''
@@ -28,6 +35,8 @@ export const DataMapper = {
   dbToWorker(row) {
     return {
       id: row.id,
+      userId: row.user_id,
+      user_id: row.user_id,
       name: row.name,
       category: row.category,
       skills: Array.isArray(row.skills) ? row.skills : (row.skills ? JSON.parse(row.skills) : []),
@@ -38,12 +47,19 @@ export const DataMapper = {
       workingDays: Array.isArray(row.working_days) ? row.working_days : (row.working_days ? JSON.parse(row.working_days) : []),
       workingHours: typeof row.working_hours === 'object' ? row.working_hours : (row.working_hours ? JSON.parse(row.working_hours) : { start: '09:00', end: '18:00' }),
       available: Boolean(row.available),
-      verificationStatus: row.verification_status || 'Verified',
-      ratingAverage: Number(row.rating_average) || 5.0,
+      verificationStatus: row.verification_status || 'Pending',
+      verificationSubmittedAt: row.verification_submitted_at,
+      verificationReviewedAt: row.verification_reviewed_at,
+      verifiedAt: row.verified_at,
+      reviewedBy: row.reviewed_by,
+      rejectionReason: row.rejection_reason,
+      isSuspended: Boolean(row.is_suspended),
+      ratingAverage: Number(row.rating_average) || 0,
       ratingCount: Number(row.rating_count) || 0,
       avatar: row.avatar || '',
       phone: row.phone || '',
-      bio: row.bio || ''
+      bio: row.bio || '',
+      profileCompleted: true
     };
   },
 
@@ -55,18 +71,18 @@ export const DataMapper = {
       worker_id: b.workerId,
       customer_name: b.customerName,
       customer_phone: b.customerPhone,
-      service: b.service,
+      service: b.service || b.serviceTask || 'General Service',
       locality: b.locality,
       address: b.address,
       job_description: b.jobDescription || '',
-      booking_type: b.bookingType || 'instant',
-      date_time: b.dateTime || new Date().toISOString(),
+      booking_type: b.bookingType || 'scheduled',
+      date_time: b.dateTime || b.appointmentDate || new Date().toISOString(),
       estimated_hours: Number(b.estimatedHours) || 1,
-      original_estimate: Number(b.originalEstimate) || 0,
+      original_estimate: Number(b.originalEstimate || (b.basePrice + (b.visitingCharge || 0))) || 0,
       customer_offer: b.customerOffer ? Number(b.customerOffer) : null,
       counter_offer_history: b.counterOfferHistory || [],
       agreed_price: Number(b.agreedPrice) || 0,
-      status: b.status || 'Pending',
+      status: b.status || 'Pending confirmation',
       review_id: b.reviewId || null,
       complaint_id: b.complaintId || null,
       created_at: b.createdAt || new Date().toISOString(),
@@ -82,13 +98,18 @@ export const DataMapper = {
       customerName: row.customer_name,
       customerPhone: row.customer_phone,
       service: row.service,
+      serviceTask: row.service,
       locality: row.locality,
       address: row.address,
       jobDescription: row.job_description,
       bookingType: row.booking_type,
       dateTime: row.date_time,
+      appointmentDate: row.date_time ? row.date_time.split('T')[0] : '',
+      appointmentTime: '10:00 AM',
       estimatedHours: Number(row.estimated_hours) || 1,
       originalEstimate: Number(row.original_estimate) || 0,
+      basePrice: Number(row.original_estimate) || 0,
+      visitingCharge: 0,
       customerOffer: row.customer_offer ? Number(row.customer_offer) : null,
       counterOfferHistory: Array.isArray(row.counter_offer_history) ? row.counter_offer_history : (row.counter_offer_history ? JSON.parse(row.counter_offer_history) : []),
       agreedPrice: Number(row.agreed_price) || 0,
@@ -202,6 +223,8 @@ export const SupabaseDataService = {
       return null;
     }
   },
+
+
 
   // BOOKINGS
   async fetchBookings() {
@@ -330,11 +353,9 @@ export const SupabaseDataService = {
       try {
         const channel = client.channel('localkaam-db-changes')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, payload => {
-            console.log('Realtime bookings update received:', payload);
             if (onUpdate) onUpdate('bookings', payload);
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'workers' }, payload => {
-            console.log('Realtime workers update received:', payload);
             if (onUpdate) onUpdate('workers', payload);
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, payload => {

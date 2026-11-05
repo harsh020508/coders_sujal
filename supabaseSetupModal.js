@@ -10,7 +10,7 @@ const SCHEMA_SQL = `-- LocalKaam - COMPLETE Supabase Setup Script
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT,
-  role TEXT DEFAULT 'customer' CHECK (role IN ('customer', 'worker', 'admin')),
+  role TEXT DEFAULT 'customer' CHECK (role IN ('customer', 'worker')),
   full_name TEXT,
   phone TEXT,
   locality TEXT DEFAULT 'andheri',

@@ -183,6 +183,18 @@ const server = http.createServer(async (req, res) => {
         if (!newBooking || !newBooking.id) {
           return sendJson(res, 400, { error: 'Invalid booking payload' });
         }
+
+        // Check if worker is available
+        if (newBooking.workerId) {
+          const workers = getStore('localkaam_workers', INITIAL_WORKERS);
+          const targetWorker = workers.find(w => w.id === newBooking.workerId);
+          if (targetWorker && !targetWorker.available) {
+            return sendJson(res, 400, {
+              error: 'This professional is currently offline or not accepting new bookings.'
+            });
+          }
+        }
+
         const bookings = getStore('localkaam_bookings', INITIAL_BOOKINGS);
         const existingIdx = bookings.findIndex(b => b.id === newBooking.id);
         if (existingIdx >= 0) {

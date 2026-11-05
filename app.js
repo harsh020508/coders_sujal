@@ -12,9 +12,17 @@ export const App = {
     this.applyTheme(StorageService.getTheme());
     
     // Handle initial URL hash or history state
-    const hash = window.location.hash.replace('#', '');
+    let hash = (typeof window !== 'undefined' && window.location.hash) ? window.location.hash.replace('#', '') : '';
+    if (hash === 'admin') {
+      hash = 'landing';
+      if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
     if (['landing', 'role-select', 'customer', 'worker'].includes(hash)) {
       StorageService.setCurrentRole(hash);
+    } else {
+      StorageService.setCurrentRole('landing');
     }
 
     this.render();
@@ -22,12 +30,14 @@ export const App = {
     // Handle browser back/forward navigation smoothly without exiting app
     if (typeof window !== 'undefined') {
       window.addEventListener('popstate', (e) => {
-        if (e.state && e.state.role) {
+        if (e.state && e.state.role && ['landing', 'role-select', 'customer', 'worker'].includes(e.state.role)) {
           StorageService.setCurrentRole(e.state.role);
         } else {
-          const h = window.location.hash.replace('#', '');
+          let h = window.location.hash.replace('#', '');
           if (['landing', 'role-select', 'customer', 'worker'].includes(h)) {
             StorageService.setCurrentRole(h);
+          } else {
+            StorageService.setCurrentRole('landing');
           }
         }
         this.render();
@@ -45,7 +55,16 @@ export const App = {
     });
   },
 
-  navigateToRole(role) {
+  navigateToRole(role, options = {}) {
+    if (!['landing', 'role-select', 'customer', 'worker'].includes(role)) {
+      role = 'landing';
+    }
+    if (role === 'worker') {
+      WorkerFrontend.activeView = 'overview';
+      if (options.openSetupModal !== false) {
+        WorkerFrontend.shouldOpenSetupModal = true;
+      }
+    }
     StorageService.setCurrentRole(role);
     try {
       if (window.history && window.history.pushState) {
@@ -67,7 +86,11 @@ export const App = {
     const root = document.getElementById('app');
     if (!root) return;
 
-    const role = StorageService.getCurrentRole();
+    let role = StorageService.getCurrentRole();
+    if (!['landing', 'role-select', 'customer', 'worker'].includes(role)) {
+      role = 'landing';
+      StorageService.setCurrentRole('landing');
+    }
 
     try {
       if (role === 'landing') {
@@ -100,6 +123,9 @@ export const App = {
           }
         }
         this.attachShellEvents(root);
+      } else {
+        root.innerHTML = this.renderLandingPage();
+        this.attachLandingEvents(root);
       }
     } catch (err) {
       console.error('App render fatal error:', err);
@@ -143,7 +169,7 @@ export const App = {
               Traditional home-service aggregators charge exorbitant commissions and squeeze workers. LocalKaam connects you directly with vetted local plumbers, electricians, carpenters, and cleaners with transparent pricing.
             </p>
             <div class="hero-cta" style="display: flex; gap: 16px; flex-wrap: wrap;">
-              <button class="btn btn-primary" id="hero-find-pro-btn">Get Started (Customer & Worker) →</button>
+              <button class="btn btn-primary" id="hero-find-pro-btn">Get Started →</button>
               <button class="btn btn-outline" id="hero-explore-btn">Explore Features</button>
             </div>
           </div>
@@ -328,7 +354,7 @@ export const App = {
     return `
       <div class="app-container" style="background-color: var(--bg-primary); color: var(--text-primary);">
         <header class="navbar">
-          <div class="nav-brand" id="nav-back-home">
+          <div class="nav-brand" id="nav-back-home" style="cursor: pointer;">
             <div class="nav-logo">LK</div>
             <div class="nav-title">LocalKaam</div>
           </div>
@@ -341,7 +367,7 @@ export const App = {
           <h1 style="font-size: 40px; font-weight: 800; margin-bottom: 12px; font-family: 'Bricolage Grotesque', sans-serif;">How would you like to use LocalKaam?</h1>
           <p style="color: var(--text-secondary); font-size: 18px; margin-bottom: 32px;">Choose the experience that works for you. You can switch roles anytime.</p>
 
-          <div class="role-cards">
+          <div class="role-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; max-width: 820px; margin: 0 auto;">
             <!-- Customer Card -->
             <div class="role-card" id="select-customer-role">
               <div class="role-icon">🏠</div>
@@ -354,7 +380,7 @@ export const App = {
             <div class="role-card" id="select-worker-role">
               <div class="role-icon">🛠️</div>
               <h3>Continue as Worker</h3>
-              <p>Showcase your skills, set your own hourly rates, manage booking requests, counter offers, and track earnings.</p>
+              <p>Configure your Profile & Specialities, manage verification documents, accept booking requests, and track earnings.</p>
               <button class="btn btn-primary" style="width: 100%; padding: 14px;">Continue as Worker</button>
             </div>
           </div>
@@ -466,10 +492,12 @@ export const App = {
     });
     root.querySelector('#select-worker-role')?.addEventListener('click', () => {
       const profile = AuthService.getProfile();
+      WorkerFrontend.shouldOpenSetupModal = true;
       if (profile && profile.role === 'worker') {
         this.navigateToRole('worker');
       } else {
         AuthModal.show('worker', () => {
+          WorkerFrontend.shouldOpenSetupModal = true;
           this.navigateToRole('worker');
         });
       }

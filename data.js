@@ -83,6 +83,41 @@ export const CATEGORIES = [
   }
 ];
 
+export const REQUIRED_VERIFICATION_DOCUMENTS = [
+  {
+    type: 'identity_proof',
+    title: 'Government Identity Proof',
+    subtitle: 'Aadhaar Card, PAN Card, Voter ID, or Passport (Mandatory KYC)',
+    required: true,
+    icon: '🪪',
+    demoFileName: 'Aadhaar_Govt_ID_Verified.pdf'
+  },
+  {
+    type: 'address_proof',
+    title: 'Local Address Proof',
+    subtitle: 'Electricity Bill, Ration Card, or Rent Agreement (Mumbai Resident)',
+    required: true,
+    icon: '🏠',
+    demoFileName: 'Mumbai_Electricity_Bill_Verified.pdf'
+  },
+  {
+    type: 'trade_license',
+    title: 'Trade License / Technical Qualification',
+    subtitle: 'ITI Certificate, Vocational Training, or Government Trade License',
+    required: true,
+    icon: '📜',
+    demoFileName: 'ITI_Trade_License_Certified.pdf'
+  },
+  {
+    type: 'experience_evidence',
+    title: 'Experience Proof & Work Portfolio',
+    subtitle: 'Contractor Reference Letter, Work Completion Slips, or Photos of Past Jobs',
+    required: false,
+    icon: '💼',
+    demoFileName: 'Contractor_Experience_Letter.pdf'
+  }
+];
+
 export const INITIAL_WORKERS = [
   {
     id: 'w1',
@@ -104,6 +139,40 @@ export const INITIAL_WORKERS = [
     ratingAverage: 4.8,
     ratingCount: 42,
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    documents: {
+      identity_proof: {
+        type: 'identity_proof',
+        title: 'Aadhaar Card (Govt Photo ID)',
+        fileName: 'Aadhaar_RameshKumar_Verified.pdf',
+        fileSize: '1.4 MB',
+        uploadedAt: '2026-10-12T10:15:00Z',
+        status: 'Verified'
+      },
+      address_proof: {
+        type: 'address_proof',
+        title: 'Adani Electricity Bill (Andheri West)',
+        fileName: 'Electricity_Bill_Andheri_2026.pdf',
+        fileSize: '820 KB',
+        uploadedAt: '2026-10-12T10:18:00Z',
+        status: 'Verified'
+      },
+      trade_license: {
+        type: 'trade_license',
+        title: 'ITI Master Plumber & Electrical Certification',
+        fileName: 'ITI_Trade_License_Plumbing_GradeA.pdf',
+        fileSize: '2.1 MB',
+        uploadedAt: '2026-10-13T11:30:00Z',
+        status: 'Verified'
+      },
+      experience_evidence: {
+        type: 'experience_evidence',
+        title: 'Contractor Experience Letter (L&T Residential)',
+        fileName: 'Experience_Letter_LT_Maintenance.pdf',
+        fileSize: '1.1 MB',
+        uploadedAt: '2026-10-13T11:40:00Z',
+        status: 'Verified'
+      }
+    },
     specialities: {
       plumber: {
         tasks: ['Leaking Tap & Faucet', 'Pipe Fitting & Leakage', 'Geyser Installation & Repair'],
@@ -146,6 +215,32 @@ export const INITIAL_WORKERS = [
     ratingAverage: 4.9,
     ratingCount: 38,
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    documents: {
+      identity_proof: {
+        type: 'identity_proof',
+        title: 'Aadhaar Card (Govt Photo ID)',
+        fileName: 'Aadhaar_SureshSharma_Verified.pdf',
+        fileSize: '1.2 MB',
+        uploadedAt: '2026-10-14T09:10:00Z',
+        status: 'Verified'
+      },
+      address_proof: {
+        type: 'address_proof',
+        title: 'Mahanagar Gas Bill (Bandra West)',
+        fileName: 'Gas_Bill_Bandra_2026.pdf',
+        fileSize: '650 KB',
+        uploadedAt: '2026-10-14T09:12:00Z',
+        status: 'Verified'
+      },
+      trade_license: {
+        type: 'trade_license',
+        title: 'Maharashtra Electrical License Grade A',
+        fileName: 'Govt_Electrical_Contractor_Lic_GradeA.pdf',
+        fileSize: '1.8 MB',
+        uploadedAt: '2026-10-14T10:00:00Z',
+        status: 'Verified'
+      }
+    },
     specialities: {
       electrician: {
         tasks: ['Wiring Repair', 'Switchboard Installation', 'Lighting Installation', 'Electrical Fault Diagnosis'],
@@ -188,6 +283,32 @@ export const INITIAL_WORKERS = [
     ratingAverage: 4.7,
     ratingCount: 29,
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+    documents: {
+      identity_proof: {
+        type: 'identity_proof',
+        title: 'Aadhaar Card (Govt Photo ID)',
+        fileName: 'Aadhaar_VijayPatil_Verified.pdf',
+        fileSize: '1.3 MB',
+        uploadedAt: '2026-10-15T14:20:00Z',
+        status: 'Verified'
+      },
+      address_proof: {
+        type: 'address_proof',
+        title: 'MSEB Electricity Bill (Powai)',
+        fileName: 'Electricity_Powai_2026.pdf',
+        fileSize: '790 KB',
+        uploadedAt: '2026-10-15T14:22:00Z',
+        status: 'Verified'
+      },
+      trade_license: {
+        type: 'trade_license',
+        title: 'Master Carpentry & Modular Fitting Certificate',
+        fileName: 'Carpentry_Guild_Master_Cert.pdf',
+        fileSize: '1.9 MB',
+        uploadedAt: '2026-10-15T15:00:00Z',
+        status: 'Verified'
+      }
+    },
     specialities: {
       carpenter: {
         tasks: ['Door Locks & Hinges', 'Bed & Sofa Repair', 'Wardrobe Customization', 'Modular Kitchen Fitting'],
@@ -221,6 +342,32 @@ export const INITIAL_WORKERS = [
     ratingAverage: 4.9,
     ratingCount: 56,
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    documents: {
+      identity_proof: {
+        type: 'identity_proof',
+        title: 'Aadhaar Card (Govt Photo ID)',
+        fileName: 'Aadhaar_SunitaGawde_Verified.pdf',
+        fileSize: '1.1 MB',
+        uploadedAt: '2026-10-16T12:00:00Z',
+        status: 'Verified'
+      },
+      address_proof: {
+        type: 'address_proof',
+        title: 'Registered Rent Agreement (Juhu)',
+        fileName: 'Rent_Agreement_Juhu_2026.pdf',
+        fileSize: '1.5 MB',
+        uploadedAt: '2026-10-16T12:05:00Z',
+        status: 'Verified'
+      },
+      trade_license: {
+        type: 'trade_license',
+        title: 'Professional Sanitization & Housekeeping Certificate',
+        fileName: 'Sanitization_Housekeeping_Cert.pdf',
+        fileSize: '1.7 MB',
+        uploadedAt: '2026-10-16T12:30:00Z',
+        status: 'Verified'
+      }
+    },
     specialities: {
       cleaning: {
         tasks: ['Full Home Deep Cleaning', 'Kitchen & Bathroom Scrub', 'Sofa & Carpet Shampooing'],
