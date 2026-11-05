@@ -510,7 +510,8 @@ export const App = {
 
     root.querySelectorAll('.category-card').forEach(card => {
       card.addEventListener('click', () => {
-        if (AuthService.isAuthenticated() && AuthService.getProfile()?.role === 'customer') {
+        if (AuthService.isAuthenticated()) {
+          AuthService.setRole('customer');
           this.navigateToRole('customer');
           CustomerFrontend.currentCategory = card.getAttribute('data-category');
           this.render();
@@ -536,7 +537,8 @@ export const App = {
       this.navigateToRole('landing');
     });
     root.querySelector('#select-customer-role')?.addEventListener('click', () => {
-      if (AuthService.isAuthenticated() && AuthService.getProfile()?.role === 'customer') {
+      if (AuthService.isAuthenticated()) {
+        AuthService.setRole('customer');
         this.navigateToRole('customer');
       } else {
         AuthModal.show('customer', () => {
@@ -545,7 +547,8 @@ export const App = {
       }
     });
     root.querySelector('#select-worker-role')?.addEventListener('click', () => {
-      if (AuthService.isAuthenticated() && AuthService.getProfile()?.role === 'worker') {
+      if (AuthService.isAuthenticated()) {
+        AuthService.setRole('worker');
         this.navigateToRole('worker');
       } else {
         AuthModal.show('worker', () => {

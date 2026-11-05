@@ -87,13 +87,13 @@ class AuthServiceManager {
       const { data: { session }, error: sessionError } = await client.auth.getSession();
       if (sessionError) {
         console.warn('[Auth] getSession error during init:', sessionError);
-        this.clearSessionState();
+        if (!this.currentSession || this._isSessionExpired(this.currentSession)) this.clearSessionState();
       } else if (session && session.user && !this._isSessionExpired(session)) {
         this.currentSession = session;
         this.currentUser = session.user;
         await this.syncUserProfile(session.user);
         this.notifyListeners('SIGNED_IN', session);
-      } else {
+      } else if (!this.currentSession || this._isSessionExpired(this.currentSession)) {
         this.clearSessionState();
       }
 
@@ -268,6 +268,31 @@ class AuthServiceManager {
   }
 
   // ========================================================================
+  setRole(role) {
+    const validRole = role === 'worker' ? 'worker' : 'customer';
+    if (!this.currentProfile) {
+      if (this.currentUser) {
+        this.currentProfile = this._buildSafeProfileFromUser(this.currentUser);
+      } else {
+        this.currentProfile = { role: validRole };
+      }
+    }
+    this.currentProfile.role = validRole;
+    this.saveCachedProfileDisplay(this.currentProfile);
+
+    // Update role asynchronously in Supabase profiles if user is logged in
+    (async () => {
+      try {
+        const client = await SupabaseService.getClient();
+        if (client && this.currentUser) {
+          await client.from('profiles').update({ role: validRole }).eq('id', this.currentUser.id);
+        }
+      } catch (e) {
+        console.warn('[Auth] Async role update warning:', e);
+      }
+    })();
+  }
+
   // EMAIL / PASSWORD REGISTRATION
   // ========================================================================
   async signUp({ email, password, fullName, phone, role = 'customer', locality = 'andheri' }) {

@@ -6,11 +6,10 @@ export const AuthModal = {
   show(role = 'customer', onAuthenticated) {
     // If the user already has a valid, verified session for this role, proceed directly
     if (AuthService.isAuthenticated()) {
+      AuthService.setRole(role);
       const currentProfile = AuthService.getProfile();
-      if (currentProfile && currentProfile.role === role) {
-        if (onAuthenticated) onAuthenticated(AuthService.getUser(), currentProfile);
-        return;
-      }
+      if (onAuthenticated) onAuthenticated(AuthService.getUser(), currentProfile);
+      return;
     }
 
     const existingModal = document.getElementById('auth-modal');
@@ -140,6 +139,10 @@ export const AuthModal = {
       const originalHtml = btn.innerHTML;
       btn.disabled = true;
       btn.innerHTML = '<span style="display:inline-block; animation: spin 1s linear infinite;">⏳</span> Redirecting to Google OAuth...';
+
+      try {
+        localStorage.setItem('localkaam_pending_auth_role', role);
+      } catch (e) {}
 
       const { data, error } = await AuthService.signInWithGoogle();
       if (error) {

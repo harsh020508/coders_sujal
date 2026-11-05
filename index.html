@@ -25,6 +25,7 @@
     import { App } from './app.js';
     import { SupabaseService } from './supabaseClient.js';
     import { AuthService } from './authService.js';
+    import { StorageService } from './storage.js';
     import { Toast } from './toast.js';
 
     window.addEventListener('DOMContentLoaded', async () => {
@@ -46,7 +47,22 @@
                 console.error('OAuth session error:', error.message);
                 Toast.show('Sign-in error: ' + (error.message || 'Unknown error'), 'error');
               } else if (data && data.session) {
+                let targetRole = 'customer';
+                try {
+                  const pending = localStorage.getItem('localkaam_pending_auth_role');
+                  if (pending && ['customer', 'worker'].includes(pending)) {
+                    targetRole = pending;
+                    localStorage.removeItem('localkaam_pending_auth_role');
+                  }
+                } catch (e) {}
+
+                AuthService.currentSession = data.session;
+                AuthService.currentUser = data.session.user;
+
                 await AuthService.syncUserProfile(data.session.user);
+                AuthService.setRole(targetRole);
+                StorageService.setCurrentRole(targetRole);
+
                 Toast.show('Signed in as ' + (data.session.user.email || 'User') + '!', 'success');
               }
               // If !data.session and no error — PKCE exchange still pending, onAuthStateChange will handle it
