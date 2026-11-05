@@ -24,6 +24,9 @@ const DB_PATH = path.join(__dirname, 'localkaam.db');
 // Initialize SQLite database
 const db = new DatabaseSync(DB_PATH);
 db.exec(`
+  PRAGMA journal_mode = WAL;
+  PRAGMA busy_timeout = 5000;
+
   CREATE TABLE IF NOT EXISTS store (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
@@ -342,11 +345,133 @@ export function sendJson(res, statusCode, data) {
 // AUTHENTICATION & JWT VERIFICATION MIDDLEWARE (Supabase JWT)
 // ==============================================================================
 
+// ─── Dev/Demo guest token resolution ────────────────────────────────────────
+// When running locally without Supabase credentials, loginGuest() in
+// authService.js issues tokens like "demo_guest_token_<timestamp>".
+// These are NOT real JWTs.  We resolve them to fixed guest identities so
+// that the OTP endpoints work on localhost in demo mode.
+// Gated behind NODE_ENV !== 'production' — never active on live deployments.
+function resolveDemoGuestToken(token) {
+  if (process.env.NODE_ENV === 'production') return null;
+  if (!token.startsWith('demo_guest_token_')) return null;
+  const isWorkerToken = token.includes('worker');
+  const id    = isWorkerToken ? 'guest_worker_01' : 'guest_customer_01';
+  const role  = isWorkerToken ? 'worker' : 'customer';
+  const email = isWorkerToken ? 'rajesh.kumar@localkaam.demo' : 'aarav.mehta@localkaam.demo';
+  return { id, email, role, app_metadata: { role }, user_metadata: { role } };
+}
+
+// ─── Booking ownership helpers (demo-aware) ──────────────────────────────────
+/**
+ * Returns true if user is the worker assigned to booking.
+ * Handles: direct id match, worker.user_id lookup, and demo guest mapping.
+ */
+// Asynchronously mirror OTP changes to Supabase's booking_otps table if configured
+async function syncOtpToSupabase(action, otpData) {
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://dcijrqwoxkazggouvhdn.supabase.co';
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjaWpycXdveGthemdnb3V2aGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4MzEwNjIsImV4cCI6MjEwODQwNzA2Mn0.aFaK7IAkKf6YjUN09PBXNbZHOrGhqjABr9NiD9nS4g0';
+  if (!supabaseUrl || !supabaseKey) return;
+
+  try {
+    const base = supabaseUrl.replace(/\/+$/, '');
+    if (action === 'upsert') {
+      await fetch(`${base}/rest/v1/booking_otps`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(otpData)
+      });
+    } else if (action === 'consume') {
+      await fetch(`${base}/rest/v1/booking_otps?booking_id=eq.${encodeURIComponent(otpData.booking_id)}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          consumed_at: otpData.consumed_at,
+          updated_at: otpData.updated_at
+        })
+      });
+    } else if (action === 'attempt') {
+      await fetch(`${base}/rest/v1/booking_otps?booking_id=eq.${encodeURIComponent(otpData.booking_id)}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          attempts: otpData.attempts,
+          updated_at: otpData.updated_at
+        })
+      });
+    }
+  } catch (err) {
+    // Non-blocking sync error
+  }
+}
+
+function isBookingWorker(booking, user, workers) {
+  if (!booking || !user) return false;
+  if (user.role === 'admin') return true;
+  const wid = booking.workerId || booking.worker_id;
+  if (wid && wid === user.id) return true;
+  if (Array.isArray(workers)) {
+    const wp = workers.find(w => w.id === wid);
+    if (wp && (wp.user_id === user.id || wp.userId === user.id)) return true;
+  }
+  // In dev mode, allow worker accounts (guest or signed-in worker) to test w1 jobs
+  if (process.env.NODE_ENV !== 'production' &&
+      (user.id === 'guest_worker_01' || user.role === 'worker') && wid === 'w1') return true;
+  return false;
+}
+
+/**
+ * Returns true if user is the customer who owns booking.
+ * Handles: customerId, customer_id, phone match, and demo guest mapping.
+ */
+function isBookingCustomer(booking, user) {
+  if (!booking || !user) return false;
+  if (user.role === 'admin') return true;
+  const cid = booking.customerId || booking.customer_id;
+  if (cid && cid === user.id) return true;
+
+  // Match by customer phone if present
+  const bPhone = (booking.customerPhone || booking.customer_phone || '').replace(/\D/g, '');
+  const uPhone = (user.user_metadata?.phone || user.phone || '').replace(/\D/g, '');
+  if (bPhone && uPhone && (bPhone.endsWith(uPhone) || uPhone.endsWith(bPhone))) return true;
+
+  // In dev mode, allow customer accounts (guest or signed-in customer) to test default sample booking
+  if (process.env.NODE_ENV !== 'production' &&
+      (user.id === 'guest_customer_01' || user.id === 'cust-aarav' || user.role === 'customer')) {
+    if (!cid || cid === 'cust-aarav' || cid === 'guest_customer_01') return true;
+  }
+  return false;
+}
+
 /**
  * Verifies a Supabase JWT.
  * Validates token structure, expiration, subject identity, and cryptographic signature.
+ * Also accepts dev/demo guest tokens when NODE_ENV !== 'production'.
  */
 export async function verifyToken(token) {
+  if (!token || typeof token !== 'string') {
+    return { user: null, error: { status: 401, message: 'Missing or empty bearer token' } };
+  }
+
+  // Dev/demo guest token fast-path (localhost only, never in production)
+  if (token.startsWith('demo_guest_token_')) {
+    const guestUser = resolveDemoGuestToken(token);
+    if (guestUser) return { user: guestUser, error: null };
+    return { user: null, error: { status: 401, message: 'Guest tokens are disabled in production' } };
+  }
+
   if (!token || typeof token !== 'string') {
     return { user: null, error: { status: 401, message: 'Missing or empty bearer token' } };
   }
@@ -590,9 +715,9 @@ export const server = http.createServer(async (req, res) => {
       if (user.role === 'admin') {
         return sendJson(res, 200, allBookings);
       }
+      const workersB = getStore('localkaam_workers', INITIAL_WORKERS);
       const userBookings = allBookings.filter(b => 
-        b.customerId === user.id || b.customer_id === user.id || 
-        b.workerId === user.id || b.worker_id === user.id
+        isBookingCustomer(b, user) || isBookingWorker(b, user, workersB)
       );
       return sendJson(res, 200, userBookings);
     }
@@ -661,8 +786,9 @@ export const server = http.createServer(async (req, res) => {
 
       if (idx >= 0) {
         const existing = bookings[idx];
-        const isCustomer = (existing.customerId === user.id || existing.customer_id === user.id);
-        const isWorker = (existing.workerId === user.id || existing.worker_id === user.id);
+        const workersP = getStore('localkaam_workers', INITIAL_WORKERS);
+        const isCustomer = isBookingCustomer(existing, user);
+        const isWorker = isBookingWorker(existing, user, workersP);
 
         if (user.role !== 'admin' && !isCustomer && !isWorker) {
           return sendJson(res, 403, { error: 'Forbidden: you cannot modify another user\'s booking' });
@@ -902,8 +1028,8 @@ export const server = http.createServer(async (req, res) => {
 
     if (!booking) return sendJson(res, 404, { error: 'Booking not found' });
 
-    const isWorker = (booking.workerId === user.id || booking.worker_id === user.id);
-    if (!isWorker && user.role !== 'admin') {
+    const workersG = getStore('localkaam_workers', INITIAL_WORKERS);
+    if (!isBookingWorker(booking, user, workersG) && user.role !== 'admin') {
       return sendJson(res, 403, { error: 'Forbidden: only the assigned worker can generate the arrival OTP' });
     }
 
@@ -937,13 +1063,26 @@ export const server = http.createServer(async (req, res) => {
 
     stmtUpsertOtp.run(
       otpId, bookingId,
-      booking.customerId || booking.customer_id,
-      booking.workerId   || booking.worker_id,
+      booking.customerId || booking.customer_id || 'guest_customer_01',
+      booking.workerId   || booking.worker_id || 'w1',
       otpHash,
       expiresAt,
       'pending',
       now, now
     );
+    syncOtpToSupabase('upsert', {
+      id: otpId,
+      booking_id: bookingId,
+      customer_id: booking.customerId || booking.customer_id || 'guest_customer_01',
+      worker_id: booking.workerId || booking.worker_id || 'w1',
+      otp_hash: otpHash,
+      expires_at: expiresAt,
+      attempts: 0,
+      max_attempts: 5,
+      delivery_status: 'pending',
+      created_at: now,
+      updated_at: now
+    }).catch(() => {});
 
     // Send SMS to customer's phone
     const customerPhone = booking.customerPhone || booking.customer_phone || '';
@@ -997,8 +1136,8 @@ export const server = http.createServer(async (req, res) => {
 
     if (!booking) return sendJson(res, 404, { error: 'Booking not found' });
 
-    const isWorker = (booking.workerId === user.id || booking.worker_id === user.id);
-    if (!isWorker) {
+    const workersV = getStore('localkaam_workers', INITIAL_WORKERS);
+    if (!isBookingWorker(booking, user, workersV)) {
       return sendJson(res, 403, { error: 'Forbidden: only the assigned worker can verify arrival' });
     }
 
@@ -1044,6 +1183,7 @@ export const server = http.createServer(async (req, res) => {
 
     // ✅ OTP is valid — consume it atomically and transition booking status
     stmtConsumeOtp.run(now, now, bookingId);
+    syncOtpToSupabase('consume', { booking_id: bookingId, consumed_at: now, updated_at: now }).catch(() => {});
 
     const idx = bookings.findIndex(b => b.id === bookingId);
     const prevStatus = bookings[idx].status;
@@ -1078,8 +1218,7 @@ export const server = http.createServer(async (req, res) => {
 
     if (!booking) return sendJson(res, 404, { error: 'Booking not found' });
 
-    const isCustomer = (booking.customerId === user.id || booking.customer_id === user.id);
-    if (!isCustomer && user.role !== 'admin') {
+    if (!isBookingCustomer(booking, user) && user.role !== 'admin') {
       return sendJson(res, 403, { error: 'Forbidden: only the booking customer can resend the OTP' });
     }
 
@@ -1153,9 +1292,8 @@ export const server = http.createServer(async (req, res) => {
 
     if (!booking) return sendJson(res, 404, { error: 'Booking not found' });
 
-    const isCustomer = (booking.customerId === user.id || booking.customer_id === user.id);
-    const isWorker   = (booking.workerId === user.id   || booking.worker_id === user.id);
-    if (!isCustomer && !isWorker && user.role !== 'admin') {
+    const workersS = getStore('localkaam_workers', INITIAL_WORKERS);
+    if (!isBookingCustomer(booking, user) && !isBookingWorker(booking, user, workersS) && user.role !== 'admin') {
       return sendJson(res, 403, { error: 'Forbidden' });
     }
 

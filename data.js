@@ -1158,7 +1158,7 @@ export const INITIAL_BOOKINGS = [
       { sender: 'worker', amount: 400, note: 'Includes genuine ceramic spindle washer + 30-day guarantee' }
     ],
     agreedPrice: 400,
-    status: 'Pending confirmation',
+    status: 'Confirmed',
     reviewId: null,
     complaintId: null,
     createdAt: new Date(Date.now() - 3600000).toISOString(),

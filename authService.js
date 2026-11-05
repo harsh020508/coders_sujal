@@ -317,7 +317,7 @@ class AuthServiceManager {
     };
     this.currentUser = guestUser;
     this.currentSession = {
-      access_token: 'demo_guest_token_' + Date.now(),
+      access_token: 'demo_guest_token_' + role + '_' + Date.now(),
       expires_at: Math.floor(Date.now() / 1000) + 86400 * 30,
       user: guestUser
     };

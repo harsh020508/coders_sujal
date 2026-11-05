@@ -2192,7 +2192,7 @@ export const WorkerFrontend = {
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;';
 
     overlay.innerHTML = `
-      <div style="background:var(--bg-card);border-radius:16px;padding:2rem;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.25);position:relative;">
+      <div style="background:var(--bg-card);border-radius:16px;padding:2rem;max-width:440px;width:100%;box-sizing:border-box;box-shadow:0 20px 60px rgba(0,0,0,0.25);position:relative;overflow:hidden;">
         <button id="otp-modal-close" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-muted);">✕</button>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;">
           <div style="width:48px;height:48px;border-radius:12px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">🔐</div>
@@ -2205,19 +2205,19 @@ export const WorkerFrontend = {
           Ask your customer for the <strong>6-digit OTP</strong> they received via SMS. Enter it below to confirm your arrival.
         </p>
         <div id="otp-modal-error" style="display:none;padding:0.65rem 1rem;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;font-size:0.85rem;margin-bottom:1rem;"></div>
-        <div style="display:flex;gap:8px;margin-bottom:1.25rem;">
+        <div style="width:100%;box-sizing:border-box;margin-bottom:1.25rem;">
           <input id="otp-input-field"
             type="text"
             inputmode="numeric"
             pattern="[0-9]{6}"
             maxlength="6"
             placeholder="000000"
-            style="flex:1;font-size:1.75rem;font-weight:800;letter-spacing:0.4em;text-align:center;border:2px solid var(--border-color);border-radius:10px;padding:0.6rem;font-family:'JetBrains Mono',monospace;outline:none;transition:border 0.2s;"
+            style="width:100%;min-width:0;max-width:100%;box-sizing:border-box;display:block;font-size:1.75rem;font-weight:800;letter-spacing:0.35em;text-indent:0.35em;text-align:center;border:2px solid var(--border-color);border-radius:12px;padding:0.65rem 0.5rem;font-family:'JetBrains Mono',monospace;outline:none;background:var(--bg-card);color:var(--text-primary);transition:border-color 0.2s,box-shadow 0.2s;"
             autocomplete="one-time-code"
           >
         </div>
-        <div style="display:flex;gap:0.75rem;">
-          <button id="otp-submit-btn" class="ui-btn ui-btn--accent" style="flex:1;font-size:1rem;padding:0.7rem;justify-content:center;">
+        <div style="width:100%;box-sizing:border-box;display:flex;gap:0.75rem;">
+          <button id="otp-submit-btn" class="ui-btn ui-btn--accent" style="width:100%;min-width:0;box-sizing:border-box;font-size:1rem;font-weight:700;padding:0.75rem 1rem;justify-content:center;border-radius:10px;display:flex;align-items:center;cursor:pointer;">
             ✅ Verify & Confirm Arrival
           </button>
         </div>

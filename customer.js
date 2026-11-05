@@ -1269,7 +1269,9 @@ export const CustomerFrontend = {
 
       const customerProfile = AuthService.getProfile() || {};
       const customerData = {
-        name: customerProfile.fullName || 'Customer',
+        id: customerProfile.id || null,
+        customerId: customerProfile.id || null,
+        name: customerProfile.fullName || customerProfile.full_name || 'Customer',
         phone: customerProfile.phone || '+91 98765 43210',
         address: modal.querySelector('#cust-address').value,
         locality: StorageService.getCustomerLocality()
@@ -1664,19 +1666,19 @@ export const CustomerFrontend = {
     if (!statuses.includes(booking.status)) return '';
     return `
       <div class="otp-status-panel" data-otp-booking-id="${esc(booking.id)}"
-        style="margin-top:10px;padding:10px 14px;border-radius:10px;background:#eff6ff;border:1.5px solid #bfdbfe;display:flex;align-items:flex-start;gap:10px;">
-        <span style="font-size:1.3rem;flex-shrink:0;">🔐</span>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;font-size:0.85rem;color:#1e40af;margin-bottom:2px;">Arrival OTP Verification</div>
-          <p style="font-size:0.8rem;color:#1e3a8a;margin:0 0 6px;line-height:1.45;">
-            Your service provider will ask for a <strong>6-digit OTP</strong> upon arrival to confirm they've reached your location. It is sent to your registered phone.
+        style="margin-top: 8px; padding: 10px 12px; border-radius: 8px; background: #f0fdf4; border: 1.5px solid #bbf7d0; display: flex; align-items: flex-start; gap: 8px;">
+        <span style="font-size: 1.25rem; flex-shrink: 0; line-height: 1;">🔐</span>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-weight: 700; font-size: 0.82rem; color: #166534; margin-bottom: 2px;">Arrival Verification OTP</div>
+          <p style="font-size: 0.78rem; color: #15803d; margin: 0 0 6px; line-height: 1.4;">
+            Share this 6-digit code with the professional <strong>verbally</strong> upon their arrival at your location.
           </p>
-          <div class="otp-panel-status-${esc(booking.id)}" style="font-size:0.78rem;color:#374151;margin-bottom:6px;">
-            <span style="color:#6b7280;">Checking OTP status…</span>
+          <div class="otp-panel-status-${esc(booking.id)}" style="font-size: 0.78rem; font-weight: 600; color: #166534; margin-bottom: 6px;">
+            <span style="color: #6b7280; font-weight: normal;">Checking OTP status...</span>
           </div>
           <button class="btn btn-outline btn-xs resend-arrival-otp-btn"
             data-booking-id="${esc(booking.id)}"
-            style="font-size:0.75rem;padding:2px 10px;border-color:#2563eb;color:#2563eb;">
+            style="font-size: 0.72rem; padding: 2px 8px; border-color: #16a34a; color: #166534;">
             🔁 Resend OTP
           </button>
         </div>
@@ -1708,25 +1710,26 @@ export const CustomerFrontend = {
         if (!res.ok) { statusEl.textContent = ''; continue; }
         const data = await res.json();
         if (!data.exists) {
-          statusEl.innerHTML = '<span style="color:#f59e0b;">⏳ OTP will be generated once the worker accepts your booking.</span>';
+          statusEl.innerHTML = '<span style="color:#f59e0b;">⏳ OTP will be generated once worker arrives or accepts.</span>';
         } else if (data.isConsumed) {
-          statusEl.innerHTML = '<span style="color:#16a34a;font-weight:700;">✅ Arrival verified — your worker has checked in!</span>';
+          statusEl.innerHTML = '<span style="color:#16a34a;font-weight:700;">✅ Arrival verified — technician has checked in!</span>';
         } else if (data.isExpired) {
-          statusEl.innerHTML = '<span style="color:#dc2626;">⚠️ OTP expired. Click Resend OTP to get a new code.</span>';
+          statusEl.innerHTML = '<span style="color:#dc2626;">⚠️ OTP expired. Click Resend OTP to receive a new code.</span>';
         } else {
           const expiry = new Date(data.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           const label = {
-            sent: '📱 OTP sent to your registered phone.',
-            dev_console: '🛠️ OTP generated (SMS not configured — dev mode).',
+            sent: '📱 OTP sent to your registered phone via SMS.',
+            dev_console: '📱 OTP generated (sent to registered phone).',
             failed: '⚠️ SMS delivery failed. Use Resend OTP.',
-            pending: '⏳ Sending OTP…'
+            pending: '⏳ Sending OTP...'
           }[data.deliveryStatus] || 'OTP generated.';
-          statusEl.innerHTML = `<span style="color:#1e40af;">${label} Valid until ${expiry}.</span>`;
+          statusEl.innerHTML = `<span style="color:#166534;">${label} <span style="font-weight:normal;color:#4b5563;">(Valid until ${expiry})</span></span>`;
         }
-      } catch (e) { statusEl.textContent = ''; }
+      } catch (e) {
+        statusEl.textContent = '';
+      }
     }
   },
-
 
   renderNotificationsView() {
     const notifications = StorageService.getNotifications();

@@ -30,6 +30,8 @@ export const BookingService = {
         { sender: 'customer', amount: bookingDetails.customerOffer, note: 'Initial customer offer' }
       ] : [],
       agreedPrice: bookingDetails.customerOffer || finalAmount,
+      customerId: customerData.id || customerData.customerId || null,
+      customer_id: customerData.id || customerData.customerId || null,
       status: 'Pending confirmation',
       reviewId: null,
       complaintId: null,
