@@ -10,6 +10,9 @@ import { esc } from './utils.js';
 import { buildTaskIndex, searchTasks, catImage, icon } from './ui.js';
 import { initScrollReveal, fadeSlide } from './transitions.js';
 import { initMotion } from './animations/motion.js';
+import { initScroll } from './animations/scroll.js';
+import { refreshReveals } from './animations/reveal.js';
+import { initPolish, bindFocusTraps } from './animations/feedback.js';
 import { Settings } from './settingsService.js';
 import { SettingsPage } from './components/SettingsPage.js';
 import { ProfileDropdown } from './components/ProfileDropdown.js';
@@ -26,6 +29,9 @@ export const App = {
   init() {
     Settings.init();
     initMotion();
+    initScroll();
+    initPolish();
+    bindFocusTraps();
     this._bindGlobalEvents();
 
     // Handle initial URL hash or history state
@@ -376,6 +382,7 @@ export const App = {
       try {
         initScrollReveal(root, ".ui-cat,.ui-card,.ui-worker,.category-card,.feature-card,.step-card,.usp-card,.pricing-card");
       } catch (e) {}
+      try { refreshReveals(root); } catch (e) {}
     }
   },
 

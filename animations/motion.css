@@ -177,3 +177,134 @@
 .motion-calm .ui-btn:active {
   transform: none;
 }
+
+/* --- Step 2: navbar hide/show + scroll progress + preloader --- */
+.navbar {
+  transition: transform var(--dur-med) var(--ease-out), box-shadow var(--dur-hover) var(--ease-out);
+}
+body.nav-hidden .navbar {
+  transform: translateY(calc(-100% - 24px));
+}
+.navbar.is-scrolled {
+  box-shadow: var(--shadow-lg);
+}
+#scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-primary), var(--color-highlighter-yellow));
+  transform: scaleX(0);
+  transform-origin: left center;
+  z-index: 1200;
+  pointer-events: none;
+}
+#lk-preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  background: var(--bg-primary);
+  transition: opacity 400ms var(--ease-out);
+  cursor: pointer;
+}
+#lk-preloader.lk-done { opacity: 0; pointer-events: none; }
+.lk-preloader-logo {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-weight: 800;
+  font-size: 2rem;
+  color: var(--text-primary);
+  animation: lk-preloader-pop 600ms var(--ease-spring) both;
+}
+.lk-preloader-bar {
+  width: 120px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-color);
+  overflow: hidden;
+}
+.lk-preloader-bar span {
+  display: block;
+  height: 100%;
+  width: 40%;
+  border-radius: 999px;
+  background: var(--accent-primary);
+  animation: lk-preloader-slide 700ms var(--ease-out) infinite alternate;
+}
+@keyframes lk-preloader-slide { from { transform: translateX(-40%); } to { transform: translateX(160%); } }
+@keyframes lk-preloader-pop { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+
+/* --- Step 3: split-text hero (each word masked until reveal) --- */
+.split-word {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding-bottom: 0.08em;
+}
+.split-inner {
+  display: inline-block;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .split-word { overflow: visible; }
+  #lk-preloader { display: none; }
+  #scroll-progress { display: none; }
+}
+
+/* --- Step 5: feedback — shake, confetti, ambient blobs --- */
+@keyframes lk-shake-x {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+.lk-shake { animation: lk-shake-x 400ms var(--ease-out); }
+.lk-confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  pointer-events: none;
+}
+#ambient-blobs {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+#ambient-blobs .blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.16;
+  background: var(--accent-light);
+}
+#ambient-blobs .b1 { width: 420px; height: 420px; left: -120px; top: -120px; animation: lk-float1 24s ease-in-out infinite alternate; }
+#ambient-blobs .b2 { width: 520px; height: 520px; right: -180px; top: 22%; animation: lk-float2 30s ease-in-out infinite alternate; }
+#ambient-blobs .b3 { width: 360px; height: 360px; left: 38%; bottom: -160px; animation: lk-float1 28s ease-in-out infinite alternate-reverse; }
+@keyframes lk-float1 { from { transform: translate(0, 0) scale(1); } to { transform: translate(48px, 36px) scale(1.08); } }
+@keyframes lk-float2 { from { transform: translate(0, 0) scale(1.05); } to { transform: translate(-40px, 56px) scale(0.95); } }
+.app-container { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) {
+  #ambient-blobs { display: none; }
+  .lk-shake { animation: none; }
+  .lk-confetti { display: none; }
+}
+
+/* --- Step 4: FAQ accordions glide (details grid-rows trick) --- */
+.settings-faq { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--dur-med) var(--ease-out); }
+.settings-faq[open] { grid-template-rows: 1fr; }
+.settings-faq > * { overflow: hidden; }
+/* Settings tab fade-in */
+.settings-page-body, .settings-panel {
+  animation: lk-page-in var(--dur-page) var(--ease-out) both;
+}
+@keyframes lk-page-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .settings-page-body, .settings-panel { animation: none; }
+}
