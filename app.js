@@ -14,6 +14,8 @@ import { initScroll } from './animations/scroll.js';
 import { refreshReveals } from './animations/reveal.js';
 import { initPolish, bindFocusTraps } from './animations/feedback.js';
 import { Settings } from './settingsService.js';
+import { landingHTML } from './components/landing/Landing.js';
+import { bindLanding } from './components/landing/bind.js';
 import { SettingsPage } from './components/SettingsPage.js';
 import { ProfileDropdown } from './components/ProfileDropdown.js';
 import { i18n, t } from './i18n.js';
@@ -420,250 +422,7 @@ export const App = {
 
   renderLandingPage() {
     const theme = Settings.getResolvedTheme();
-    return `
-      <div class="app-container">
-        ${this._mobileNavHTML(theme)}
-
-        <!-- Top Navigation Bar -->
-        <header class="navbar">
-          <div class="nav-brand" id="nav-home-logo" role="button" tabindex="0">
-            <div class="nav-logo">LK</div>
-            <div class="nav-title">LocalKaam</div>
-          </div>
-          <nav class="nav-links" aria-label="Primary">
-            <a class="nav-link" href="#problem">${t('nav_problem', 'Why us')}</a>
-            <a class="nav-link" href="#services">${t('nav_services', 'Services')}</a>
-            <a class="nav-link" href="#comparison">${t('nav_competitors', 'Comparison')}</a>
-            <a class="nav-link" href="#how-it-works">${t('nav_how_it_works', 'How it works')}</a>
-          </nav>
-          <div class="nav-actions">
-            <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle theme">
-              <i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}" class="lucide-sm"></i>
-            </button>
-            <button class="btn btn-outline btn-sm" id="nav-signin-btn" style="display:inline-flex;align-items:center;gap:5px;">
-              <i data-lucide="user" class="lucide-xs"></i> Sign in
-            </button>
-            <button class="btn btn-primary btn-sm" id="get-started-btn">
-              Get started <i data-lucide="arrow-right" class="lucide-xs"></i>
-            </button>
-            <button class="nav-hamburger" id="nav-hamburger" aria-label="Open navigation menu">
-              <span></span><span></span><span></span>
-            </button>
-          </div>
-        </header>
-
-        <!-- Hero Section -->
-        <section class="landing-hero lk-hero-single lk-hero-center">
-          <p class="lk-eyebrow">Mumbai · Hyperlocal marketplace</p>
-          <h1>
-            Good help lives
-            <br>on <span class="highlight">your street.</span>
-          </h1>
-          <p class="lk-lede">
-            Tell us what needs fixing. We match you with verified plumbers,
-            electricians, carpenters and more in your locality. They set
-            their own prices and keep 100% — no commission, no surge fee.
-          </p>
-          <div class="hero-cta">
-            <button class="btn btn-primary btn-lg" id="hero-find-pro-btn">
-              Find a professional <i data-lucide="arrow-right" class="lucide-sm"></i>
-            </button>
-            <button class="btn btn-outline btn-lg" id="hero-explore-btn">
-              See how it works
-            </button>
-          </div>
-          <div class="lk-trust">
-            <span><i data-lucide="shield-check" class="lucide-sm"></i> Verified pros</span>
-            <span><i data-lucide="map-pin" class="lucide-sm"></i> ~25 min nearby</span>
-            <span><i data-lucide="indian-rupee" class="lucide-sm"></i> 0% commission</span>
-          </div>
-        </section>
-        </section>
-
-        <!-- Metrics -->
-        <section class="lk-metrics stats-grid" aria-label="Marketplace facts">
-          <div class="stat-card"><span class="stat-card-label">Service categories</span><h3>10+</h3></div>
-          <div class="stat-card"><span class="stat-card-label">Platform commission</span><h3>0%</h3></div>
-          <div class="stat-card"><span class="stat-card-label">Average arrival</span><h3>~25m</h3></div>
-          <div class="stat-card"><span class="stat-card-label">Paid to pros</span><h3>100%</h3></div>
-        </section>
-
-        <!-- Services: 7shifts-style dark blur panel — pills + white tiles -->
-        <section class="section-container" id="services">
-          <div class="lk-services-panel">
-            <div class="lk-sp-left">
-              <h3>${t('services_title', 'Ten trades, ready near you.')}</h3>
-              <p>Every pro is ID-verified and rated only on completed jobs. Pick a trade to see who is available in your locality today.</p>
-              <div class="lk-sp-pills">
-                ${CATEGORIES.map(c => `<button type="button" class="lk-pill" data-category="${esc(c.id)}">${esc(c.name)}</button>`).join('')}
-              </div>
-              <button class="btn lk-sp-cta" id="sp-cta-btn">Browse professionals <i data-lucide="arrow-right" class="lucide-sm"></i></button>
-            </div>
-            <div class="lk-sp-grid">
-              ${CATEGORIES.slice(0, 6).map(c => `
-                <button type="button" class="lk-tile" data-category="${esc(c.id)}" aria-label="Book ${esc(c.name)} nearby">
-                  <i data-lucide="${esc(c.lucideIcon || 'wrench')}" class="lucide-lg"></i>
-                  <strong>${esc(c.name)}</strong>
-                </button>
-              `).join('')}
-            </div>
-          </div>
-        </section>
-
-        <!-- Problem and Solution -->
-        <section class="section-container" id="problem" style="border-top:1px solid var(--border-color);border-bottom:1px solid var(--border-color);">
-          <h2 class="section-title">What aggregators get wrong</h2>
-          <p class="section-subtitle">The old model takes a cut, then hides the person who does the work. We removed the middleman.</p>
-          <div class="lk-vs">
-            <div class="lk-vs-col">
-              <h3><i data-lucide="x" class="lucide-md" style="color:var(--color-danger, #ba1a1a);"></i> On aggregator apps</h3>
-              <ul>
-                <li><i data-lucide="x" class="lucide-xs"></i><span><strong>25–40% commission</strong> comes out of the worker’s fee.</span></li>
-                <li><i data-lucide="x" class="lucide-xs"></i><span><strong>Fixed menus</strong> with surge fees you cannot negotiate.</span></li>
-                <li><i data-lucide="x" class="lucide-xs"></i><span><strong>Masked calls</strong> — you never speak to your pro directly.</span></li>
-                <li><i data-lucide="x" class="lucide-xs"></i><span><strong>City-wide dispatch</strong> means long waits for a stranger.</span></li>
-              </ul>
-            </div>
-            <div class="lk-vs-col is-ours">
-              <h3><i data-lucide="check" class="lucide-md" style="color:var(--color-success, #10b981);"></i> On LocalKaam</h3>
-              <ul>
-                <li><i data-lucide="check" class="lucide-xs" style="color:var(--color-success, #10b981);"></i><span><strong>100% to the pro.</strong> They quote, you agree, they keep it.</span></li>
-                <li><i data-lucide="check" class="lucide-xs" style="color:var(--color-success, #10b981);"></i><span><strong>Counter-offers built in</strong> for anything unusual.</span></li>
-                <li><i data-lucide="check" class="lucide-xs" style="color:var(--color-success, #10b981);"></i><span><strong>Direct phone and chat</strong> from first message to invoice.</span></li>
-                <li><i data-lucide="check" class="lucide-xs" style="color:var(--color-success, #10b981);"></i><span><strong>Your locality first.</strong> Neighbours arrive in minutes.</span></li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <!-- USPs -->
-        <section class="section-container" id="usps">
-          <h2 class="section-title">Four things we kept simple</h2>
-          <p class="section-subtitle">No dark patterns. Just a marketplace that shows you the price, the person, and the distance.</p>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;max-width:1200px;margin:0 auto;">
-            ${[
-              { icon: 'messages-square', title: 'Prices agreed up front', desc: 'Quotes, counter-offers and a full history — nothing appears later on the bill.' },
-              { icon: 'map-pin', title: 'Nearby, not generic', desc: 'Matching uses your locality and a real kilometre radius, so arrival times are honest.' },
-              { icon: 'shield-check', title: 'Reviews you can trust', desc: 'Only completed jobs can be reviewed. No paid placements, no fake ratings.' },
-              { icon: 'hand-coins', title: 'Pros keep it all', desc: 'Self-set rates, direct payment, zero deduction. Good trade attracts good professionals.' }
-            ].map(u => `
-              <div class="lk-step-card">
-                <div class="lk-icon"><i data-lucide="${u.icon}" class="lucide-md"></i></div>
-                <h3>${u.title}</h3>
-                <p>${u.desc}</p>
-              </div>
-            `).join('')}
-          </div>
-        </section>
-
-        <!-- Competitor Comparison -->
-        <section class="section-container" id="comparison" style="border-top:1px solid var(--border-color);border-bottom:1px solid var(--border-color);">
-          <h2 class="section-title">How it compares</h2>
-          <p class="section-subtitle">Same table, straight answers.</p>
-          <div class="table-container" style="max-width:1050px;margin:0 auto;">
-            <table class="data-table" style="min-width:620px;">
-              <thead>
-                <tr>
-                  <th>Feature</th>
-                  <th class="is-ours">LocalKaam</th>
-                  <th>Urban Company</th>
-                  <th>Housejoy</th>
-                  <th>Justdial</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>Price negotiation</strong></td>
-                  <td class="is-ours"><i data-lucide="check" class="lucide-xs"></i> In-app counter-offers</td>
-                  <td><i data-lucide="minus" class="lucide-xs"></i> Fixed rates</td>
-                  <td><i data-lucide="minus" class="lucide-xs"></i> Fixed rates</td>
-                  <td><i data-lucide="minus" class="lucide-xs"></i> Unstructured haggling</td>
-                </tr>
-                <tr>
-                  <td><strong>Commission</strong></td>
-                  <td class="is-ours"><i data-lucide="check" class="lucide-xs"></i> 0% — direct to pro</td>
-                  <td><i data-lucide="x" class="lucide-xs"></i> 20–35%</td>
-                  <td><i data-lucide="x" class="lucide-xs"></i> 25%</td>
-                  <td><i data-lucide="minus" class="lucide-xs"></i> Paid lead ads</td>
-                </tr>
-                <tr>
-                  <td><strong>Arrival time</strong></td>
-                  <td class="is-ours"><i data-lucide="check" class="lucide-xs"></i> ~25 min, hyperlocal</td>
-                  <td><i data-lucide="minus" class="lucide-xs"></i> City-wide pool</td>
-                  <td><i data-lucide="minus" class="lucide-xs"></i> City-wide pool</td>
-                  <td><i data-lucide="x" class="lucide-xs"></i> No guarantee</td>
-                </tr>
-                <tr>
-                  <td><strong>Job tracking</strong></td>
-                  <td class="is-ours"><i data-lucide="check" class="lucide-xs"></i> Live status milestones</td>
-                  <td><i data-lucide="check" class="lucide-xs"></i> App tracking</td>
-                  <td><i data-lucide="minus" class="lucide-xs"></i> Basic SMS</td>
-                  <td><i data-lucide="x" class="lucide-xs"></i> None</td>
-                </tr>
-                <tr>
-                  <td><strong>Talking to your pro</strong></td>
-                  <td class="is-ours"><i data-lucide="check" class="lucide-xs"></i> Direct phone &amp; chat</td>
-                  <td><i data-lucide="x" class="lucide-xs"></i> Masked calls</td>
-                  <td><i data-lucide="x" class="lucide-xs"></i> Masked calls</td>
-                  <td><i data-lucide="minus" class="lucide-xs"></i> Directory listings</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- How It Works -->
-        <section class="section-container" id="how-it-works">
-          <h2 class="section-title">Three steps, no app-hopping</h2>
-          <p class="section-subtitle">From “what do you need?” to “job done” in one place.</p>
-          <div class="lk-steps" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;max-width:1050px;margin:0 auto;">
-            ${[
-              { n: 'Step 01', icon: 'search', title: 'Say what you need', desc: 'Choose your locality and trade. You see verified pros nearby with real ratings and transparent base rates.' },
-              { n: 'Step 02', icon: 'calendar-check', title: 'Agree a time and a price', desc: 'Pick a slot, describe the work, and either accept the quote or send a counter-offer. Both sides confirm.' },
-              { n: 'Step 03', icon: 'clipboard-check', title: 'Track, pay, review', desc: 'Follow accepted, on-the-way, in-progress and completed live. Get the invoice, pay direct, leave a review.' }
-            ].map(s => `
-              <div class="lk-step-card">
-                <span class="lk-num">${s.n}</span>
-                <div class="lk-icon"><i data-lucide="${s.icon}" class="lucide-md"></i></div>
-                <h3>${s.title}</h3>
-                <p>${s.desc}</p>
-              </div>
-            `).join('')}
-          </div>
-        </section>
-
-        <!-- CTA -->
-        <section class="lk-cta">
-          <div class="lk-cta-inner">
-            <div>
-              <h2>Ready when you are.</h2>
-              <p>Pick a trade and see who is available in your locality today. No account needed to browse.</p>
-            </div>
-            <button class="btn btn-lg" id="cta-find-pro-btn" style="background:var(--color-highlighter-yellow);color:#1a3300;border:none;">
-              Find professionals <i data-lucide="arrow-right" class="lucide-sm"></i>
-            </button>
-          </div>
-        </section>
-
-        <!-- Footer -->
-        <footer class="footer">
-          <div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div class="nav-logo" style="width:32px;height:32px;font-size:0.85rem;min-width:32px;">LK</div>
-              <span style="font-weight:800;font-size:1.15rem;color:var(--text-primary);">LocalKaam</span>
-            </div>
-            <p style="margin:0;font-size:0.9rem;color:var(--text-secondary);max-width:52ch;line-height:1.6;">Hyperlocal marketplace for Mumbai’s blue-collar professionals. Direct prices, direct payment, zero commission.</p>
-            <nav class="lk-footer-links" aria-label="Footer">
-              <a href="#services">Services</a>
-              <a href="#problem">Why us</a>
-              <a href="#comparison">Comparison</a>
-              <a href="#how-it-works">How it works</a>
-            </nav>
-            <div style="font-size:0.8rem;color:var(--text-muted);">© 2026 LocalKaam Inc. All rights reserved.</div>
-          </div>
-        </footer>
-      </div>
-    `;
+    return landingHTML({ theme, t, CATEGORIES, esc });
   },
 
   renderRoleSelectionPage() {
@@ -913,61 +672,16 @@ export const App = {
 
   attachLandingEvents(root) {
     this._attachMobileNav(root);
-
-    root.querySelector('#nav-home-logo')?.addEventListener('click', () => {
-      this.navigateToRole('landing');
-    });
-    
-    root.querySelector('#nav-signin-btn')?.addEventListener('click', () => {
-      AuthModal.show('customer', (user, profile) => {
-        const destRole = profile?.role || 'customer';
-        this.navigateToRole(destRole);
-      });
-    });
-    root.querySelector('#get-started-btn')?.addEventListener('click', () => {
-      this.navigateToRole('role-select');
-    });
-    root.querySelector('#hero-find-pro-btn')?.addEventListener('click', () => {
-      this.navigateToRole('role-select');
-    });
-    root.querySelector('#sp-cta-btn')?.addEventListener('click', () => {
-      this.navigateToRole('role-select');
-    });
-    root.querySelector('#cta-find-pro-btn')?.addEventListener('click', () => {
-      this.navigateToRole('role-select');
-    });
-    root.querySelector('#hero-explore-btn')?.addEventListener('click', () => {
-      const el = root.querySelector('#how-it-works');
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
-    });
-
-    
-    const themeBtn = root.querySelector('#theme-toggle-btn');
-    if (themeBtn) {
-      themeBtn.addEventListener('click', () => {
-        this.toggleTheme();
-        this.render();
-      });
-    }
-
-    root.querySelectorAll('[data-category]').forEach(card => {
-      const handleClick = () => {
-        const cat = card.getAttribute('data-category');
+    bindLanding(root, {
+      onCategory: (cat) => {
         const isAuthed = AuthService.isAuthenticated() && !AuthService.isGuest();
-        if (isAuthed) {
-          CustomerFrontend.currentCategory = cat;
-          this.navigateToRole('customer');
-        } else {
-          AuthModal.show('customer', () => {
-            CustomerFrontend.currentCategory = cat;
-            this.navigateToRole('customer');
-          });
-        }
-      };
-      card.addEventListener('click', handleClick);
-      if (card.tagName !== 'BUTTON') {
-        card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); });
-      }
+        if (isAuthed) { CustomerFrontend.currentCategory = cat; this.navigateToRole('customer'); }
+        else AuthModal.show('customer', () => { CustomerFrontend.currentCategory = cat; this.navigateToRole('customer'); });
+      },
+      onThemeToggle: () => { this.toggleTheme(); this.render(); },
+      onGetStarted: () => this.navigateToRole('role-select'),
+      onSignin: () => AuthModal.show('customer', (user, profile) => this.navigateToRole(profile?.role || 'customer')),
+      onDemo: () => this.navigateToRole('role-select')
     });
   },
 

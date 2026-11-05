@@ -130,8 +130,16 @@ async function gsapReveals(scope) {
     });
   }
 
+  // Timeline line draws itself as you scroll.
+  const tlFill = scope.querySelector ? scope.querySelector('[data-timeline-fill]') : document.querySelector('[data-timeline-fill]');
+  if (tlFill) {
+    const io2 = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) { tlFill.style.transform = 'scaleX(1)'; io2.disconnect(); }
+    }, { threshold: 0.3 });
+    io2.observe(tlFill.parentElement || tlFill);
+  }
   // Batched card reveals: fade + rise + tiny scale, staggered by proximity.
-  const targets = (scope.querySelectorAll ? scope.querySelectorAll('.ui-cat,.ui-card,.category-card,.step-card,.usp-card,.pricing-card,.ui-reveal,.service-card') : []);
+  const targets = (scope.querySelectorAll ? scope.querySelectorAll('.ui-cat,.ui-card,.category-card,.step-card,.usp-card,.pricing-card,.ui-reveal,.service-card,.lk-bento-tile,.lk-mile,.lk-tile,.lk-resource') : []);
   const ioTargets = Array.from(targets).filter((el) => !el.dataset.gsapBound);
   ioTargets.forEach((el) => { el.dataset.gsapBound = '1'; });
   if (ioTargets.length && gsapFn) {
