@@ -26,7 +26,7 @@ export const CATEGORIES = [
     id: 'plumber', 
     name: 'Plumber', 
     icon: '🔧',
-    lucideIcon: 'wrench',
+    lucideIcon: 'droplets',
     image: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=600&auto=format&fit=crop&q=80',
     description: 'Leaking taps, pipe fittings, water tanks & bathroom fixes.',
     subcategories: ['Leaking Tap & Faucet', 'Pipe Fitting & Leakage', 'Water Tank Cleaning', 'Geyser Installation & Repair', 'Toilet & Flush Repair', 'Drainage Unclogging']
@@ -44,7 +44,7 @@ export const CATEGORIES = [
     id: 'painter', 
     name: 'Painter', 
     icon: '🎨',
-    lucideIcon: 'paint-bucket',
+    lucideIcon: 'paint-roller',
     image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600&auto=format&fit=crop&q=80',
     description: 'Wall painting, touch-ups, waterproofing & polish.',
     subcategories: ['Interior Wall Painting', 'Exterior Waterproofing', 'Wood Polish & Varnishing', 'Texture & Accent Walls', 'Wall Putty & Primer']
@@ -53,7 +53,7 @@ export const CATEGORIES = [
     id: 'ac_repair', 
     name: 'AC repair & servicing', 
     icon: '❄️',
-    lucideIcon: 'fan',
+    lucideIcon: 'snowflake',
     image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=600&auto=format&fit=crop&q=80',
     description: 'AC installation, gas refilling, deep servicing & repair.',
     subcategories: ['Split AC Servicing', 'Window AC Repair', 'Gas Refilling & Leak Check', 'AC Installation & Uninstallation', 'PCB Repair']
@@ -62,7 +62,7 @@ export const CATEGORIES = [
     id: 'appliance_repair', 
     name: 'Appliance repair', 
     icon: '🔌',
-    lucideIcon: 'cpu',
+    lucideIcon: 'plug-zap',
     image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80',
     description: 'Washing machine, refrigerator, microwave & purifier repair.',
     subcategories: ['Washing Machine Repair', 'Refrigerator Servicing', 'Microwave Oven Repair', 'Water Purifier (RO) Service']
@@ -71,7 +71,7 @@ export const CATEGORIES = [
     id: 'cleaning', 
     name: 'Cleaning & housekeeping', 
     icon: '🧹',
-    lucideIcon: 'sparkles',
+    lucideIcon: 'spray-can',
     image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&auto=format&fit=crop&q=80',
     description: 'Deep home cleaning, sofa & mattress shampooing.',
     subcategories: ['Full Home Deep Cleaning', 'Kitchen & Bathroom Scrub', 'Sofa & Carpet Shampooing', 'Water Tank Deep Clean']
@@ -89,7 +89,7 @@ export const CATEGORIES = [
     id: 'pest_control', 
     name: 'Pest control', 
     icon: '🐜',
-    lucideIcon: 'shield-alert',
+    lucideIcon: 'bug',
     image: 'https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=600&auto=format&fit=crop&q=80',
     description: 'Cockroach, mosquito, termite & rodent extermination.',
     subcategories: ['Cockroach & Ant Treatment', 'Termite Proofing', 'Mosquito Fogging', 'Rodent Control']
@@ -98,7 +98,7 @@ export const CATEGORIES = [
     id: 'other', 
     name: 'Handyman & custom tasks', 
     icon: '🛠️',
-    lucideIcon: 'tool',
+    lucideIcon: 'drill',
     image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600&auto=format&fit=crop&q=80',
     description: 'Bespoke handymen tasks, drill hanging, lock assembly & maintenance.',
     subcategories: ['Drilling & Wall Hanging', 'Curtain Rod Installation', 'General Handyman Support']
