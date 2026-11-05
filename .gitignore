@@ -1,14 +1,20 @@
-# Database
+# Database files
 localkaam.db
 localkaam.db-journal
 localkaam.db-wal
 localkaam.db-shm
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
 
 # Logs
 *.log
 npm-debug.log*
 
-# Node modules (if any installed in future)
+# Node modules
 node_modules/
 
 # OS / Editor files
@@ -17,8 +23,9 @@ Thumbs.db
 .vscode/
 .idea/
 
-
 # Environment variables
 .env
 .env.local
 .env.production
+.env.*
+!.env.example

@@ -1,102 +1,107 @@
 # LocalKaam — Hyperlocal Blue-Collar Services Marketplace
 
 [![Live Demo](https://img.shields.io/badge/Live-Deployment-brightgreen?style=for-the-badge)](https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing)
+[![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
+[![Sync](https://img.shields.io/badge/Realtime-WebSockets-blue?style=for-the-badge)](https://supabase.com/docs/guides/realtime)
 
-LocalKaam is a production-ready, highly polished hyperlocal services marketplace connecting households with trustworthy neighborhood blue-collar professionals (plumbers, electricians, carpenters, cleaners, AC technicians, and more) across Mumbai with transparent pricing, direct pay, multi-step worker onboarding, and real-time appointment tracking.
-
----
-
-## 🌐 Live Deployment
-Experience the live application here: [https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing](https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing)
+LocalKaam is a production-ready hyperlocal services marketplace connecting households with trustworthy neighborhood blue-collar professionals (plumbers, electricians, carpenters, cleaners, AC technicians, and more) across Mumbai with transparent pricing, direct pay, multi-step worker onboarding, and real-time appointment tracking.
 
 ---
 
-## 🚀 Key Features
-
-1. **Multi-Step Worker Onboarding:**
-   - Step 1: Basic profile setup (name, phone, bio, city, locality, service radius, languages).
-   - Step 2: Speciality selection across 10 service categories (Electrician, Plumber, Carpenter, Painter, AC Repair, Appliance Repair, Cleaning, Shifting, Pest Control, Handyman).
-   - Step 3: Service-specific pricing (fixed price, hourly rate, visiting/inspection charges, est. duration, and certifications).
-   - Step 4: Availability & online status toggle (offline workers are strictly hidden from customer discovery).
-
-2. **Hyperlocal Service Discovery & Matching:**
-   - Real-time location selection across Mumbai suburbs (Andheri, Bandra, Powai, Juhu, Colaba, Dadar, Thane, Malad).
-   - Haversine distance calculations and service-radius filtering with calculated ETAs and Best-Match scoring.
-   - Sorting by rating, price, and distance.
-
-3. **Transparent Appointment Booking & Negotiation:**
-   - Exact task selection, problem description, service address, and appointment date/time slots.
-   - Transparent price breakdown (Service base price + visiting inspection charge).
-   - Built-in counter-offer negotiation with explicit customer/worker acceptance and locked agreed pricing.
-
-4. **Real-Time Booking Lifecycle:**
-   - State-driven workflow: `Pending confirmation` → `Confirmed` → `Worker en route` → `Worker arrived` → `Job in progress` → `Job completed` (plus `Cancelled` / `Disputed`).
-   - Cross-device sync powered by Server-Sent Events (SSE) and SQLite backend persistence.
-
-5. **Stitch Sketchbook Editorial Design System:**
-   - Aesthetic warm cream paper canvas (`#fcfaf5`), forest green structural ink (`#1a3300`), highlighter yellow accents (`#ffe95c`), and sticky note mint fills (`#d5f5c2`).
-   - Bricolage Grotesque display typography and Inter functional sans-serif.
-   - Robust Light & Dark mode support across every page and component.
+## 🌐 Live Deployment & Production URL
+- **Production Site:** [https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing](https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing)
+- **Supabase Backend:** PostgreSQL with Row Level Security (RLS) & Supabase Realtime Channels.
 
 ---
 
-## 🛠️ Technology Stack
+## 👥 Demo Accounts (Evaluator Quick Access)
 
-- **Backend:** Node.js, Express, SQLite (`node:sqlite`), Server-Sent Events (SSE) real-time event broadcasting.
-- **Frontend:** Vanilla JavaScript (ES6+ Modules), HTML5, CSS3, Tailwind CSS.
-- **Persistence & Auth:** Browser `sessionStorage` / `localStorage`, Supabase PostgreSQL & Auth client support.
+You can sign in immediately using either the 1-click Quick Login buttons in the app or the credentials below:
+
+| Account Type | Email | Password | Persona & Role |
+| :--- | :--- | :--- | :--- |
+| **Customer** | `customer.demo@localkaam.in` | `Password@123` | **Aarav Mehta** (Andheri West Household) |
+| **Worker** | `ramesh.worker@localkaam.in` | `Password@123` | **Ramesh Kumar** (Verified Plumber & Electrician, ID: `w1`) |
 
 ---
 
-## 📂 Project Architecture
+## ⚙️ Environment Variables
+
+Set these environment variables in your Vercel Project Settings (`Settings > Environment Variables`) and locally in `.env`:
+
+| Variable Name | Required | Description | Example / Current Production Value |
+| :--- | :---: | :--- | :--- |
+| `VITE_SUPABASE_URL` | **Yes** | Your Supabase Project HTTPS URL | `https://dcijrqwoxkazggouvhdn.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | **Yes** | Public Supabase Anon API key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Optional | Supabase publishable identifier | `sb_publishable_OWfosp_8VvcCS0Exlwm1vA_EFjLBBjP` |
+
+*(See `.env.example` in the repository root for the ready-to-copy template).*
+
+---
+
+## 🛠️ Architecture & Cross-Device Sync
+
+1. **Frontend Hosting (Vercel CDN):** Deployed as a high-speed static web app serving ES6+ modules (`app.js`, `customer.js`, `worker.js`, etc.) with zero cold starts.
+2. **Database (Supabase PostgreSQL):** Relational schema spanning 6 tables (`profiles`, `workers`, `worker_services`, `bookings`, `reviews`, `complaints`) with foreign keys, constraints, and performance indexes.
+3. **Cross-Device Live Sync (Supabase Realtime):** Uses native WebSocket channels (`localkaam-realtime-sync`) on Postgres publication events (`postgres_changes`). When a customer books or a worker accepts on Device A, Device B receives the update in <100ms without polling.
+4. **Server-Side Security & State Enforcement:**
+   - **Row Level Security (RLS):** Enabled on all tables. Offline workers are strictly hidden from customer discovery; customers see their own bookings; workers see assigned jobs.
+   - **Trigger Validation (`validate_booking_transition`):** Enforces legal state machine transitions server-side (`Pending confirmation` → `Confirmed` → `Worker en route` → `Worker arrived` → `Job in progress` → `Job completed`).
+   - **Price Lock:** Enforces that once an appointment is confirmed, `agreed_price` is strictly locked in the database against tampering.
+
+---
+
+## 🚀 Supabase Database Setup (1-Minute Step)
+
+If setting up a fresh database:
+1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard).
+2. Go to **SQL Editor** > **New Query**.
+3. Open [`supabase_schema.sql`](./supabase_schema.sql) in this repo, copy its entire contents, paste it into the SQL editor, and click **Run**.
+4. The script is completely **idempotent**: it creates tables, triggers, RLS policies, realtime publications, and pre-seeds 8 verified Mumbai service professionals.
+
+---
+
+## 📂 Project Structure
 
 ```tree
-/home/harsh/Downloads/hackathon/
-├── server.js              # Unified Node.js backend server (SQLite & SSE sync)
-├── index.html             # Application entry point
-├── app.js                 # Client-side router, role management, and navigation
-├── customer.js            # Customer discovery, worker comparison, booking modal, invoice
-├── worker.js              # Worker dashboard, multi-step onboarding, active job controls
-├── matching.js            # Haversine distance, ETA, and matching score algorithm
-├── bookings.js            # Booking lifecycle state machine & price negotiation rules
-├── storage.js             # Unified storage layer (local cache + backend sync)
-├── authService.js         # User profile and session management
-├── authModal.js           # Professional customer & worker sign-in / registration modal
-├── supabaseClient.js      # Supabase client configuration
-├── supabaseDataService.js # Supabase PostgreSQL data mapper & realtime synchronizer
-├── data.js                # Seeded Mumbai localities, categories, and professionals
-├── toast.js               # Animated notification system
-├── utils.js               # XSS escaping and debounce utilities
-├── styles.css             # Stitch Sketchbook Editorial design tokens & dark mode styles
-└── package.json           # Node configuration and startup scripts
+repo/
+├── index.html              # Main HTML entry point (CDN scripts & config)
+├── config.js               # Client runtime environment configuration
+├── .env.example            # Environment variables template
+├── app.js                  # Client-side router, role management, and navigation
+├── customer.js             # Customer discovery, worker comparison, booking modal, invoice
+├── worker.js               # Worker dashboard, multi-step onboarding, active job controls
+├── matching.js             # Haversine distance, ETA, and matching score algorithm
+├── bookings.js             # Booking lifecycle state machine & price negotiation rules
+├── storage.js              # Unified storage layer (local cache + Supabase Realtime sync)
+├── authService.js          # Authentication service (Email/Password, Google OAuth, Demo logins)
+├── authModal.js            # Customer & worker sign-in / registration modal
+├── supabaseClient.js       # Supabase client manager & connection tester
+├── supabaseDataService.js  # Supabase PostgreSQL CRUD data mapper & realtime listener
+├── supabaseSetupModal.js   # In-app setup modal with connection test & schema copy
+├── supabase_schema.sql     # Complete PostgreSQL DDL, triggers, RLS, and seed data
+├── data.js                 # Initial Mumbai localities, categories, and professionals
+├── toast.js                # Animated feedback toast notifications
+├── utils.js                # XSS sanitization and debounce utilities
+├── styles.css              # Stitch Sketchbook Editorial design tokens
+└── package.json            # Node configuration
 ```
 
 ---
 
-## 🚦 Getting Started & Installation
+## 👥 Demo Sequence (Evaluating Cross-Device Sync)
 
-1. **Clone or open the repository.**
-2. **Install dependencies (if required):**
-   ```bash
-   npm install
-   ```
-3. **Start the production backend server:**
-   ```bash
-   npm start
-   ```
-   *The server will start at **`http://localhost:3000`**.*
-4. **Alternatively, start the static preview server:**
-   ```bash
-   python3 -m http.server 8080
-   ```
-   *Preview at **`http://localhost:8080`**.*
-
----
-
-## 👥 Demo Sequence (3-Minute Presentation)
-
-1. **Landing Page:** Open [Live App](https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing). Admire the Stitch editorial design, problem/solution, and features.
-2. **Customer Journey:** Click **Get Started** → **Continue as Customer**. Sign in with your name and phone. Search for `"leaking tap"` or select **Plumber**. Compare nearby experts, view profiles, and book an appointment with transparent pricing.
-3. **Worker Journey:** Open a separate tab as **Worker** (or switch role). Complete the multi-step onboarding (or view Ramesh Kumar's profile). Set status to **Online**.
-4. **Live Synchronization:** Accept the customer's incoming appointment request. Watch the status transition live to `Confirmed`, then progress through `En Route`, `Arrived`, `In Progress`, and `Job Completed`.
-5. **Invoice & Review:** Switch back to Customer, view the itemized digital invoice, and submit a 5-star review!
+1. **Device / Window 1 (Customer):**
+   - Open [coderssujal-rgvepzub3-lucky21.vercel.app](https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing).
+   - Click **Get Started** → **Continue as Customer** (or sign in as `customer.demo@localkaam.in`).
+   - Search for **"Leaking Tap"** or click **Plumber**.
+   - Select **Ramesh Kumar** → click **Book Now**.
+   - Enter problem details and propose an offer (e.g. ₹400) → click **Confirm & Request Booking**.
+2. **Device / Window 2 (Worker):**
+   - Open the site in a separate browser window or phone as **Worker** (or sign in as `ramesh.worker@localkaam.in`).
+   - Go to **Booking Requests** tab: The request from Aarav Mehta appears live!
+   - Click **Accept Request** (or send a counter-offer).
+3. **Live Status Flow:**
+   - On the Worker device, click **En Route** → **Arrived** → **Start Job** → **Complete Job**.
+   - Watch the Customer's **My Bookings** view update instantly in real-time across both screens!
+   - On the Customer device, click **Invoice** to view the itemized digital invoice, then submit a 5-star review.
