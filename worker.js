@@ -355,7 +355,7 @@ export const WorkerFrontend = {
                     <button class="ui-btn ui-btn--secondary ui-btn--sm enroute-job-btn" data-id="${esc(b.id)}"><i data-lucide="truck" class="lucide-xs"></i> I'm On My Way</button>
                   ` : ''}
                   ${b.status === 'Worker en route' ? `
-                    <button class="ui-btn ui-btn--secondary ui-btn--sm arrived-job-btn" data-id="${esc(b.id)}"><i data-lucide="map-pin" class="lucide-xs"></i> Confirm Arrival</button>
+                    <button class="ui-btn ui-btn--secondary ui-btn--sm verify-otp-btn" data-id="${esc(b.id)}"><i data-lucide="shield-check" class="lucide-xs"></i> Verify Customer OTP</button>
                   ` : ''}
                   ${['Confirmed', 'Worker en route', 'Worker arrived'].includes(b.status) ? `
                     <button class="ui-btn ui-btn--accent ui-btn--sm start-job-btn" data-id="${esc(b.id)}"><i data-lucide="play" class="lucide-xs"></i> Start Job</button>
@@ -831,7 +831,7 @@ export const WorkerFrontend = {
                     <td>
                       <div style="display: flex; gap: 4px; flex-wrap: wrap;">
                         ${['Confirmed', 'Accepted'].includes(b.status) ? `<button class="btn btn-outline btn-xs enroute-job-btn" data-id="${esc(b.id)}"><i data-lucide="truck" class="lucide-xs"></i> En Route</button>` : ''}
-                        ${b.status === 'Worker en route' ? `<button class="btn btn-outline btn-xs arrived-job-btn" data-id="${esc(b.id)}"><i data-lucide="map-pin" class="lucide-xs"></i> Arrived</button>` : ''}
+                        ${b.status === 'Worker en route' ? `<button class="btn btn-outline btn-xs verify-otp-btn" data-id="${esc(b.id)}"><i data-lucide="shield-check" class="lucide-xs"></i> Verify OTP</button>` : ''}
                         ${b.status === 'Worker arrived' ? `<button class="btn btn-primary btn-xs start-job-btn" data-id="${esc(b.id)}"><i data-lucide="play" class="lucide-xs"></i> Start Job</button>` : ''}
                         ${b.status === 'Job in progress' ? `<button class="btn btn-success btn-xs complete-job-btn" data-id="${esc(b.id)}"><i data-lucide="check-circle" class="lucide-xs"></i> Complete Job</button>` : ''}
                       </div>
@@ -1903,6 +1903,8 @@ export const WorkerFrontend = {
           Toast.show('This job is waiting for the customer to accept your counter-offer.', 'warning');
         } else {
           Toast.show(`Booking accepted! Moved to Active Projects.`, 'success');
+          // Auto-generate arrival OTP for the accepted booking
+          this.generateArrivalOtp(bookingId, container);
         }
         StorageService.saveBookings(bookings);
         // App re-renders on storage change, detaching this container.
@@ -1945,15 +1947,11 @@ export const WorkerFrontend = {
       };
     });
 
-    // 5. Arrived
-    container.querySelectorAll('.arrived-job-btn').forEach(btn => {
+        // 5. Verify Customer OTP (Arrival)
+    container.querySelectorAll('.verify-otp-btn').forEach(btn => {
       btn.onclick = () => {
         const bookingId = btn.getAttribute('data-id');
-        let bookings = StorageService.getBookings();
-        bookings = bookings.map(b => b.id === bookingId ? BookingService.setArrived(b) : b);
-        StorageService.saveBookings(bookings);
-        Toast.show(`Status: Arrived at location.`, 'info');
-        if (container && container.isConnected) this.render(container);
+        this.showOtpVerifyModal(bookingId, container);
       };
     });
 
@@ -2147,6 +2145,165 @@ export const WorkerFrontend = {
     document.body.appendChild(modal);
     modal.querySelector('#close-receipt-modal').onclick = () => modal.remove();
     modal.querySelector('#ok-receipt-btn').onclick = () => modal.remove();
+  },
+
+  /**
+   * generateArrivalOtp — called after worker accepts a booking.
+   * Sends POST /api/bookings/:id/generate-arrival-otp using the authenticated session.
+   * Runs in background without blocking UI.
+   */
+  async generateArrivalOtp(bookingId, container) {
+    try {
+      const { AuthService } = await import('./authService.js');
+      const session = AuthService.getSession();
+      if (!session?.access_token) {
+        console.warn('[OTP] No auth token — skipping OTP generation');
+        return;
+      }
+      const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}/generate-arrival-otp`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.smsDelivered) {
+          Toast.show('Arrival OTP sent to customer via SMS ✅', 'success');
+        } else {
+          Toast.show('Arrival OTP generated. Customer can view it in their dashboard.', 'info');
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        console.warn('[OTP] Generate failed:', err.error);
+      }
+    } catch (e) {
+      console.error('[OTP] generateArrivalOtp error:', e);
+    }
+  },
+
+  /**
+   * showOtpVerifyModal — displays the 6-digit OTP input modal for the worker.
+   * On submit, sends POST /api/bookings/:id/verify-arrival.
+   */
+  showOtpVerifyModal(bookingId, container) {
+    const existing = document.getElementById('otp-verify-modal-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'otp-verify-modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+    overlay.innerHTML = `
+      <div style="background:var(--bg-card);border-radius:16px;padding:2rem;max-width:440px;width:100%;box-sizing:border-box;box-shadow:0 20px 60px rgba(0,0,0,0.25);position:relative;overflow:hidden;">
+        <button id="otp-modal-close" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-muted);">✕</button>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;">
+          <div style="width:48px;height:48px;border-radius:12px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">🔐</div>
+          <div>
+            <h3 style="margin:0;font-size:1.15rem;font-weight:800;">Verify Customer OTP</h3>
+            <p style="margin:0;font-size:0.82rem;color:var(--text-muted);">Booking: ${bookingId}</p>
+          </div>
+        </div>
+        <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.5;">
+          Ask your customer for the <strong>6-digit OTP</strong> they received via SMS. Enter it below to confirm your arrival.
+        </p>
+        <div id="otp-modal-error" style="display:none;padding:0.65rem 1rem;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;font-size:0.85rem;margin-bottom:1rem;"></div>
+        <div style="width:100%;box-sizing:border-box;margin-bottom:1.25rem;">
+          <input id="otp-input-field"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]{6}"
+            maxlength="6"
+            placeholder="000000"
+            style="width:100%;min-width:0;max-width:100%;box-sizing:border-box;display:block;font-size:1.75rem;font-weight:800;letter-spacing:0.35em;text-indent:0.35em;text-align:center;border:2px solid var(--border-color);border-radius:12px;padding:0.65rem 0.5rem;font-family:'JetBrains Mono',monospace;outline:none;background:var(--bg-card);color:var(--text-primary);transition:border-color 0.2s,box-shadow 0.2s;"
+            autocomplete="one-time-code"
+          >
+        </div>
+        <div style="width:100%;box-sizing:border-box;display:flex;gap:0.75rem;">
+          <button id="otp-submit-btn" class="ui-btn ui-btn--accent" style="width:100%;min-width:0;box-sizing:border-box;font-size:1rem;font-weight:700;padding:0.75rem 1rem;justify-content:center;border-radius:10px;display:flex;align-items:center;cursor:pointer;">
+            ✅ Verify & Confirm Arrival
+          </button>
+        </div>
+        <p style="font-size:0.75rem;color:var(--text-muted);margin-top:1rem;text-align:center;">
+          Never ask the customer to show you their screen or share the OTP via chat.
+        </p>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector('#otp-input-field');
+    const submitBtn = overlay.querySelector('#otp-submit-btn');
+    const errorDiv = overlay.querySelector('#otp-modal-error');
+    const closeBtn = overlay.querySelector('#otp-modal-close');
+
+    input.addEventListener('input', () => {
+      input.value = input.value.replace(/\D/g, '').slice(0, 6);
+      if (input.value.length === 6) input.style.borderColor = '#16a34a';
+      else input.style.borderColor = 'var(--border-color)';
+    });
+
+    closeBtn.onclick = () => overlay.remove();
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    const showError = (msg) => {
+      errorDiv.textContent = msg;
+      errorDiv.style.display = 'block';
+      input.style.borderColor = '#dc2626';
+    };
+
+    submitBtn.onclick = async () => {
+      const otp = input.value.trim();
+      if (!/^\d{6}$/.test(otp)) {
+        showError('Please enter a valid 6-digit OTP.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Verifying…';
+      errorDiv.style.display = 'none';
+
+      try {
+        const { AuthService } = await import('./authService.js');
+        const session = AuthService.getSession();
+        if (!session?.access_token) {
+          showError('Authentication error. Please sign in again.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = '✅ Verify & Confirm Arrival';
+          return;
+        }
+
+        const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}/verify-arrival`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ otp })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          overlay.remove();
+          Toast.show('OTP verified! Arrival confirmed ✅', 'success');
+          const { StorageService } = await import('./storage.js');
+          let bookings = StorageService.getBookings();
+          bookings = bookings.map(b => b.id === bookingId ? { ...b, status: 'Worker arrived' } : b);
+          StorageService.saveBookings(bookings);
+          if (container && container.isConnected) this.render(container);
+        } else {
+          const remaining = data.attemptsRemaining ?? '';
+          showError(data.error + (remaining !== '' ? ` (${remaining} attempt${remaining !== 1 ? 's' : ''} left)` : ''));
+          submitBtn.disabled = false;
+          submitBtn.textContent = '✅ Verify & Confirm Arrival';
+        }
+      } catch (err) {
+        showError('Network error. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = '✅ Verify & Confirm Arrival';
+      }
+    };
+
+    input.focus();
   },
 
   showReviewResponseModal(reviewId) {

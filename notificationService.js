@@ -533,6 +533,26 @@ export const NotificationService = {
     `;
   },
 
+  destroy() {
+    if (broadcastChannel) {
+      try {
+        broadcastChannel.close();
+      } catch (e) {}
+      broadcastChannel = null;
+    }
+    if (this.eventSource) {
+      try {
+        this.eventSource.close();
+      } catch (e) {}
+      this.eventSource = null;
+    }
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    this.initialized = false;
+  },
+
   _formatRelativeTime(isoString) {
     if (!isoString) return 'Just now';
     try {

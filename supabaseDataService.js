@@ -1,5 +1,14 @@
 import { SupabaseService } from './supabaseClient.js';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function toUuidOrNull(val) {
+  if (typeof val === 'string' && UUID_REGEX.test(val.trim())) {
+    return val.trim();
+  }
+  return null;
+}
+
+
 export const DataMapper = {
   // Workers
   workerToDb(w) {
@@ -9,7 +18,7 @@ export const DataMapper = {
 
     return {
       id: w.id,
-      user_id: w.userId || w.user_id || null,
+      user_id: toUuidOrNull(w.userId || w.user_id),
       name: w.name,
       category: w.category || firstSpec || 'plumber',
       skills: w.skills || [],
@@ -118,7 +127,7 @@ export const DataMapper = {
   bookingToDb(b) {
     return {
       id: b.id,
-      customer_id: b.customerId || b.customer_id || null,
+      customer_id: toUuidOrNull(b.customerId || b.customer_id),
       worker_id: b.workerId || b.worker_id,
       customer_name: b.customerName || b.customer_name || 'Customer',
       customer_phone: b.customerPhone || b.customer_phone || '+91 98765 43210',
@@ -184,7 +193,7 @@ export const DataMapper = {
       id: r.id,
       booking_id: r.bookingId || r.booking_id,
       worker_id: r.workerId || r.worker_id,
-      customer_id: r.customerId || r.customer_id || null,
+      customer_id: toUuidOrNull(r.customerId || r.customer_id),
       customer_name: r.customerName || r.customer_name || 'Customer',
       rating: overall,
       overall_rating: overall,
@@ -224,7 +233,7 @@ export const DataMapper = {
       id: c.id,
       booking_id: c.bookingId || c.booking_id,
       worker_id: c.workerId || c.worker_id || null,
-      customer_id: c.customerId || c.customer_id || null,
+      customer_id: toUuidOrNull(c.customerId || c.customer_id),
       customer_name: c.customerName || c.customer_name || 'Customer',
       issue: c.issue,
       details: c.details || '',
