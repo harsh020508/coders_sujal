@@ -876,11 +876,37 @@ export const WorkerFrontend = {
                   <tr>
                     <td><strong>${esc(b.id)}</strong><br><small style="color: var(--text-muted);">${new Date(b.createdAt).toLocaleDateString()}</small></td>
                     <td><strong>${esc(b.customerName)}</strong> (${esc(b.customerPhone)})<br><small style="color: var(--text-muted);">📍 ${esc(b.address)}</small></td>
-                    <td><strong>${esc(b.serviceTask)}</strong><br><small style="color: var(--text-secondary);">${esc(b.jobDescription)}</small></td>
+                    <td>
+                      <strong>${esc(b.serviceTask)}</strong><br><small style="color: var(--text-secondary);">${esc(b.jobDescription)}</small>
+                      ${b.photoUrl ? `
+                        <div class="booking-ai-preview" style="margin-top: 8px;">
+                          <img src="${esc(b.photoUrl)}" alt="Job photo" loading="lazy">
+                          <div class="ai-info">
+                            ${b.aiDiagnosis ? `
+                              <h5>🤖 AI Diagnosis: ${esc(b.aiDiagnosis.issue || 'Identified')}</h5>
+                              <p>
+                                <span class="diagnosis-urgency-badge urgency-${esc(b.aiDiagnosis.urgency || 'medium')}" style="font-size: 0.68rem; padding: 2px 8px;">
+                                  ${esc((b.aiDiagnosis.urgency || 'medium').toUpperCase())}
+                                </span>
+                                ${b.aiDiagnosis.estimated_duration_minutes ? ` · ~${b.aiDiagnosis.estimated_duration_minutes} min` : ''}
+                              </p>
+                              ${b.aiDiagnosis.safety_warning ? `<p style="color: var(--color-danger); font-weight: 700; margin-top: 4px;">⚠️ ${esc(b.aiDiagnosis.safety_warning)}</p>` : ''}
+                              ${Array.isArray(b.aiDiagnosis.likely_materials) && b.aiDiagnosis.likely_materials.length ? `
+                                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
+                                  <span style="font-size:0.72rem;color:var(--text-muted);font-weight:700;">Materials:</span>
+                                  ${b.aiDiagnosis.likely_materials.map(m => `<span class="material-chip" style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:9999px;padding:2px 8px;font-size:0.7rem;font-weight:600;">${esc(m)}</span>`).join('')}
+                                </div>
+                              ` : ''}
+                            ` : `<h5>📸 Photo attached</h5>`}
+                          </div>
+                        </div>
+                      ` : ''}
+                    </td>
                     <td>${esc(b.appointmentDate)} @ ${esc(b.appointmentTime)}</td>
                     <td>
                       <div>Standard: ₹${(b.basePrice || 350) + (b.visitingCharge || 100)}</div>
                       ${b.customerOffer ? `<strong style="color: #ea580c; font-size: 0.95rem;">Offer: ₹${b.customerOffer}</strong>` : ''}
+                      ${b.aiDiagnosis && b.aiDiagnosis.price_min ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;">AI est: ₹${b.aiDiagnosis.price_min}–₹${b.aiDiagnosis.price_max}</div>` : ''}
                     </td>
                     <td>
                       <div style="display: flex; gap: 4px;">
@@ -1200,6 +1226,29 @@ export const WorkerFrontend = {
               </div>
               <button type="submit" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;">Save Schedule</button>
             </form>
+          </div>
+
+          <!-- Worker Location Picker -->
+          <div class="worker-location-picker">
+            <h3>📍 Set My Location</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 12px;">
+              Your live GPS location helps customers find you on the map. Drag the marker or use the button below.
+            </p>
+            <div class="worker-location-map" id="worker-loc-map"></div>
+            <div class="worker-location-coords" id="worker-loc-coords">
+              ${worker.lat && worker.lng
+                ? `<span>📍 Lat: <strong>${Number(worker.lat).toFixed(5)}</strong>, Lng: <strong>${Number(worker.lng).toFixed(5)}</strong></span>`
+                : `<span style="color:var(--color-warning);">⚠️ Location not set — you won't appear on customer maps</span>`
+              }
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+              <button class="btn btn-primary btn-sm" id="use-my-location-btn">
+                <i data-lucide="navigation" class="lucide-xs"></i> Use My Current Location
+              </button>
+              <button class="btn btn-outline btn-sm" id="save-worker-location-btn">
+                <i data-lucide="save" class="lucide-xs"></i> Save Location
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1673,6 +1722,108 @@ export const WorkerFrontend = {
           Toast.show('Working shifts & coverage radius updated!', 'success');
         }
       };
+    }
+
+    // ---- Worker Location Picker (Leaflet map with draggable marker) ----
+    const locMapEl = container.querySelector('#worker-loc-map');
+    if (locMapEl && typeof L !== 'undefined') {
+      const MUMBAI = [19.0760, 72.8777];
+      const initLat = worker.lat || MUMBAI[0];
+      const initLng = worker.lng || MUMBAI[1];
+
+      // Fix Leaflet default icon paths for CDN
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      });
+
+      const locMap = L.map(locMapEl).setView([initLat, initLng], 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19
+      }).addTo(locMap);
+
+      const locMarker = L.marker([initLat, initLng], { draggable: true }).addTo(locMap);
+      locMarker.bindPopup('📍 Drag me to set your location').openPopup();
+
+      // Store reference for cleanup
+      this._workerLocMap = locMap;
+      this._workerLocMarker = locMarker;
+
+      const updateCoordsDisplay = (lat, lng) => {
+        const coordsEl = container.querySelector('#worker-loc-coords');
+        if (coordsEl) {
+          coordsEl.innerHTML = `<span>📍 Lat: <strong>${Number(lat).toFixed(5)}</strong>, Lng: <strong>${Number(lng).toFixed(5)}</strong></span>`;
+        }
+      };
+
+      locMarker.on('dragend', () => {
+        const pos = locMarker.getLatLng();
+        updateCoordsDisplay(pos.lat, pos.lng);
+      });
+
+      // Use My Current Location button
+      const useLocBtn = container.querySelector('#use-my-location-btn');
+      if (useLocBtn) {
+        useLocBtn.onclick = () => {
+          if (!navigator.geolocation) {
+            Toast.show('Geolocation not supported by your browser', 'error');
+            return;
+          }
+          useLocBtn.disabled = true;
+          useLocBtn.textContent = '📡 Getting location...';
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const lat = pos.coords.latitude;
+              const lng = pos.coords.longitude;
+              locMarker.setLatLng([lat, lng]);
+              locMap.setView([lat, lng], 15);
+              updateCoordsDisplay(lat, lng);
+              useLocBtn.disabled = false;
+              useLocBtn.innerHTML = '<i data-lucide="navigation" class="lucide-xs"></i> Use My Current Location';
+              if (typeof window.refreshIcons === 'function') window.refreshIcons();
+              Toast.show('📍 Location captured!', 'success');
+            },
+            (err) => {
+              useLocBtn.disabled = false;
+              useLocBtn.innerHTML = '<i data-lucide="navigation" class="lucide-xs"></i> Use My Current Location';
+              if (typeof window.refreshIcons === 'function') window.refreshIcons();
+              Toast.show(`Location error: ${err.message}`, 'error');
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+          );
+        };
+      }
+
+      // Save Location button
+      const saveLocBtn = container.querySelector('#save-worker-location-btn');
+      if (saveLocBtn) {
+        saveLocBtn.onclick = () => {
+          const pos = locMarker.getLatLng();
+          const workers = StorageService.getWorkers();
+          const w = workers.find(item => item.id === worker.id);
+          if (w) {
+            w.lat = pos.lat;
+            w.lng = pos.lng;
+            w.location = { type: 'Point', coordinates: [pos.lng, pos.lat] };
+            StorageService.saveWorkers(workers);
+
+            // Also POST to server
+            fetch(`/api/workers/${worker.id}/location`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lat: pos.lat, lng: pos.lng })
+            }).catch(() => {});
+
+            Toast.show('📍 Location saved! You are now visible on the customer map.', 'success');
+          }
+        };
+      }
+
+      // Fix Leaflet rendering when tab becomes visible
+      setTimeout(() => locMap.invalidateSize(), 300);
     }
   },
 
