@@ -1,4 +1,5 @@
-// LocalKaam Expanded Production Data Models
+// LocalKaam Enhanced Data Models with Additional Categories
+
 export const LOCALITIES = [
   { id: 'andheri', name: 'Andheri West', lat: 19.1136, lng: 72.8258, zone: 'Western Suburbs', city: 'Mumbai' },
   { id: 'bandra', name: 'Bandra West', lat: 19.0596, lng: 72.8295, zone: 'Western Suburbs', city: 'Mumbai' },
@@ -10,6 +11,7 @@ export const LOCALITIES = [
   { id: 'thane', name: 'Thane West', lat: 19.2183, lng: 72.9781, zone: 'Thane Region', city: 'Mumbai' }
 ];
 
+// Enhanced categories with more services including complaint categories
 export const CATEGORIES = [
   { 
     id: 'electrician', 
@@ -28,7 +30,7 @@ export const CATEGORIES = [
   { 
     id: 'carpenter', 
     name: 'Carpenter', 
-    icon: '🪚', 
+    icon: '🪑', 
     description: 'Furniture repair, door locks, custom cabinets & assembly.',
     subcategories: ['Door Locks & Hinges', 'Bed & Sofa Repair', 'Wardrobe Customization', 'Modular Kitchen Fitting', 'Wooden Shelves & Racks']
   },
@@ -49,7 +51,7 @@ export const CATEGORIES = [
   { 
     id: 'appliance_repair', 
     name: 'Appliance repair', 
-    icon: '🔌', 
+    icon: '🔋', 
     description: 'Washing machine, refrigerator, microwave & water purifier repair.',
     subcategories: ['Washing Machine Repair', 'Refrigerator Servicing', 'Microwave Oven Repair', 'Water Purifier (RO) Service']
   },
@@ -70,17 +72,42 @@ export const CATEGORIES = [
   { 
     id: 'pest_control', 
     name: 'Pest control', 
-    icon: '🐜', 
+    icon: '🐛', 
     description: 'Cockroach, mosquito, termite & rodent extermination.',
     subcategories: ['Cockroach & Ant Treatment', 'Termite Proofing', 'Mosquito Fogging', 'Rodent Control']
   },
   { 
     id: 'other', 
     name: 'Other services', 
-    icon: '🛠️', 
+    icon: '🔧', 
     description: 'General handyman, gardening, security setup & odd jobs.',
     subcategories: ['General Handyman', 'Gardening & Plants', 'CCTV & Security Setup', 'Smart Lock Installation']
   }
+];
+
+// Customer complaint categories
+export const COMPLAINT_CATEGORIES = [
+  { id: 'did_not_arrive', name: 'Worker did not arrive', icon: '🚫', description: 'Worker did not show up for scheduled appointment' },
+  { id: 'arrived_late', name: 'Worker arrived late', icon: '⏰', description: 'Worker arrived significantly after scheduled time' },
+  { id: 'poor_quality', name: 'Poor-quality work', icon: '❌', description: 'Service work was below expected quality standards' },
+  { id: 'incomplete_service', name: 'Incomplete service', icon: '⭕', description: 'Service work was not fully completed' },
+  { id: 'unexpected_charges', name: 'Unexpected or excessive charges', icon: '💰', description: 'Unexpected or unusually high charges' },
+  { id: 'unprofessional', name: 'Unprofessional behaviour', icon: '🚸', description: 'Worker showed unprofessional or disrespectful behavior' },
+  { id: 'payment_issue', name: 'Payment-related issue', icon: '💳', description: 'Issues with payment processing or refunds' },
+  { id: 'misconduct_safety', name: 'Misconduct or safety concern', icon: '⚠️', description: 'Safety concerns or misconduct during service' },
+  { id: 'other', name: 'Other', icon: '❓', description: 'Other issues not covered by above categories' }
+];
+
+// Help centre support ticket categories
+export const SUPPORT_CATEGORIES = [
+  { id: 'booking', name: 'Booking assistance', description: 'Help with booking services, scheduling, and appointments' },
+  { id: 'payment', name: 'Payment and pricing issues', description: 'Issues with payments, pricing, refunds, and billing' },
+  { id: 'late_no_show', name: 'Late arrival or no-show', description: 'Worker arrived late or did not show up' },
+  { id: 'cancellation', name: 'Cancellation and rescheduling', description: 'Help with cancellations and rescheduling bookings' },
+  { id: 'quality', name: 'Service quality issues', description: 'Problems with service quality or standards' },
+  { id: 'account', name: 'Account and profile assistance', description: 'Help with account management and profile issues' },
+  { id: 'safety', name: 'Safety-related concerns', description: 'Safety issues or concerns during service' },
+  { id: 'general', name: 'General queries', description: 'General questions and information' }
 ];
 
 export const INITIAL_WORKERS = [

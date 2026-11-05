@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LocalKaam — Hyperlocal Blue-Collar Services Marketplace</title>
+  <title>LocalKaam • Hyperlocal Blue-Collar Services Marketplace</title>
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./css_enhancements.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -34,26 +35,16 @@
               if (error) {
                 Toast.show('Sign-in error: ' + (error.message || 'Unknown error'), 'error');
               } else if (data.session) {
-                await AuthService.syncUserProfile(data.session.user);
-                Toast.show('Signed in as ' + (data.session.user.email || 'User') + '!', 'success');
+                Toast.show('Signed in successfully!', 'success');
               }
             }
-          } catch (err) {}
-          if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          } catch (e) {
+            Toast.show('Auth check failed: ' + e.message, 'error');
           }
         }
       } catch (e) {}
-
-      try {
-        App.init();
-      } catch (err) {
-        console.error('App init fatal error:', err);
-        const appDiv = document.getElementById('app');
-        if (appDiv) {
-          appDiv.innerHTML = '<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Please refresh the page to load the marketplace.</p><button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1a3300; color: white; border: none; border-radius: 8px; cursor: pointer;">Refresh App</button></div>';
-        }
-      }
+      
+      App.init();
     });
   </script>
 </body>

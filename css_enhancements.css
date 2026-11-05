@@ -1,0 +1,440 @@
+/* Enhanced CSS for LocalKaam Features 1-4 */
+
+/* ==================== Customer Feedback & Rating System ==================== */
+
+/* Enhanced star ratings */
+.star-rating {
+  display: flex;
+  gap: 0.25rem;
+  font-size: 1.5rem;
+}
+
+.star-rating .star {
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.star-rating .star.active,
+.star-rating .star:hover {
+  color: #f59e0b;
+}
+
+/* Feedback tags styling */
+.feedback-tag-btn {
+  transition: all 0.2s;
+  font-size: 0.8rem;
+}
+
+.feedback-tag-btn.selected {
+  background: var(--accent-light);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+/* Review modal enhancements */
+.review-modal .rating-scale {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.5rem 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Worker profile rating distribution */
+.rating-distribution .progress-bar {
+  height: 8px;
+  border-radius: 4px;
+  transition: width 0.5s;
+}
+
+/* ==================== Help Centre Styles ==================== */
+
+.help-category-card {
+  transition: all 0.2s;
+  cursor: pointer;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.help-category-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.help-category-card.active {
+  background: var(--accent-light);
+  border-color: var(--accent-primary);
+}
+
+.help-category-icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Support ticket styles */
+.ticket-status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* ==================== Complaint Management Styles ==================== */
+
+.complaint-category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.complaint-lifecycle {
+  position: relative;
+  padding-left: 2rem;
+  margin-bottom: 1rem;
+}
+
+.complaint-lifecycle::before {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--border-color);
+}
+
+.complaint-status-dot {
+  position: absolute;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  border: 2px solid var(--bg-primary);
+}
+
+/* ==================== Worker Income Dashboard Styles ==================== */
+
+/* Earnings stats cards */
+.earnings-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.earnings-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  transition: transform 0.2s;
+}
+
+.earnings-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.earnings-stat-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Earnings chart container */
+.earnings-chart-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  position: relative;
+  height: 300px;
+}
+
+/* Transaction table enhancements */
+.transaction-table .status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.transaction-table .status-paid {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.transaction-table .status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.transaction-table .status-failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* CSV export button */
+.csv-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.csv-export-btn:hover {
+  background: var(--accent-primary-dark);
+  transform: translateY(-1px);
+}
+
+/* Worker insights cards */
+.insight-card {
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-card) 100%);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.insight-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--accent-primary);
+}
+
+/* Feedback section specific styles */
+.feedback-section .rating-average {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--accent-primary);
+}
+
+.feedback-section .distribution-bar {
+  height: 6px;
+  background: var(--bg-primary);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+/* ==================== Responsive Enhancements ==================== */
+
+@media (max-width: 1200px) {
+  .help-category-card {
+    padding: 1rem;
+  }
+  
+  .earnings-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .help-category-card {
+    padding: 0.75rem;
+  }
+  
+  .help-category-icon {
+    font-size: 1.5rem;
+  }
+  
+  .complaint-lifecycle {
+    padding-left: 1.5rem;
+  }
+  
+  .earnings-chart-container {
+    height: 250px;
+  }
+}
+
+/* ==================== Utility Classes ==================== */
+
+.text-rating {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.text-quality {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.text-behaviour {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.text-punctuality {
+  color: #8b5cf6;
+  font-weight: 600;
+}
+
+.text-communication {
+  color: #ec4899;
+  font-weight: 600;
+}
+
+/* Status colors for complaints */
+.status-submitted {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.status-under-review {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.status-awaiting-response {
+  background: #f5f3ff;
+  color: #6b21a8;
+}
+
+.status-resolved {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.status-closed {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* Priority badges */
+.priority-low {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.priority-medium {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.priority-high {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.priority-urgent {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Animation classes */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading states */
+.loading-skeleton {
+  background: linear-gradient(90deg, var(--bg-primary) 25%, var(--bg-card) 50%, var(--bg-primary) 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Empty state styling */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+}
+
+.empty-state-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+/* Modal enhancements */
+.modal-overlay {
+  backdrop-filter: blur(2px);
+}
+
+.modal-card {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Toast notifications */
+.toast {
+  transition: all 0.3s ease;
+  transform: translateX(0);
+}
+
+.toast.hide {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+/* Responsive sidebar adjustments */
+@media (max-width: 900px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .main-content {
+    margin-left: 0;
+  }
+}

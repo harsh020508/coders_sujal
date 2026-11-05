@@ -1,4 +1,3 @@
-// LocalKaam - Supabase Data Layer & Realtime Synchronizer
 import { SupabaseService } from './supabaseClient.js';
 
 export const DataMapper = {
@@ -80,7 +79,7 @@ export const DataMapper = {
       customerId: row.customer_id,
       workerId: row.worker_id,
       customerName: row.customer_name,
-      customerPhone: row.customer_phone,
+      customer_phone: row.customer_phone,
       service: row.service,
       locality: row.locality,
       address: row.address,
@@ -108,8 +107,13 @@ export const DataMapper = {
       worker_id: r.workerId,
       customer_id: r.customerId || null,
       customer_name: r.customerName || 'Anonymous',
-      rating: Number(r.rating) || 5,
+      overall_rating: Number(r.overallRating) || 5,
+      quality_rating: Number(r.qualityRating) || 5,
+      behaviour_rating: Number(r.behaviourRating) || 5,
+      punctuality_rating: Number(r.punctualityRating) || 5,
+      communication_rating: Number(r.communicationRating) || 5,
       comment: r.comment || '',
+      feedback_tags: r.feedbackTags || [],
       created_at: r.createdAt || new Date().toISOString()
     };
   },
@@ -121,8 +125,13 @@ export const DataMapper = {
       workerId: row.worker_id,
       customerId: row.customer_id,
       customerName: row.customer_name,
-      rating: Number(row.rating) || 5,
+      overallRating: Number(row.overall_rating) || 5,
+      qualityRating: Number(row.quality_rating) || 5,
+      behaviourRating: Number(row.behaviour_rating) || 5,
+      punctualityRating: Number(row.punctuality_rating) || 5,
+      communicationRating: Number(row.communication_rating) || 5,
       comment: row.comment,
+      feedbackTags: Array.isArray(row.feedback_tags) ? row.feedback_tags : (row.feedback_tags ? JSON.parse(row.feedback_tags) : []),
       createdAt: row.created_at
     };
   },
@@ -153,6 +162,43 @@ export const DataMapper = {
       details: row.details,
       status: row.status,
       createdAt: row.created_at
+    };
+  },
+
+  // Support Tickets
+  supportTicketToDb(t) {
+    return {
+      id: t.id,
+      booking_id: t.bookingId || null,
+      worker_id: t.workerId || null,
+      customer_id: t.customerId || null,
+      customer_name: t.customerName || 'Customer',
+      category: t.category,
+      subject: t.subject,
+      description: t.description,
+      status: t.status || 'Open',
+      priority: t.priority || 'Medium',
+      response: t.response || '',
+      created_at: t.createdAt || new Date().toISOString(),
+      updated_at: t.updatedAt || new Date().toISOString()
+    };
+  },
+
+  dbToSupportTicket(row) {
+    return {
+      id: row.id,
+      bookingId: row.booking_id,
+      workerId: row.worker_id,
+      customerId: row.customer_id,
+      customerName: row.customer_name,
+      category: row.category,
+      subject: row.subject,
+      description: row.description,
+      status: row.status,
+      priority: row.priority,
+      response: row.response,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
     };
   }
 };
@@ -322,6 +368,43 @@ export const SupabaseDataService = {
     }
   },
 
+  // SUPPORT TICKETS
+  async fetchSupportTickets() {
+    const client = await SupabaseService.getClient();
+    if (!client) return null;
+
+    try {
+      const { data, error } = await client
+        .from('support_tickets')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) return null;
+      return (data || []).map(DataMapper.dbToSupportTicket);
+    } catch (e) {
+      return null;
+    }
+  },
+
+  async upsertSupportTicket(ticket) {
+    const client = await SupabaseService.getClient();
+    if (!client) return null;
+
+    try {
+      const dbRow = DataMapper.supportTicketToDb(ticket);
+      const { data, error } = await client
+        .from('support_tickets')
+        .upsert(dbRow, { onConflict: 'id' })
+        .select()
+        .single();
+
+      if (error) return null;
+      return data ? DataMapper.dbToSupportTicket(data) : null;
+    } catch (e) {
+      return null;
+    }
+  },
+
   // REALTIME SUBSCRIPTIONS
   subscribeRealtime(onUpdate) {
     SupabaseService.getClient().then(client => {
@@ -342,6 +425,9 @@ export const SupabaseDataService = {
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'complaints' }, payload => {
             if (onUpdate) onUpdate('complaints', payload);
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'support_tickets' }, payload => {
+            if (onUpdate) onUpdate('support_tickets', payload);
           })
           .subscribe();
 

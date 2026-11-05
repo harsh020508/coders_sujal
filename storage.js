@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   BOOKINGS: 'localkaam_bookings',
   REVIEWS: 'localkaam_reviews',
   COMPLAINTS: 'localkaam_complaints',
+  SUPPORT_TICKETS: 'localkaam_support_tickets',
   CURRENT_ROLE: 'localkaam_current_role',
   SELECTED_WORKER_ID: 'localkaam_selected_worker_id',
   CUSTOMER_LOCALITY: 'localkaam_customer_locality',
@@ -111,13 +112,15 @@ export const StorageService = {
         SupabaseDataService.fetchWorkers(),
         SupabaseDataService.fetchBookings(),
         SupabaseDataService.fetchReviews(),
-        SupabaseDataService.fetchComplaints()
+        SupabaseDataService.fetchComplaints(),
+        SupabaseDataService.fetchSupportTickets()
       ]);
-      const [wRes, bRes, rRes, cRes] = results;
+      const [wRes, bRes, rRes, cRes, sRes] = results;
       if (wRes.status === 'fulfilled' && wRes.value?.length) safeSet(STORAGE_KEYS.WORKERS, wRes.value);
       if (bRes.status === 'fulfilled' && bRes.value) safeSet(STORAGE_KEYS.BOOKINGS, bRes.value);
       if (rRes.status === 'fulfilled' && rRes.value) safeSet(STORAGE_KEYS.REVIEWS, rRes.value);
       if (cRes.status === 'fulfilled' && cRes.value) safeSet(STORAGE_KEYS.COMPLAINTS, cRes.value);
+      if (sRes.status === 'fulfilled' && sRes.value) safeSet(STORAGE_KEYS.SUPPORT_TICKETS, sRes.value);
       this.notifyChange('sync', {});
       return true;
     } catch (e) {
@@ -169,6 +172,14 @@ export const StorageService = {
     this.notifyChange('complaints', complaints);
   },
 
+  getSupportTickets() {
+    return safeGet(STORAGE_KEYS.SUPPORT_TICKETS, []);
+  },
+  saveSupportTickets(tickets) {
+    safeSet(STORAGE_KEYS.SUPPORT_TICKETS, tickets);
+    this.notifyChange('support_tickets', tickets);
+  },
+
   getCurrentRole() {
     return sessionGetItem(STORAGE_KEYS.CURRENT_ROLE, 'landing');
   },
@@ -202,6 +213,7 @@ export const StorageService = {
     safeSet(STORAGE_KEYS.BOOKINGS, INITIAL_BOOKINGS);
     safeSet(STORAGE_KEYS.REVIEWS, INITIAL_REVIEWS);
     safeSet(STORAGE_KEYS.COMPLAINTS, INITIAL_COMPLAINTS);
+    safeSet(STORAGE_KEYS.SUPPORT_TICKETS, []);
     sessionSetItem(STORAGE_KEYS.CURRENT_ROLE, 'landing');
     sessionSetItem(STORAGE_KEYS.SELECTED_WORKER_ID, 'w1');
     sessionSetItem(STORAGE_KEYS.CUSTOMER_LOCALITY, 'andheri');
