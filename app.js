@@ -453,7 +453,7 @@ export const App = {
         </header>
 
         <!-- Hero Section -->
-        <section class="landing-hero lk-hero-single">
+        <section class="landing-hero lk-hero-single lk-hero-center">
           <p class="lk-eyebrow">Mumbai · Hyperlocal marketplace</p>
           <h1>
             Good help lives
@@ -488,29 +488,25 @@ export const App = {
           <div class="stat-card"><span class="stat-card-label">Paid to pros</span><h3>100%</h3></div>
         </section>
 
-        <!-- Services -->
+        <!-- Services: 7shifts-style dark blur panel — pills + white tiles -->
         <section class="section-container" id="services">
-          <h2 class="section-title">${t('services_title', 'Ten trades, one neighbourhood.')}</h2>
-          <p class="section-subtitle">${t('services_subtitle', 'Every pro is ID-verified and rated only on completed jobs. Pick a trade to see who is available near you.')}</p>
-          <div class="categories-grid">
-            ${CATEGORIES.map(c => `
-              <div class="category-card" data-category="${esc(c.id)}" role="button" tabindex="0" aria-label="Book ${esc(c.name)} nearby">
-                <div class="category-card-top">
-                  <div class="category-icon-tile">
-                    <i data-lucide="${esc(c.lucideIcon || 'wrench')}" class="lucide-md"></i>
-                  </div>
-                  <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);letter-spacing:0.04em;text-transform:uppercase;">${c.subcategories ? c.subcategories.length : 0} services</span>
-                </div>
-                <div class="category-card-content">
-                  <h3>${esc(c.name)}</h3>
-                  <p>${esc(c.description)}</p>
-                  <div class="category-card-footer">
-                    <span>Book nearby pro</span>
-                    <i data-lucide="arrow-right" class="lucide-xs"></i>
-                  </div>
-                </div>
+          <div class="lk-services-panel">
+            <div class="lk-sp-left">
+              <h3>${t('services_title', 'Ten trades, ready near you.')}</h3>
+              <p>Every pro is ID-verified and rated only on completed jobs. Pick a trade to see who is available in your locality today.</p>
+              <div class="lk-sp-pills">
+                ${CATEGORIES.map(c => `<button type="button" class="lk-pill" data-category="${esc(c.id)}">${esc(c.name)}</button>`).join('')}
               </div>
-            `).join('')}
+              <button class="btn lk-sp-cta" id="sp-cta-btn">Browse professionals <i data-lucide="arrow-right" class="lucide-sm"></i></button>
+            </div>
+            <div class="lk-sp-grid">
+              ${CATEGORIES.slice(0, 6).map(c => `
+                <button type="button" class="lk-tile" data-category="${esc(c.id)}" aria-label="Book ${esc(c.name)} nearby">
+                  <i data-lucide="${esc(c.lucideIcon || 'wrench')}" class="lucide-lg"></i>
+                  <strong>${esc(c.name)}</strong>
+                </button>
+              `).join('')}
+            </div>
           </div>
         </section>
 
@@ -934,6 +930,9 @@ export const App = {
     root.querySelector('#hero-find-pro-btn')?.addEventListener('click', () => {
       this.navigateToRole('role-select');
     });
+    root.querySelector('#sp-cta-btn')?.addEventListener('click', () => {
+      this.navigateToRole('role-select');
+    });
     root.querySelector('#cta-find-pro-btn')?.addEventListener('click', () => {
       this.navigateToRole('role-select');
     });
@@ -951,7 +950,7 @@ export const App = {
       });
     }
 
-    root.querySelectorAll('.category-card').forEach(card => {
+    root.querySelectorAll('[data-category]').forEach(card => {
       const handleClick = () => {
         const cat = card.getAttribute('data-category');
         const isAuthed = AuthService.isAuthenticated() && !AuthService.isGuest();
@@ -966,7 +965,9 @@ export const App = {
         }
       };
       card.addEventListener('click', handleClick);
-      card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); });
+      if (card.tagName !== 'BUTTON') {
+        card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); });
+      }
     });
   },
 
