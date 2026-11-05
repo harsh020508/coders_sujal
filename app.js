@@ -453,29 +453,69 @@ export const App = {
         </header>
 
         <!-- Hero Section -->
-        <section class="landing-hero lk-hero-single">
-          <p class="lk-eyebrow">Mumbai · Hyperlocal marketplace</p>
-          <h1>
-            Good help lives
-            <br>on <span class="highlight">your street.</span>
-          </h1>
-          <p class="lk-lede">
-            Tell us what needs fixing. We match you with verified plumbers,
-            electricians, carpenters and more in your locality. They set
-            their own prices and keep 100% — no commission, no surge fee.
-          </p>
-          <div class="hero-cta">
-            <button class="btn btn-primary btn-lg" id="hero-find-pro-btn">
-              Find a professional <i data-lucide="arrow-right" class="lucide-sm"></i>
-            </button>
-            <button class="btn btn-outline btn-lg" id="hero-explore-btn">
-              See how it works
-            </button>
+        <section class="landing-hero">
+          <div class="hero-content">
+            <p class="lk-eyebrow">Mumbai · Hyperlocal marketplace</p>
+            <h1>
+              Good help lives
+              <br>on <span class="highlight">your street.</span>
+            </h1>
+            <p class="lk-lede">
+              Tell us what needs fixing. We match you with verified plumbers,
+              electricians, carpenters and more in your locality. They set
+              their own prices and keep 100% — no commission, no surge fee.
+            </p>
+            <div class="hero-cta">
+              <button class="btn btn-primary btn-lg" id="hero-find-pro-btn">
+                Find a professional <i data-lucide="arrow-right" class="lucide-sm"></i>
+              </button>
+              <button class="btn btn-outline btn-lg" id="hero-explore-btn">
+                See how it works
+              </button>
+            </div>
+            <div class="lk-trust">
+              <span><i data-lucide="shield-check" class="lucide-sm"></i> Verified pros</span>
+              <span><i data-lucide="map-pin" class="lucide-sm"></i> ~25 min nearby</span>
+              <span><i data-lucide="indian-rupee" class="lucide-sm"></i> 0% commission</span>
+            </div>
           </div>
-          <div class="lk-trust">
-            <span><i data-lucide="shield-check" class="lucide-sm"></i> Verified pros</span>
-            <span><i data-lucide="map-pin" class="lucide-sm"></i> ~25 min nearby</span>
-            <span><i data-lucide="indian-rupee" class="lucide-sm"></i> 0% commission</span>
+
+          <div class="hero-visual">
+            <div class="lk-sheet" aria-label="Example booking">
+              <div class="lk-sheet-head">
+                <div>
+                  <strong>Booking · Electrician</strong><br>
+                  <span>Today, 4:30 PM · Andheri West</span>
+                </div>
+                <span class="lk-online">Online</span>
+              </div>
+              <div class="lk-worker">
+                <div class="lk-avatar" aria-hidden="true">RS</div>
+                <div>
+                  <h3>Ramesh Sharma <i data-lucide="badge-check" class="lucide-xs"></i></h3>
+                  <p>Master electrician · 8 yrs</p>
+                </div>
+                <div class="lk-worker-meta">
+                  <strong>₹350</strong>
+                  <span>per hour</span>
+                </div>
+              </div>
+              <div class="lk-facts">
+                <div class="lk-fact"><span><i data-lucide="map-pin" class="lucide-xs"></i> Distance</span><strong>1.8 km</strong></div>
+                <div class="lk-fact"><span><i data-lucide="star" class="lucide-xs"></i> Rating</span><strong>4.9 · 42 jobs</strong></div>
+                <div class="lk-fact"><span><i data-lucide="timer" class="lucide-xs"></i> Arrives</span><strong>~18 min</strong></div>
+              </div>
+              <div class="lk-timeline">
+                <div class="lk-step done"><i data-lucide="check" class="lucide-xs"></i> Accepted</div>
+                <div class="lk-step done"><i data-lucide="check" class="lucide-xs"></i> On the way</div>
+                <div class="lk-step now"><i data-lucide="wrench" class="lucide-xs"></i> In progress</div>
+                <div class="lk-step"><i data-lucide="receipt" class="lucide-xs"></i> Invoice &amp; review</div>
+              </div>
+              <div class="lk-sheet-foot">
+                <i data-lucide="check" class="lucide-sm"></i>
+                Paid direct to the pro. Nothing deducted.
+              </div>
+            </div>
           </div>
         </section>
 
@@ -491,13 +531,23 @@ export const App = {
         <section class="section-container" id="services">
           <h2 class="section-title">${t('services_title', 'Ten trades, one neighbourhood.')}</h2>
           <p class="section-subtitle">${t('services_subtitle', 'Every pro is ID-verified and rated only on completed jobs. Pick a trade to see who is available near you.')}</p>
-          <div class="lk-services-list">
+          <div class="categories-grid">
             ${CATEGORIES.map(c => `
-              <div class="category-card lk-service-row" data-category="${esc(c.id)}" role="button" tabindex="0" aria-label="Book ${esc(c.name)} nearby">
-                <span class="category-icon-tile"><i data-lucide="${esc(c.lucideIcon || 'wrench')}" class="lucide-md"></i></span>
-                <span class="lk-service-main"><strong>${esc(c.name)}</strong><span>${esc(c.description)}</span></span>
-                <span class="lk-service-meta">${c.subcategories ? c.subcategories.length : 0} services</span>
-                <i data-lucide="arrow-right" class="lucide-md lk-service-arrow"></i>
+              <div class="category-card" data-category="${esc(c.id)}" role="button" tabindex="0" aria-label="Book ${esc(c.name)} nearby">
+                <div class="category-card-top">
+                  <div class="category-icon-tile">
+                    <i data-lucide="${esc(c.lucideIcon || 'wrench')}" class="lucide-md"></i>
+                  </div>
+                  <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);letter-spacing:0.04em;text-transform:uppercase;">${c.subcategories ? c.subcategories.length : 0} services</span>
+                </div>
+                <div class="category-card-content">
+                  <h3>${esc(c.name)}</h3>
+                  <p>${esc(c.description)}</p>
+                  <div class="category-card-footer">
+                    <span>Book nearby pro</span>
+                    <i data-lucide="arrow-right" class="lucide-xs"></i>
+                  </div>
+                </div>
               </div>
             `).join('')}
           </div>
