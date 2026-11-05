@@ -43,10 +43,9 @@
   gap: clamp(28px, 4vw, 56px);
   color: #f2efe8;
   background:
-    radial-gradient(560px 380px at 88% -12%, rgba(132, 204, 22, 0.38), transparent 62%),
-    radial-gradient(520px 520px at 8% 115%, rgba(217, 119, 6, 0.28), transparent 60%),
-    radial-gradient(420px 320px at 55% 55%, rgba(255, 233, 92, 0.10), transparent 65%),
-    #0d1807;
+    radial-gradient(560px 380px at 88% -12%, rgba(255, 255, 255, 0.07), transparent 62%),
+    #131615;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .lk-sp-left { position: relative; display: grid; align-content: start; gap: 18px; }
 .lk-sp-left h3 { color: #ffffff; font-size: clamp(1.7rem, 3vw, 2.2rem); line-height: 1.12; margin: 0; max-width: 16ch; }
