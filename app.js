@@ -386,6 +386,7 @@ export const App = {
 
   renderAppShell(activeRole) {
     const theme = StorageService.getTheme();
+    const isAuthed = AuthService.isAuthenticated();
     const profile = AuthService.getProfile();
     const userName = profile ? (profile.full_name || profile.email || 'User') : 'User';
 
@@ -402,6 +403,7 @@ export const App = {
             </span>
           </div>
           <div class="nav-actions">
+            ${isAuthed ? '<button class="btn btn-outline btn-sm" id="logout-btn" title="Sign Out">🚪 Sign Out</button>' : ''}
             <button class="btn btn-outline btn-sm" id="switch-role-btn">Switch Role</button>
             <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️ Light' : '🌙 Dark'}</button>
             <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Data">🔄 Reset</button>
@@ -451,8 +453,7 @@ export const App = {
 
     root.querySelectorAll('.category-card').forEach(card => {
       card.addEventListener('click', () => {
-        const profile = AuthService.getProfile();
-        if (profile && profile.role === 'customer') {
+        if (AuthService.isAuthenticated() && AuthService.getProfile()?.role === 'customer') {
           StorageService.setCurrentRole('customer');
           CustomerFrontend.currentCategory = card.getAttribute('data-category');
           this.render();
@@ -477,8 +478,7 @@ export const App = {
       this.render();
     });
     root.querySelector('#select-customer-role')?.addEventListener('click', () => {
-      const profile = AuthService.getProfile();
-      if (profile && profile.role === 'customer') {
+      if (AuthService.isAuthenticated() && AuthService.getProfile()?.role === 'customer') {
         StorageService.setCurrentRole('customer');
         this.render();
       } else {
@@ -489,8 +489,7 @@ export const App = {
       }
     });
     root.querySelector('#select-worker-role')?.addEventListener('click', () => {
-      const profile = AuthService.getProfile();
-      if (profile && profile.role === 'worker') {
+      if (AuthService.isAuthenticated() && AuthService.getProfile()?.role === 'worker') {
         StorageService.setCurrentRole('worker');
         this.render();
       } else {
@@ -512,6 +511,24 @@ export const App = {
   },
 
   attachShellEvents(root) {
+    const logoutBtn = root.querySelector('#logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        logoutBtn.disabled = true;
+        logoutBtn.textContent = 'Signing out...';
+        const res = await AuthService.signOut();
+        if (res.success) {
+          Toast.show('Signed out successfully.', 'info');
+          StorageService.setCurrentRole('landing');
+          this.render();
+        } else {
+          logoutBtn.disabled = false;
+          logoutBtn.textContent = '🚪 Sign Out';
+          Toast.show('Sign out failed: ' + (res.error?.message || 'Unknown error'), 'error');
+        }
+      });
+    }
+
     root.querySelector('#nav-brand-dashboard')?.addEventListener('click', () => {
       StorageService.setCurrentRole('landing');
       this.render();

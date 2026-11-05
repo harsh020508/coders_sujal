@@ -95,9 +95,34 @@ ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.complaints ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "profiles_select" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "profiles_insert" ON public.profiles FOR INSERT WITH CHECK (true);
-CREATE POLICY "profiles_update" ON public.profiles FOR UPDATE USING (true);
+DO $$ BEGIN DROP POLICY IF EXISTS "profiles_select" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "profiles_insert" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "profiles_update" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "profiles_select_own" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "profiles_insert_own" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "profiles_update_own" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+CREATE POLICY "profiles_select_own" ON public.profiles FOR SELECT TO authenticated USING (auth.uid() = id);
+CREATE POLICY "profiles_insert_own" ON public.profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = id AND (role IS NULL OR role IN ('customer', 'worker')));
+CREATE POLICY "profiles_update_own" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+CREATE OR REPLACE FUNCTION public.protect_profile_role()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role THEN
+    IF CURRENT_USER <> 'postgres' AND COALESCE(auth.role(), '') <> 'service_role' THEN
+      RAISE EXCEPTION 'Privilege escalation rejected: modifying profile role requires administrative privileges.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_protect_profile_role ON public.profiles;
+CREATE TRIGGER tr_protect_profile_role
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.protect_profile_role();
 
 CREATE POLICY "workers_select" ON public.workers FOR SELECT USING (true);
 CREATE POLICY "workers_insert" ON public.workers FOR INSERT WITH CHECK (true);
@@ -116,19 +141,28 @@ CREATE POLICY "complaints_insert" ON public.complaints FOR INSERT WITH CHECK (tr
 -- 3. AUTO-PROFILE TRIGGER
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_role TEXT;
 BEGIN
+  v_role := LOWER(COALESCE(NEW.raw_user_meta_data->>'role', 'customer'));
+  IF v_role NOT IN ('customer', 'worker') THEN
+    v_role := 'customer';
+  END IF;
+
   INSERT INTO public.profiles (id, email, full_name, phone, role, locality)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
     COALESCE(NEW.raw_user_meta_data->>'phone', ''),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'customer'),
+    v_role,
     COALESCE(NEW.raw_user_meta_data->>'locality', 'andheri')
   )
   ON CONFLICT (id) DO UPDATE SET
     email = EXCLUDED.email,
     full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
+    phone = COALESCE(NULLIF(EXCLUDED.phone, ''), profiles.phone),
+    locality = COALESCE(NULLIF(EXCLUDED.locality, ''), profiles.locality),
     updated_at = NOW();
   RETURN NEW;
 END;

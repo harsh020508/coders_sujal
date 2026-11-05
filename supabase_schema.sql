@@ -1,8 +1,8 @@
 -- ==============================================================================
--- LocalKaam - COMPLETE Supabase Setup Script
+-- LocalKaam - COMPLETE Supabase Setup Script (Hardened Authentication & RLS)
 -- ==============================================================================
 -- Run this ENTIRE script in your Supabase Dashboard: SQL Editor > New Query > Run
--- It creates all tables, RLS policies, triggers, seeds data, and enables realtime.
+-- It creates all tables, secure RLS policies, triggers, seeds data, and enables realtime.
 -- ==============================================================================
 
 -- ========================
@@ -104,6 +104,9 @@ ALTER TABLE public.complaints ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN DROP POLICY IF EXISTS "profiles_select" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN DROP POLICY IF EXISTS "profiles_insert" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN DROP POLICY IF EXISTS "profiles_update" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "profiles_select_own" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "profiles_insert_own" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "profiles_update_own" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN DROP POLICY IF EXISTS "workers_select" ON public.workers; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN DROP POLICY IF EXISTS "workers_insert" ON public.workers; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN DROP POLICY IF EXISTS "workers_update" ON public.workers; EXCEPTION WHEN OTHERS THEN NULL; END $$;
@@ -115,7 +118,7 @@ DO $$ BEGIN DROP POLICY IF EXISTS "reviews_insert" ON public.reviews; EXCEPTION 
 DO $$ BEGIN DROP POLICY IF EXISTS "complaints_select" ON public.complaints; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN DROP POLICY IF EXISTS "complaints_insert" ON public.complaints; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
--- Also drop any old policies from previous schema versions
+-- Drop legacy schema policies
 DO $$ BEGIN DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles; EXCEPTION WHEN OTHERS THEN NULL; END $$;
@@ -133,21 +136,65 @@ DO $$ BEGIN DROP POLICY IF EXISTS "Workers can be created" ON public.workers; EX
 DO $$ BEGIN DROP POLICY IF EXISTS "Bookings viewable" ON public.bookings; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN DROP POLICY IF EXISTS "Bookings can be updated" ON public.bookings; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
-CREATE POLICY "profiles_select" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "profiles_insert" ON public.profiles FOR INSERT WITH CHECK (true);
-CREATE POLICY "profiles_update" ON public.profiles FOR UPDATE USING (true);
+-- ==============================================================================
+-- PROFILES RLS: HARDENED OWNERSHIP POLICIES
+-- ==============================================================================
 
+-- Requirement A: Authenticated user may access their own private profile
+CREATE POLICY "profiles_select_own" ON public.profiles
+  FOR SELECT TO authenticated
+  USING (auth.uid() = id);
+
+-- Requirement B: User may create a profile only when its ID matches auth.uid().
+-- Public registration allows only 'customer' or 'worker' accounts.
+CREATE POLICY "profiles_insert_own" ON public.profiles
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    auth.uid() = id
+    AND (role IS NULL OR role IN ('customer', 'worker'))
+  );
+
+-- Requirement C: User may update permitted profile fields only for their own profile
+CREATE POLICY "profiles_update_own" ON public.profiles
+  FOR UPDATE TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+-- Requirements D & E: Role protection & Administrative access
+-- Prevents ordinary users from changing their role to 'worker' or 'admin' via direct SQL/API updates
+CREATE OR REPLACE FUNCTION public.protect_profile_role()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role THEN
+    IF CURRENT_USER <> 'postgres' AND COALESCE(auth.role(), '') <> 'service_role' THEN
+      RAISE EXCEPTION 'Privilege escalation rejected: modifying profile role requires administrative privileges.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_protect_profile_role ON public.profiles;
+CREATE TRIGGER tr_protect_profile_role
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.protect_profile_role();
+
+-- Workers table policies (Public directory for marketplace discovery)
 CREATE POLICY "workers_select" ON public.workers FOR SELECT USING (true);
 CREATE POLICY "workers_insert" ON public.workers FOR INSERT WITH CHECK (true);
 CREATE POLICY "workers_update" ON public.workers FOR UPDATE USING (true);
 
+-- Bookings table policies
 CREATE POLICY "bookings_select" ON public.bookings FOR SELECT USING (true);
 CREATE POLICY "bookings_insert" ON public.bookings FOR INSERT WITH CHECK (true);
 CREATE POLICY "bookings_update" ON public.bookings FOR UPDATE USING (true);
 
+-- Reviews table policies
 CREATE POLICY "reviews_select" ON public.reviews FOR SELECT USING (true);
 CREATE POLICY "reviews_insert" ON public.reviews FOR INSERT WITH CHECK (true);
 
+-- Complaints table policies
 CREATE POLICY "complaints_select" ON public.complaints FOR SELECT USING (true);
 CREATE POLICY "complaints_insert" ON public.complaints FOR INSERT WITH CHECK (true);
 
@@ -155,21 +202,32 @@ CREATE POLICY "complaints_insert" ON public.complaints FOR INSERT WITH CHECK (tr
 -- 3. AUTO-PROFILE TRIGGER
 -- ========================
 
+-- Requirement: Public registration can NEVER self-assign 'admin' privileges.
+-- User metadata is strictly sanitized: only 'customer' or 'worker' permitted, defaulting to 'customer'.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_role TEXT;
 BEGIN
+  v_role := LOWER(COALESCE(NEW.raw_user_meta_data->>'role', 'customer'));
+  IF v_role NOT IN ('customer', 'worker') THEN
+    v_role := 'customer';
+  END IF;
+
   INSERT INTO public.profiles (id, email, full_name, phone, role, locality)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
     COALESCE(NEW.raw_user_meta_data->>'phone', ''),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'customer'),
+    v_role,
     COALESCE(NEW.raw_user_meta_data->>'locality', 'andheri')
   )
   ON CONFLICT (id) DO UPDATE SET
     email = EXCLUDED.email,
     full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
+    phone = COALESCE(NULLIF(EXCLUDED.phone, ''), profiles.phone),
+    locality = COALESCE(NULLIF(EXCLUDED.locality, ''), profiles.locality),
     updated_at = NOW();
   RETURN NEW;
 END;
