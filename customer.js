@@ -152,6 +152,14 @@ export const CustomerFrontend = {
         </div>
       </div>
 
+      <div id="discover-results">
+        ${this.renderDiscoverResults(eligibleWorkers)}
+      </div>
+    `;
+  },
+
+  renderDiscoverResults(eligibleWorkers) {
+    return `
       <!-- Workers Results Header -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
         <h3 style="font-size: 1.15rem; font-weight: 700;">
@@ -392,18 +400,40 @@ export const CustomerFrontend = {
     return icons[categoryId] || '❓';
   },
 
+  // Re-render only the results area so typing in #service-search-input
+  // never loses focus (previously every keystroke replaced the input itself).
+  _refreshDiscoverResults(container) {
+    const workers = StorageService.getWorkers();
+    const customerLocality = StorageService.getCustomerLocality();
+    let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+    eligible = this.sortWorkers(eligible);
+    const results = container.querySelector('#discover-results');
+    if (results) {
+      results.innerHTML = this.renderDiscoverResults(eligible);
+      this.attachDiscoverResultEvents(container);
+      if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+    }
+    return eligible;
+  },
+
+  _syncDiscoverHeader(container) {
+    const searchInput = container.querySelector('#service-search-input');
+    if (searchInput && searchInput.value !== this.searchQuery) searchInput.value = this.searchQuery;
+    const sortSelect = container.querySelector('#sort-by-select');
+    if (sortSelect && sortSelect.value !== this.sortBy) sortSelect.value = this.sortBy;
+    container.querySelectorAll('.cat-shortcut-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.getAttribute('data-cat') === this.currentCategory);
+    });
+  },
+
   attachDiscoverEvents(container) {
+    // Header (search / sort / categories) is bound once; results are rebound
+    // after each partial update.
     const searchInput = container.querySelector('#service-search-input');
     if (searchInput) {
       searchInput.addEventListener('input', (e) => {
         this.searchQuery = e.target.value;
-        const workers = StorageService.getWorkers();
-        const customerLocality = StorageService.getCustomerLocality();
-        let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
-        eligible = this.sortWorkers(eligible);
-        container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
-        this.attachDiscoverEvents(container);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+        this._refreshDiscoverResults(container);
       });
     }
 
@@ -411,42 +441,30 @@ export const CustomerFrontend = {
     if (sortSelect) {
       sortSelect.addEventListener('change', (e) => {
         this.sortBy = e.target.value;
-        const workers = StorageService.getWorkers();
-        const customerLocality = StorageService.getCustomerLocality();
-        let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
-        eligible = this.sortWorkers(eligible);
-        container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
-        this.attachDiscoverEvents(container);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+        this._refreshDiscoverResults(container);
       });
     }
 
     container.querySelectorAll('.cat-shortcut-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         this.currentCategory = btn.getAttribute('data-cat');
-        const workers = StorageService.getWorkers();
-        const customerLocality = StorageService.getCustomerLocality();
-        let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
-        eligible = this.sortWorkers(eligible);
-        container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
-        this.attachDiscoverEvents(container);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+        this._syncDiscoverHeader(container);
+        this._refreshDiscoverResults(container);
       });
     });
 
+    this.attachDiscoverResultEvents(container);
+  },
+
+  attachDiscoverResultEvents(container) {
     const resetFilterBtn = container.querySelector('#reset-filter-btn');
     if (resetFilterBtn) {
       resetFilterBtn.addEventListener('click', () => {
         this.currentCategory = 'all';
         this.searchQuery = '';
         this.sortBy = 'match';
-        const workers = StorageService.getWorkers();
-        const customerLocality = StorageService.getCustomerLocality();
-        let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, 'all', '');
-        eligible = this.sortWorkers(eligible);
-        container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
-        this.attachDiscoverEvents(container);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+        this._syncDiscoverHeader(container);
+        this._refreshDiscoverResults(container);
       });
     }
 
@@ -472,6 +490,8 @@ export const CustomerFrontend = {
         if (openCompareModalBtn) {
           openCompareModalBtn.textContent = `⚖️ View Comparison (${this.comparedWorkers.length})`;
         }
+        // Keep the header button count in sync after toggling compare.
+        if (this.comparedWorkers.length === 0) this._refreshDiscoverResults(container);
       });
     });
 
