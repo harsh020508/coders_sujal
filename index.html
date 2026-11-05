@@ -38,19 +38,20 @@
           try {
             const client = await SupabaseService.getClient();
             if (client) {
+              // Wait briefly for Supabase to complete PKCE token exchange
+              await new Promise(resolve => setTimeout(resolve, 500));
               const { data, error } = await client.auth.getSession();
-              if (error || !data?.session) {
-                AuthService.clearSessionState();
-                const errMsg = error?.message || 'Google OAuth failed or was cancelled by user.';
-                console.error('OAuth session error:', errMsg);
-                Toast.show(errMsg, 'error');
-              } else if (data.session) {
+              if (error) {
+                // Only clear state if there's an actual auth error from Supabase
+                console.error('OAuth session error:', error.message);
+                Toast.show('Sign-in error: ' + (error.message || 'Unknown error'), 'error');
+              } else if (data && data.session) {
                 await AuthService.syncUserProfile(data.session.user);
                 Toast.show('Signed in as ' + (data.session.user.email || 'User') + '!', 'success');
               }
+              // If !data.session and no error — PKCE exchange still pending, onAuthStateChange will handle it
             }
           } catch (err) {
-            AuthService.clearSessionState();
             console.error('OAuth callback processing error:', err);
             Toast.show('Authentication error occurred.', 'error');
           }

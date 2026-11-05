@@ -103,11 +103,12 @@ class AuthServiceManager {
           console.log('[Auth] Auth state change event:', event, session?.user?.email || '(no user)');
 
           if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-            if (session && session.user && !this._isSessionExpired(session)) {
+            if (session && session.user) {
               this.currentSession = session;
               this.currentUser = session.user;
               await this.syncUserProfile(session.user);
-            } else {
+            } else if (!session) {
+              // No session on SIGNED_IN usually means OAuth was cancelled server-side
               this.clearSessionState();
             }
           } else if (event === 'SIGNED_OUT') {
@@ -142,11 +143,13 @@ class AuthServiceManager {
 
   _isSessionExpired(session) {
     if (!session || !session.access_token) return true;
+    // Only check expiry if expires_at is present — fresh OAuth tokens may not have it yet
     if (session.expires_at) {
       const nowSeconds = Math.floor(Date.now() / 1000);
-      return session.expires_at <= nowSeconds;
+      // Add 30s buffer to avoid race conditions on fresh tokens
+      return session.expires_at <= (nowSeconds - 30);
     }
-    return false;
+    return false; // If no expires_at, trust the session
   }
 
   /**
