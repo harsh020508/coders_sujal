@@ -14,70 +14,90 @@ export const CATEGORIES = [
   { 
     id: 'electrician', 
     name: 'Electrician', 
-    icon: '⚡', 
+    icon: '⚡',
+    lucideIcon: 'zap',
+    image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=600&auto=format&fit=crop&q=80',
     description: 'Wiring, switches, appliance installation & fuse repairs.',
     subcategories: ['Wiring Repair', 'Switchboard Installation', 'Fan Installation', 'Lighting Installation', 'Electrical Fault Diagnosis', 'New Electrical Fittings']
   },
   { 
     id: 'plumber', 
     name: 'Plumber', 
-    icon: '🔧', 
+    icon: '🔧',
+    lucideIcon: 'wrench',
+    image: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=600&auto=format&fit=crop&q=80',
     description: 'Leaking taps, pipe fittings, water tanks & bathroom fixes.',
     subcategories: ['Leaking Tap & Faucet', 'Pipe Fitting & Leakage', 'Water Tank Cleaning', 'Geyser Installation & Repair', 'Toilet & Flush Repair', 'Drainage Unclogging']
   },
   { 
     id: 'carpenter', 
     name: 'Carpenter', 
-    icon: '🪚', 
+    icon: '🪚',
+    lucideIcon: 'hammer',
+    image: 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=600&auto=format&fit=crop&q=80',
     description: 'Furniture repair, door locks, custom cabinets & assembly.',
     subcategories: ['Door Locks & Hinges', 'Bed & Sofa Repair', 'Wardrobe Customization', 'Modular Kitchen Fitting', 'Wooden Shelves & Racks']
   },
   { 
     id: 'painter', 
     name: 'Painter', 
-    icon: '🎨', 
+    icon: '🎨',
+    lucideIcon: 'paint-bucket',
+    image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600&auto=format&fit=crop&q=80',
     description: 'Wall painting, touch-ups, waterproofing & polish.',
     subcategories: ['Interior Wall Painting', 'Exterior Waterproofing', 'Wood Polish & Varnishing', 'Texture & Accent Walls', 'Wall Putty & Primer']
   },
   { 
     id: 'ac_repair', 
-    name: 'AC repair and servicing', 
-    icon: '❄️', 
+    name: 'AC repair & servicing', 
+    icon: '❄️',
+    lucideIcon: 'fan',
+    image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=600&auto=format&fit=crop&q=80',
     description: 'AC installation, gas refilling, deep servicing & repair.',
     subcategories: ['Split AC Servicing', 'Window AC Repair', 'Gas Refilling & Leak Check', 'AC Installation & Uninstallation', 'PCB Repair']
   },
   { 
     id: 'appliance_repair', 
     name: 'Appliance repair', 
-    icon: '🔌', 
-    description: 'Washing machine, refrigerator, microwave & water purifier repair.',
+    icon: '🔌',
+    lucideIcon: 'cpu',
+    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80',
+    description: 'Washing machine, refrigerator, microwave & purifier repair.',
     subcategories: ['Washing Machine Repair', 'Refrigerator Servicing', 'Microwave Oven Repair', 'Water Purifier (RO) Service']
   },
   { 
     id: 'cleaning', 
-    name: 'Cleaning and housekeeping', 
-    icon: '🧹', 
+    name: 'Cleaning & housekeeping', 
+    icon: '🧹',
+    lucideIcon: 'sparkles',
+    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&auto=format&fit=crop&q=80',
     description: 'Deep home cleaning, sofa & mattress shampooing.',
     subcategories: ['Full Home Deep Cleaning', 'Kitchen & Bathroom Scrub', 'Sofa & Carpet Shampooing', 'Water Tank Deep Clean']
   },
   { 
     id: 'shifting', 
     name: 'Home shifting', 
-    icon: '📦', 
+    icon: '📦',
+    lucideIcon: 'truck',
+    image: 'https://images.unsplash.com/photo-1600518464441-9154a4dea21b?w=600&auto=format&fit=crop&q=80',
     description: 'Packers, movers, local shifting & furniture transport.',
     subcategories: ['Local Household Shifting', 'Office Relocation', 'Single Item Transport', 'Packing & Unpacking']
   },
   { 
     id: 'pest_control', 
     name: 'Pest control', 
-    icon: '🐜', 
+    icon: '🐜',
+    lucideIcon: 'shield-alert',
+    image: 'https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=600&auto=format&fit=crop&q=80',
     description: 'Cockroach, mosquito, termite & rodent extermination.',
     subcategories: ['Cockroach & Ant Treatment', 'Termite Proofing', 'Mosquito Fogging', 'Rodent Control']
   },
   { 
     id: 'other', 
-    name: 'Other services', 
-    icon: '🛠️', 
+    name: 'Handyman & custom tasks', 
+    icon: '🛠️',
+    lucideIcon: 'tool',
+    image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600&auto=format&fit=crop&q=80',
     description: 'Bespoke handymen tasks, drill hanging, lock assembly & maintenance.',
     subcategories: ['Drilling & Wall Hanging', 'Curtain Rod Installation', 'General Handyman Support']
   }
@@ -103,7 +123,7 @@ export const INITIAL_WORKERS = [
     verificationStatus: 'Verified',
     ratingAverage: 4.8,
     ratingCount: 42,
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
     specialities: {
       plumber: {
         tasks: ['Leaking Tap & Faucet', 'Pipe Fitting & Leakage', 'Geyser Installation & Repair'],
@@ -145,7 +165,7 @@ export const INITIAL_WORKERS = [
     verificationStatus: 'Verified',
     ratingAverage: 4.9,
     ratingCount: 38,
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
     specialities: {
       electrician: {
         tasks: ['Wiring Repair', 'Switchboard Installation', 'Lighting Installation', 'Electrical Fault Diagnosis'],
@@ -187,7 +207,7 @@ export const INITIAL_WORKERS = [
     verificationStatus: 'Verified',
     ratingAverage: 4.7,
     ratingCount: 29,
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
     specialities: {
       carpenter: {
         tasks: ['Door Locks & Hinges', 'Bed & Sofa Repair', 'Wardrobe Customization', 'Modular Kitchen Fitting'],
@@ -220,7 +240,7 @@ export const INITIAL_WORKERS = [
     verificationStatus: 'Verified',
     ratingAverage: 4.9,
     ratingCount: 56,
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
     specialities: {
       cleaning: {
         tasks: ['Full Home Deep Cleaning', 'Kitchen & Bathroom Scrub', 'Sofa & Carpet Shampooing'],

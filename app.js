@@ -84,7 +84,7 @@ export const App = {
             CustomerFrontend.render(viewContainer);
           } catch (custErr) {
             console.error('Customer frontend render error:', custErr);
-            viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: red;">Error loading customer view: ${esc(custErr.message)}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset &amp; Reload</button></div>`;
+            viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading customer view: ${esc(custErr.message)}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset &amp; Reload</button></div>`;
           }
         }
         this.attachShellEvents(root);
@@ -96,7 +96,7 @@ export const App = {
             WorkerFrontend.render(viewContainer);
           } catch (workErr) {
             console.error('Worker frontend render error:', workErr);
-            viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: red;">Error loading worker view: ${esc(workErr.message)}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset &amp; Reload</button></div>`;
+            viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading worker view: ${esc(workErr.message)}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset &amp; Reload</button></div>`;
           }
         }
         this.attachShellEvents(root);
@@ -105,21 +105,37 @@ export const App = {
       console.error('App render fatal error:', err);
       root.innerHTML = `<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Something went wrong rendering this view.</p><button onclick="localStorage.clear(); window.location.reload();" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1a3300; color: white; border: none; border-radius: 8px; cursor: pointer;">Reset &amp; Reload App</button></div>`;
     }
+
+    // Refresh Lucide vector icons
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') {
+      window.refreshIcons();
+    }
   },
 
   _mobileNavHTML(theme) {
     return `
       <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
       <div class="mobile-nav-drawer" id="mobile-nav-drawer">
-        <button class="mobile-nav-close" id="mobile-nav-close" aria-label="Close menu">✕ Close</button>
-        <a class="nav-link" href="#problem">The Problem</a>
-        <a class="nav-link" href="#services">Services</a>
-        <a class="nav-link" href="#usps">Why Us</a>
-        <a class="nav-link" href="#comparison">Competitors</a>
-        <a class="nav-link" href="#how-it-works">How It Works</a>
-        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-color);display:flex;flex-direction:column;gap:8px;">
-          <button class="theme-toggle" id="mobile-theme-toggle-btn" style="width:100%;justify-content:center;">${theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}</button>
-          <button class="btn btn-primary btn-full" id="mobile-get-started-btn">Get Started →</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:1px solid var(--border-color);margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="nav-logo" style="width:32px;height:32px;font-size:0.85rem;">LK</div>
+            <strong style="font-size:1.05rem;color:var(--text-primary);">LocalKaam</strong>
+          </div>
+          <button class="mobile-nav-close" id="mobile-nav-close" aria-label="Close menu">✕</button>
+        </div>
+        <a class="nav-link" href="#problem"><i data-lucide="help-circle" class="lucide-sm"></i> The Problem</a>
+        <a class="nav-link" href="#services"><i data-lucide="grid" class="lucide-sm"></i> Services</a>
+        <a class="nav-link" href="#usps"><i data-lucide="shield-check" class="lucide-sm"></i> Why Us</a>
+        <a class="nav-link" href="#comparison"><i data-lucide="scale" class="lucide-sm"></i> Competitors</a>
+        <a class="nav-link" href="#how-it-works"><i data-lucide="check-circle-2" class="lucide-sm"></i> How It Works</a>
+        <div style="margin-top:auto;padding-top:16px;border-top:1px solid var(--border-color);display:flex;flex-direction:column;gap:10px;">
+          <button class="theme-toggle" id="mobile-theme-toggle-btn" style="width:100%;justify-content:center;gap:8px;">
+            <i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}" class="lucide-sm"></i>
+            ${theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+          </button>
+          <button class="btn btn-primary btn-full" id="mobile-get-started-btn" style="justify-content:center;">
+            Get Started <i data-lucide="arrow-right" class="lucide-sm"></i>
+          </button>
         </div>
       </div>
     `;
@@ -133,7 +149,7 @@ export const App = {
 
         <!-- Top Navigation Bar -->
         <header class="navbar">
-          <div class="nav-brand" id="nav-home-logo">
+          <div class="nav-brand" id="nav-home-logo" role="button" tabindex="0">
             <div class="nav-logo">LK</div>
             <div class="nav-title">LocalKaam</div>
           </div>
@@ -145,8 +161,12 @@ export const App = {
             <a class="nav-link" href="#how-it-works">How It Works</a>
           </nav>
           <div class="nav-actions">
-            <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️' : '🌙'}</button>
-            <button class="btn btn-primary btn-sm" id="get-started-btn">Get Started</button>
+            <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle theme">
+              <i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}" class="lucide-sm"></i>
+            </button>
+            <button class="btn btn-primary btn-sm" id="get-started-btn">
+              Get Started <i data-lucide="arrow-right" class="lucide-xs"></i>
+            </button>
             <button class="nav-hamburger" id="nav-hamburger" aria-label="Open navigation menu">
               <span></span><span></span><span></span>
             </button>
@@ -156,34 +176,58 @@ export const App = {
         <!-- Hero Section -->
         <section class="landing-hero">
           <div class="hero-content">
-            <div style="display:inline-flex;align-items:center;gap:8px;background:var(--color-highlighter-yellow);color:var(--color-forest-ink);padding:5px 14px;border-radius:9999px;font-size:12px;font-weight:700;margin-bottom:20px;border:1px solid rgba(0,0,0,0.08);letter-spacing:0.03em;">
-              ⭐ Verified Local Experts &nbsp;•&nbsp; Hyperlocal Marketplace
+            <div style="display:inline-flex;align-items:center;gap:8px;background:var(--color-highlighter-yellow);color:var(--color-forest-ink);padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:700;margin-bottom:20px;border:1px solid rgba(0,0,0,0.08);letter-spacing:0.02em;">
+              <i data-lucide="sparkles" class="lucide-xs"></i> Verified Local Experts &nbsp;•&nbsp; Hyperlocal Marketplace
             </div>
             <h1>
-              Local help.<br>Fair prices.<br><span style="background-color:var(--color-highlighter-yellow);color:#1a3300;padding:2px 10px;border-radius:4px;">Right around</span> the corner.
+              Local help.<br>Fair prices.<br><span style="background-color:var(--color-highlighter-yellow);color:#1a3300;padding:2px 10px;border-radius:6px;box-decoration-break:clone;-webkit-box-decoration-break:clone;">Right around</span> the corner.
             </h1>
             <p>
-              Traditional home-service aggregators charge exorbitant commissions and squeeze workers. LocalKaam connects you directly with vetted local plumbers, electricians, carpenters, and cleaners — transparent pricing, no hidden fees.
+              Traditional aggregators charge 25–40% commissions and squeeze workers. LocalKaam directly matches you with vetted neighborhood plumbers, electricians, carpenters, and technicians — zero platform tax, upfront transparent pricing, and instant booking.
             </p>
             <div class="hero-cta">
-              <button class="btn btn-primary btn-lg" id="hero-find-pro-btn">Get Started →</button>
-              <button class="btn btn-outline btn-lg" id="hero-explore-btn">Explore Features</button>
+              <button class="btn btn-primary btn-lg" id="hero-find-pro-btn">
+                Find Professionals <i data-lucide="arrow-right" class="lucide-sm"></i>
+              </button>
+              <button class="btn btn-outline btn-lg" id="hero-explore-btn">
+                <i data-lucide="compass" class="lucide-sm"></i> Explore Services
+              </button>
             </div>
           </div>
+
           <div class="hero-visual">
-            <div style="font-size:1rem;font-weight:700;margin-bottom:10px;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
-              ⚡ Live Ecosystem Preview
+            <div style="background:var(--bg-card);border:1.5px solid var(--border-color);border-radius:var(--radius-cards);padding:18px;box-shadow:var(--shadow-card);margin-bottom:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <img src="https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=120" alt="Ramesh Sharma" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--accent-primary);" />
+                  <div>
+                    <div style="font-weight:700;font-size:0.95rem;color:var(--text-primary);display:flex;align-items:center;gap:4px;">
+                      Ramesh Sharma <i data-lucide="badge-check" class="lucide-xs" style="color:#10b981;"></i>
+                    </div>
+                    <div style="font-size:0.75rem;color:var(--text-secondary);">Master Electrician · Andheri West</div>
+                  </div>
+                </div>
+                <span class="badge badge-accepted" style="font-size:11px;display:inline-flex;align-items:center;gap:4px;">
+                  <span class="status-dot online"></span> Online
+                </span>
+              </div>
+              <div style="display:flex;gap:12px;font-size:0.8rem;background:var(--bg-secondary);padding:8px 12px;border-radius:8px;margin-bottom:10px;justify-content:space-between;">
+                <span>📍 <strong>1.8 km</strong> away (~18m)</span>
+                <span>⭐ <strong>4.9</strong> (42 reviews)</span>
+                <span>₹ <strong>350</strong> / hr</span>
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;">
+                <i data-lucide="check" class="lucide-xs" style="color:#10b981;"></i> 100% direct payment · Zero commission deducted
+              </div>
             </div>
-            <p style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:16px;line-height:1.5;">
-              Direct peer matching across Mumbai localities. Zero surge markups. Zero platform tax.
-            </p>
+
             <div class="stats-grid">
               <div class="stat-card">
-                <span style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:block;margin-bottom:4px;">Avg Worker ETA</span>
+                <span style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:block;margin-bottom:4px;">Avg ETA</span>
                 <h3>~25m</h3>
               </div>
               <div class="stat-card">
-                <span style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:block;margin-bottom:4px;">Hidden Fee</span>
+                <span style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:block;margin-bottom:4px;">Platform Fee</span>
                 <h3>₹0</h3>
               </div>
               <div class="stat-card">
@@ -201,24 +245,31 @@ export const App = {
         <!-- Problem and Solution -->
         <section class="section-container" id="problem" style="border-top:1px solid var(--border-color);border-bottom:1px solid var(--border-color);">
           <h2 class="section-title">The Real-World Problem vs. LocalKaam</h2>
-          <p class="section-subtitle">Why urban households and local blue-collar professionals need a decentralized hyperlocal marketplace.</p>
+          <p class="section-subtitle">Why urban households and neighborhood blue-collar professionals choose a direct hyperlocal marketplace.</p>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;max-width:1050px;margin:0 auto;">
-            <div style="background:var(--bg-card);border:2px solid #ba1a1a;border-radius:16px;padding:clamp(20px,3vw,32px);">
-              <h3 style="font-size:clamp(0.95rem,2vw,1.1rem);font-weight:800;color:#ba1a1a;margin-bottom:16px;">❌ Traditional Aggregator Pain Points</h3>
+            <div style="background:var(--bg-card);border:2px solid #ba1a1a;border-radius:16px;padding:clamp(20px,3vw,32px);box-shadow:var(--shadow-card);">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                <i data-lucide="x-circle" class="lucide-md" style="color:#ba1a1a;"></i>
+                <h3 style="font-size:clamp(1rem,2vw,1.15rem);font-weight:800;color:#ba1a1a;margin:0;">Traditional Aggregator Pain Points</h3>
+              </div>
               <ul style="list-style:none;display:flex;flex-direction:column;gap:12px;color:var(--text-secondary);font-size:0.9rem;line-height:1.6;">
-                <li>• <strong>Opaque Commissions:</strong> Platforms take 25–40% cuts, squeezing workers' earnings.</li>
-                <li>• <strong>Inflated Pricing:</strong> Customers pay heavy markups due to middleman fees.</li>
-                <li>• <strong>Impersonal Matching:</strong> Workers assigned algorithmically from far away with long ETAs.</li>
-                <li>• <strong>Rigid Rules:</strong> Zero room for direct price discussion or bespoke task negotiation.</li>
+                <li style="display:flex;gap:8px;"><strong style="color:#ba1a1a;">•</strong> <div><strong>Opaque Commissions:</strong> Gig platforms slice 25–40% from workers' hard-earned fees.</div></li>
+                <li style="display:flex;gap:8px;"><strong style="color:#ba1a1a;">•</strong> <div><strong>Inflated Costs:</strong> Customers pay heavy markups and arbitrary surge fees.</div></li>
+                <li style="display:flex;gap:8px;"><strong style="color:#ba1a1a;">•</strong> <div><strong>Impersonal Matching:</strong> Anonymous workers dispatched from miles away with long wait times.</div></li>
+                <li style="display:flex;gap:8px;"><strong style="color:#ba1a1a;">•</strong> <div><strong>Zero Direct Discussion:</strong> Rigid fixed menus with no ability to discuss custom task scopes.</div></li>
               </ul>
             </div>
-            <div style="background:var(--bg-card);border:2px solid var(--accent-primary);border-radius:16px;padding:clamp(20px,3vw,32px);">
-              <h3 style="font-size:clamp(0.95rem,2vw,1.1rem);font-weight:800;color:var(--text-primary);margin-bottom:16px;">✅ The LocalKaam Solution</h3>
+
+            <div style="background:var(--bg-card);border:2px solid var(--accent-primary);border-radius:16px;padding:clamp(20px,3vw,32px);box-shadow:var(--shadow-card);">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                <i data-lucide="check-circle-2" class="lucide-md" style="color:#10b981;"></i>
+                <h3 style="font-size:clamp(1rem,2vw,1.15rem);font-weight:800;color:var(--text-primary);margin:0;">The LocalKaam Advantage</h3>
+              </div>
               <ul style="list-style:none;display:flex;flex-direction:column;gap:12px;color:var(--text-primary);font-size:0.9rem;line-height:1.6;">
-                <li>• <strong>Direct Payouts:</strong> Workers set their own rates and retain 100% of agreed earnings.</li>
-                <li>• <strong>Hyperlocal Radius:</strong> Matches professionals residing within your neighborhood.</li>
-                <li>• <strong>Counter-Offers:</strong> Built-in negotiation with counter-offers and transparent agreements.</li>
-                <li>• <strong>Verified Trust:</strong> Real post-completion reviews and status tracking.</li>
+                <li style="display:flex;gap:8px;"><strong style="color:#10b981;">•</strong> <div><strong>100% Direct Payouts:</strong> Pros set their own rates and keep every rupee they earn.</div></li>
+                <li style="display:flex;gap:8px;"><strong style="color:#10b981;">•</strong> <div><strong>Neighborhood Matching:</strong> Matches vetted experts residing in your immediate Mumbai locality.</div></li>
+                <li style="display:flex;gap:8px;"><strong style="color:#10b981;">•</strong> <div><strong>Fair Price Negotiation:</strong> Built-in counter-offer system for customized tasks.</div></li>
+                <li style="display:flex;gap:8px;"><strong style="color:#10b981;">•</strong> <div><strong>Verified Transparency:</strong> Real customer reviews tied exclusively to completed jobs.</div></li>
               </ul>
             </div>
           </div>
@@ -230,10 +281,21 @@ export const App = {
           <p class="section-subtitle">Browse trustworthy blue-collar professionals ready to serve your household immediately or on schedule.</p>
           <div class="categories-grid">
             ${CATEGORIES.map(c => `
-              <div class="category-card" data-category="${c.id}" role="button" tabindex="0">
-                <div class="category-icon">${c.icon}</div>
-                <h3>${c.name}</h3>
-                <p>${c.description}</p>
+              <div class="category-card" data-category="${esc(c.id)}" role="button" tabindex="0">
+                <div class="category-image-wrap">
+                  <img src="${esc(c.image || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600')}" alt="${esc(c.name)}" loading="lazy" />
+                  <div class="category-icon-badge">
+                    <i data-lucide="${esc(c.lucideIcon || 'wrench')}" class="lucide-sm"></i>
+                  </div>
+                </div>
+                <div class="category-card-content">
+                  <h3>${esc(c.name)}</h3>
+                  <p>${esc(c.description)}</p>
+                  <div class="category-card-footer">
+                    <span>Book nearby pro</span>
+                    <i data-lucide="arrow-right" class="lucide-xs"></i>
+                  </div>
+                </div>
               </div>
             `).join('')}
           </div>
@@ -242,18 +304,20 @@ export const App = {
         <!-- USPs -->
         <section class="section-container" id="usps" style="border-top:1px solid var(--border-color);border-bottom:1px solid var(--border-color);">
           <h2 class="section-title">Why Choose LocalKaam?</h2>
-          <p class="section-subtitle">Four core pillars that set our platform apart from conventional gig apps.</p>
+          <p class="section-subtitle">Four core pillars that set our platform apart from conventional gig aggregators.</p>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;max-width:1200px;margin:0 auto;">
             ${[
-              { icon: '💬', title: 'Transparent Negotiation', desc: 'Direct price offers and counter-offers between households and professionals with complete history tracking.' },
-              { icon: '📍', title: 'Hyperlocal Matching Grid', desc: 'Haversine distance calculations and service radius limits ensuring experts arrive within ~25 minutes.' },
-              { icon: '🛡️', title: 'Verified Trust &amp; Reviews', desc: 'Strict reviews tied exclusively to completed jobs and verified badges to maintain absolute safety.' },
-              { icon: '🛠️', title: 'Worker Empowerment', desc: 'Multi-step onboarding allowing workers to configure service-specific pricing, schedules, and online status.' }
+              { icon: 'message-square', title: 'Direct Price Negotiation', desc: 'Clear price proposals and counter-offers between households and professionals with full history tracking.' },
+              { icon: 'map-pin', title: 'Hyperlocal Radius Matching', desc: 'Real-time distance calculations ensuring reliable neighborhood experts arrive within ~25 minutes.' },
+              { icon: 'shield-check', title: 'Verified Trust & Reviews', desc: 'Strict verified badges and reviews tied exclusively to completed appointments for family safety.' },
+              { icon: 'user-check', title: 'Worker Empowerment', desc: 'Self-determined pricing, custom schedules, and direct payouts with zero middlemen cuts.' }
             ].map(u => `
-              <div style="background:var(--bg-card);padding:clamp(16px,2.5vw,24px);border-radius:14px;border:1.5px solid var(--border-color);transition:all 0.2s ease;">
-                <div style="font-size:2rem;margin-bottom:12px;">${u.icon}</div>
-                <h3 style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--text-primary);">${u.title}</h3>
-                <p style="color:var(--text-secondary);font-size:0.875rem;line-height:1.6;">${u.desc}</p>
+              <div style="background:var(--bg-card);padding:clamp(20px,2.5vw,28px);border-radius:14px;border:1.5px solid var(--border-color);box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:12px;">
+                <div style="width:44px;height:44px;border-radius:10px;background:var(--accent-light);color:var(--accent-primary);display:flex;align-items:center;justify-content:center;">
+                  <i data-lucide="${u.icon}" class="lucide-md"></i>
+                </div>
+                <h3 style="font-size:1.05rem;font-weight:700;color:var(--text-primary);margin:0;">${u.title}</h3>
+                <p style="color:var(--text-secondary);font-size:0.875rem;line-height:1.6;margin:0;">${u.desc}</p>
               </div>
             `).join('')}
           </div>
@@ -261,14 +325,14 @@ export const App = {
 
         <!-- Competitor Comparison -->
         <section class="section-container" id="comparison">
-          <h2 class="section-title">Competitor Comparison</h2>
-          <p class="section-subtitle">How LocalKaam stacks up against traditional service platforms.</p>
+          <h2 class="section-title">How LocalKaam Compares</h2>
+          <p class="section-subtitle">Transparent comparison with legacy gig platforms and aggregators.</p>
           <div class="table-container" style="max-width:1050px;margin:0 auto;">
-            <table class="data-table" style="min-width:600px;">
+            <table class="data-table" style="min-width:620px;">
               <thead>
                 <tr>
                   <th>Feature</th>
-                  <th style="background:rgba(255,233,92,0.12);color:var(--text-primary);">LocalKaam ✦</th>
+                  <th style="background:rgba(255,233,92,0.15);color:var(--text-primary);">LocalKaam ✦</th>
                   <th>Urban Company</th>
                   <th>Housejoy</th>
                   <th>Justdial</th>
@@ -277,23 +341,28 @@ export const App = {
               <tbody>
                 <tr>
                   <td><strong>Price Negotiation</strong></td>
-                  <td style="background:rgba(255,233,92,0.05);"><span style="color:#10b981;font-weight:700;">✓ Counter-offers</span></td>
-                  <td>❌ Fixed only</td><td>❌ Fixed only</td><td>⚠️ Phone haggling</td>
+                  <td style="background:rgba(255,233,92,0.06);"><span style="color:#10b981;font-weight:700;">✓ In-app Counter Offers</span></td>
+                  <td>❌ Rigid fixed rates</td><td>❌ Fixed rates</td><td>⚠️ Unstructured haggling</td>
                 </tr>
                 <tr>
-                  <td><strong>Commission Cut</strong></td>
-                  <td style="background:rgba(255,233,92,0.05);"><span style="color:#10b981;font-weight:700;">0% Direct</span></td>
-                  <td>❌ 20–35%</td><td>❌ 25%</td><td>Free (Unverified)</td>
+                  <td><strong>Platform Commission</strong></td>
+                  <td style="background:rgba(255,233,92,0.06);"><span style="color:#10b981;font-weight:700;">0% Direct to Pro</span></td>
+                  <td>❌ 20–35% cut</td><td>❌ 25% cut</td><td>Paid lead ads</td>
                 </tr>
                 <tr>
-                  <td><strong>Hyperlocal ETA</strong></td>
-                  <td style="background:rgba(255,233,92,0.05);"><span style="color:#10b981;font-weight:700;">✓ ~25 min</span></td>
-                  <td>⚠️ Centralised</td><td>⚠️ Centralised</td><td>❌ None</td>
+                  <td><strong>Hyperlocal Matching</strong></td>
+                  <td style="background:rgba(255,233,92,0.06);"><span style="color:#10b981;font-weight:700;">✓ ~25 min ETA</span></td>
+                  <td>⚠️ City-wide pool</td><td>⚠️ City-wide pool</td><td>❌ No ETA guarantees</td>
                 </tr>
                 <tr>
-                  <td><strong>Live Job Tracking</strong></td>
-                  <td style="background:rgba(255,233,92,0.05);"><span style="color:#10b981;font-weight:700;">✓ Full lifecycle</span></td>
-                  <td>✓ App tracking</td><td>⚠️ Basic</td><td>❌ None</td>
+                  <td><strong>Lifecycle Job Tracking</strong></td>
+                  <td style="background:rgba(255,233,92,0.06);"><span style="color:#10b981;font-weight:700;">✓ Live status milestones</span></td>
+                  <td>✓ App tracking</td><td>⚠️ Basic SMS</td><td>❌ None</td>
+                </tr>
+                <tr>
+                  <td><strong>Direct Communication</strong></td>
+                  <td style="background:rgba(255,233,92,0.06);"><span style="color:#10b981;font-weight:700;">✓ Direct phone &amp; booking</span></td>
+                  <td>❌ Masked calls</td><td>❌ Masked calls</td><td>⚠️ Spam directory</td>
                 </tr>
               </tbody>
             </table>
@@ -303,17 +372,22 @@ export const App = {
         <!-- How It Works -->
         <section class="section-container" id="how-it-works" style="border-top:1px solid var(--border-color);border-bottom:1px solid var(--border-color);">
           <h2 class="section-title">How LocalKaam Works in 3 Steps</h2>
-          <p class="section-subtitle">A seamless workflow designed for households and neighborhood professionals.</p>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;max-width:1000px;margin:0 auto;">
+          <p class="section-subtitle">A seamless, dignified workflow designed for households and neighborhood professionals.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;max-width:1050px;margin:0 auto;">
             ${[
-              { n: '01', title: 'Discover Nearby Experts', desc: 'Select your Mumbai locality and service category. Our matching engine surfaces online professionals nearby.' },
-              { n: '02', title: 'Book &amp; Agree on Price', desc: 'Choose an appointment slot, describe the task, and submit your request or optional price offer.' },
-              { n: '03', title: 'Track, Complete &amp; Review', desc: 'Track job progress live from confirmed to completed, generate digital receipts, and leave ratings.' }
+              { n: '01', icon: 'search', title: 'Discover Local Pros', desc: 'Select your Mumbai locality and service category. Real-time matching shows verified professionals nearby with ratings and transparent rates.' },
+              { n: '02', icon: 'calendar-check', title: 'Book & Agree on Price', desc: 'Pick your preferred date/time slot, describe the task, and submit standard pricing or propose a direct counter-offer.' },
+              { n: '03', icon: 'award', title: 'Track, Complete & Review', desc: 'Follow real-time status transitions (en route, arrived, in progress, completed), get a digital invoice, and leave verified feedback.' }
             ].map(s => `
-              <div style="background:var(--bg-card);padding:clamp(20px,3vw,32px);border-radius:14px;border:1.5px solid var(--border-color);transition:all 0.2s ease;">
-                <div style="font-size:2rem;font-weight:800;color:var(--text-primary);margin-bottom:12px;opacity:0.5;font-family:'Bricolage Grotesque',sans-serif;">${s.n}</div>
-                <h3 style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--text-primary);">${s.title}</h3>
-                <p style="color:var(--text-secondary);font-size:0.875rem;line-height:1.6;">${s.desc}</p>
+              <div style="background:var(--bg-card);padding:clamp(20px,3vw,32px);border-radius:14px;border:1.5px solid var(--border-color);box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:2rem;font-weight:800;color:var(--text-muted);font-family:'Bricolage Grotesque',sans-serif;opacity:0.4;">${s.n}</span>
+                  <div style="width:36px;height:36px;border-radius:8px;background:var(--accent-light);color:var(--accent-primary);display:flex;align-items:center;justify-content:center;">
+                    <i data-lucide="${s.icon}" class="lucide-sm"></i>
+                  </div>
+                </div>
+                <h3 style="font-size:1.05rem;font-weight:700;color:var(--text-primary);margin:0;">${s.title}</h3>
+                <p style="color:var(--text-secondary);font-size:0.875rem;line-height:1.6;margin:0;">${s.desc}</p>
               </div>
             `).join('')}
           </div>
@@ -321,13 +395,19 @@ export const App = {
 
         <!-- Footer -->
         <footer class="footer">
-          <div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:12px;align-items:center;">
+          <div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;">
             <div style="display:flex;align-items:center;gap:8px;">
-              <div class="nav-logo" style="width:30px;height:30px;font-size:0.8rem;min-width:30px;">LK</div>
-              <span style="font-weight:700;font-size:1rem;color:var(--text-primary);">LocalKaam</span>
+              <div class="nav-logo" style="width:32px;height:32px;font-size:0.85rem;min-width:32px;">LK</div>
+              <span style="font-weight:800;font-size:1.15rem;color:var(--text-primary);">LocalKaam</span>
             </div>
-            <p>© 2026 LocalKaam Inc. Hyperlocal Blue-Collar Services Marketplace. All rights reserved.</p>
-            <p style="font-size:0.8rem;opacity:0.6;">Mumbai · Transparent Pricing · Worker-First Platform</p>
+            <p style="margin:0;font-size:0.9rem;color:var(--text-secondary);">© 2026 LocalKaam Inc. Hyperlocal Blue-Collar Services Marketplace. All rights reserved.</p>
+            <div style="display:flex;gap:16px;font-size:0.8rem;color:var(--text-muted);flex-wrap:wrap;justify-content:center;">
+              <span>Mumbai Localities</span>
+              <span>•</span>
+              <span>Transparent 0% Commission</span>
+              <span>•</span>
+              <span>Verified Home Services</span>
+            </div>
           </div>
         </footer>
       </div>
@@ -341,12 +421,14 @@ export const App = {
         ${this._mobileNavHTML(theme)}
 
         <header class="navbar">
-          <div class="nav-brand" id="nav-back-home">
+          <div class="nav-brand" id="nav-back-home" role="button" tabindex="0">
             <div class="nav-logo">LK</div>
             <div class="nav-title">LocalKaam</div>
           </div>
           <div class="nav-actions">
-            <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️' : '🌙'}</button>
+            <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle theme">
+              <i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}" class="lucide-sm"></i>
+            </button>
             <button class="nav-hamburger" id="nav-hamburger" aria-label="Open menu">
               <span></span><span></span><span></span>
             </button>
@@ -354,29 +436,53 @@ export const App = {
         </header>
 
         <div class="role-selection-wrapper">
-          <h1 style="font-size:clamp(1.75rem,4vw,2.5rem);font-weight:800;margin-bottom:12px;font-family:'Bricolage Grotesque',sans-serif;">How would you like to use LocalKaam?</h1>
-          <p style="color:var(--text-secondary);font-size:clamp(1rem,1.8vw,1.1rem);margin-bottom:32px;line-height:1.6;">Choose the experience that works for you. You can switch roles anytime.</p>
+          <h1 style="font-size:clamp(1.75rem,4vw,2.5rem);font-weight:800;margin-bottom:12px;font-family:'Bricolage Grotesque',sans-serif;text-align:center;">
+            How would you like to use LocalKaam?
+          </h1>
+          <p style="color:var(--text-secondary);font-size:clamp(1rem,1.8vw,1.1rem);margin-bottom:32px;line-height:1.6;text-align:center;max-width:600px;">
+            Choose your experience. You can switch between customer and worker modes anytime.
+          </p>
 
           <div class="role-cards">
             <!-- Customer Card -->
-            <div class="role-card" id="select-customer-role">
-              <div class="role-icon">🏠</div>
-              <h3>Continue as Customer</h3>
-              <p>Find trusted local professionals, compare rates, book services, negotiate prices, and track your jobs.</p>
-              <button class="btn btn-primary btn-full" style="padding:14px;">Continue as Customer</button>
+            <div class="role-card" id="select-customer-role" role="button" tabindex="0">
+              <div class="role-icon" style="display:flex;align-items:center;justify-content:center;">
+                <i data-lucide="home" class="lucide-lg" style="color:var(--accent-primary);"></i>
+              </div>
+              <h3>I am a Customer</h3>
+              <p>Find trusted neighborhood professionals, compare rates side-by-side, book appointments, negotiate prices, and track work progress live.</p>
+              <ul style="list-style:none;margin:12px 0 20px;padding:0;display:flex;flex-direction:column;gap:8px;font-size:0.85rem;color:var(--text-secondary);text-align:left;">
+                <li style="display:flex;align-items:center;gap:6px;"><i data-lucide="check" class="lucide-xs" style="color:#10b981;"></i> Browse 10+ home service categories</li>
+                <li style="display:flex;align-items:center;gap:6px;"><i data-lucide="check" class="lucide-xs" style="color:#10b981;"></i> Direct price offers &amp; counter-offers</li>
+                <li style="display:flex;align-items:center;gap:6px;"><i data-lucide="check" class="lucide-xs" style="color:#10b981;"></i> Instant digital invoice receipts</li>
+              </ul>
+              <button class="btn btn-primary btn-full" style="padding:14px;justify-content:center;">
+                Continue as Customer <i data-lucide="arrow-right" class="lucide-sm"></i>
+              </button>
             </div>
 
             <!-- Worker Card -->
-            <div class="role-card" id="select-worker-role">
-              <div class="role-icon">🛠️</div>
-              <h3>Continue as Worker</h3>
-              <p>Showcase your skills, set your own hourly rates, manage booking requests, counter offers, and track earnings.</p>
-              <button class="btn btn-primary btn-full" style="padding:14px;">Continue as Worker</button>
+            <div class="role-card" id="select-worker-role" role="button" tabindex="0">
+              <div class="role-icon" style="display:flex;align-items:center;justify-content:center;">
+                <i data-lucide="hammer" class="lucide-lg" style="color:var(--accent-primary);"></i>
+              </div>
+              <h3>I am a Service Professional</h3>
+              <p>Set your own hourly &amp; fixed rates, accept direct customer requests, counter offers, manage appointments, and keep 100% of your earnings.</p>
+              <ul style="list-style:none;margin:12px 0 20px;padding:0;display:flex;flex-direction:column;gap:8px;font-size:0.85rem;color:var(--text-secondary);text-align:left;">
+                <li style="display:flex;align-items:center;gap:6px;"><i data-lucide="check" class="lucide-xs" style="color:#10b981;"></i> 0% platform commission deduction</li>
+                <li style="display:flex;align-items:center;gap:6px;"><i data-lucide="check" class="lucide-xs" style="color:#10b981;"></i> Instant online / offline availability switch</li>
+                <li style="display:flex;align-items:center;gap:6px;"><i data-lucide="check" class="lucide-xs" style="color:#10b981;"></i> Complete job lifecycle tracker</li>
+              </ul>
+              <button class="btn btn-primary btn-full" style="padding:14px;justify-content:center;">
+                Continue as Worker <i data-lucide="arrow-right" class="lucide-sm"></i>
+              </button>
             </div>
           </div>
 
-          <div style="margin-top:40px;">
-            <button class="btn btn-outline" id="back-to-home-link">← Back to Landing Page</button>
+          <div style="margin-top:36px;">
+            <button class="btn btn-outline" id="back-to-home-link">
+              <i data-lucide="arrow-left" class="lucide-sm"></i> Back to Landing Page
+            </button>
           </div>
         </div>
       </div>
@@ -387,39 +493,60 @@ export const App = {
     const theme = StorageService.getTheme();
     const profile = AuthService.getProfile();
     const userName = profile ? (profile.full_name || profile.email || 'User') : 'User';
-    // Truncate long usernames for display
     const displayName = userName.length > 18 ? userName.substring(0, 15) + '…' : userName;
 
     return `
       <div class="app-container">
-        <!-- Mobile Nav Overlay for dashboard (simple version) -->
+        <!-- Mobile Nav Overlay for dashboard -->
         <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
         <div class="mobile-nav-drawer" id="mobile-nav-drawer">
-          <button class="mobile-nav-close" id="mobile-nav-close">✕ Close</button>
-          <div style="padding:12px 0;border-bottom:1px solid var(--border-color);margin-bottom:12px;">
-            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">Logged in as</div>
-            <div style="font-weight:700;font-size:0.95rem;">${esc(displayName)}</div>
-            <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:2px;">Role: ${activeRole === 'customer' ? '🏠 Customer' : '🛠️ Worker'}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--border-color);margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="nav-logo" style="width:30px;height:30px;font-size:0.8rem;">LK</div>
+              <strong style="color:var(--text-primary);">LocalKaam</strong>
+            </div>
+            <button class="mobile-nav-close" id="mobile-nav-close">✕</button>
           </div>
-          <button class="btn btn-outline btn-full" id="mobile-switch-role-btn">⇄ Switch Role</button>
-          <button class="theme-toggle" id="mobile-theme-toggle-btn" style="width:100%;justify-content:center;margin-top:8px;">${theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}</button>
-          <button class="btn btn-outline btn-full" id="mobile-reset-btn" style="margin-top:8px;font-size:0.8rem;">🔄 Reset Demo Data</button>
+          <div style="padding:12px;background:var(--bg-secondary);border-radius:8px;margin-bottom:14px;">
+            <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Logged in as</div>
+            <div style="font-weight:700;font-size:0.95rem;margin-top:2px;">${esc(displayName)}</div>
+            <div style="font-size:0.8rem;color:var(--accent-primary);margin-top:2px;font-weight:600;">
+              Mode: ${activeRole === 'customer' ? 'Customer' : 'Worker'}
+            </div>
+          </div>
+          <button class="btn btn-outline btn-full" id="mobile-switch-role-btn" style="justify-content:center;gap:6px;">
+            <i data-lucide="arrow-left-right" class="lucide-xs"></i> Switch Mode
+          </button>
+          <button class="theme-toggle" id="mobile-theme-toggle-btn" style="width:100%;justify-content:center;margin-top:8px;gap:6px;">
+            <i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}" class="lucide-xs"></i>
+            ${theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+          </button>
+          <button class="btn btn-outline btn-full" id="mobile-reset-btn" style="margin-top:8px;font-size:0.8rem;justify-content:center;gap:6px;">
+            <i data-lucide="rotate-cw" class="lucide-xs"></i> Reset Demo Data
+          </button>
         </div>
 
         <header class="navbar">
-          <div class="nav-brand" id="nav-brand-dashboard">
+          <div class="nav-brand" id="nav-brand-dashboard" role="button" tabindex="0">
             <div class="nav-logo">LK</div>
             <div class="nav-title">LocalKaam</div>
           </div>
           <div class="nav-links">
-            <span class="role-badge" style="background:var(--accent-light);color:var(--text-primary);font-weight:700;font-size:0.8rem;">
-              ${activeRole === 'customer' ? '🏠 Customer' : '🛠️ Worker'} &nbsp;·&nbsp; ${esc(displayName)}
+            <span class="role-badge" style="background:var(--accent-light);color:var(--text-primary);font-weight:700;font-size:0.8rem;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:9999px;">
+              <i data-lucide="${activeRole === 'customer' ? 'home' : 'hammer'}" class="lucide-xs"></i>
+              ${activeRole === 'customer' ? 'Customer' : 'Worker'} &nbsp;·&nbsp; ${esc(displayName)}
             </span>
           </div>
           <div class="nav-actions">
-            <button class="btn btn-outline btn-sm" id="switch-role-btn">⇄ Switch</button>
-            <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️' : '🌙'}</button>
-            <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Demo Data" style="font-size:0.75rem;">🔄</button>
+            <button class="btn btn-outline btn-sm" id="switch-role-btn" title="Switch Role Mode">
+              <i data-lucide="arrow-left-right" class="lucide-xs"></i> Switch
+            </button>
+            <button class="theme-toggle" id="theme-toggle-btn" title="Toggle theme">
+              <i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}" class="lucide-xs"></i>
+            </button>
+            <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Demo Data" style="font-size:0.75rem;">
+              <i data-lucide="rotate-cw" class="lucide-xs"></i>
+            </button>
             <button class="nav-hamburger" id="nav-hamburger" aria-label="Open menu">
               <span></span><span></span><span></span>
             </button>
@@ -492,7 +619,7 @@ export const App = {
       this.navigateToRole('role-select');
     });
     root.querySelector('#hero-explore-btn')?.addEventListener('click', () => {
-      const el = root.querySelector('#usps');
+      const el = root.querySelector('#services');
       if (el) el.scrollIntoView({ behavior: 'smooth' });
     });
 

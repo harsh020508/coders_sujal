@@ -13,7 +13,12 @@
   <link rel="stylesheet" href="./styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -24,6 +29,17 @@
     import { SupabaseService } from './supabaseClient.js';
     import { AuthService } from './authService.js';
     import { Toast } from './toast.js';
+
+    // Global helper to refresh Lucide icons whenever DOM updates
+    window.refreshIcons = () => {
+      try {
+        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+          lucide.createIcons();
+        }
+      } catch (e) {
+        console.warn('Lucide icon refresh warning:', e);
+      }
+    };
 
     window.addEventListener('DOMContentLoaded', async () => {
       try {
@@ -53,6 +69,7 @@
 
       try {
         App.init();
+        window.refreshIcons();
       } catch (err) {
         console.error('App init fatal error:', err);
         const appDiv = document.getElementById('app');

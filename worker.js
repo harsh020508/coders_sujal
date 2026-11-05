@@ -43,42 +43,42 @@ export const WorkerFrontend = {
         <!-- Worker Sidebar -->
         <aside class="sidebar">
           <div style="padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
-            <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
-              Active Profile
+            <label style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-bottom: 0.4rem;">
+              <i data-lucide="user" class="lucide-xs"></i> Active Profile
             </label>
             <select id="worker-profile-select" class="form-select" style="font-size: 0.85rem; padding: 0.4rem 0.6rem; margin-bottom: 0.5rem;">
               ${workers.map(w => `<option value="${esc(w.id)}" ${w.id === worker.id ? 'selected' : ''}>${esc(w.name)} (${Object.keys(w.specialities || {}).join(', ') || 'Pro'})</option>`).join('')}
             </select>
-            <button class="btn btn-outline btn-xs" id="create-new-worker-btn" style="width: 100%; font-size: 0.75rem;">
-              + Register New Worker
+            <button class="btn btn-outline btn-xs" id="create-new-worker-btn" style="width: 100%; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <i data-lucide="user-plus" class="lucide-xs"></i> Register New Worker
             </button>
           </div>
 
           <div class="sidebar-section-label">Worker Menu</div>
           <div class="sidebar-item active" data-view="overview">
-            <span>📊</span>
+            <i data-lucide="layout-dashboard" class="lucide-sm"></i>
             <span>Dashboard</span>
           </div>
           <div class="sidebar-item" data-view="requests">
-            <span>📥</span>
+            <i data-lucide="inbox" class="lucide-sm"></i>
             <span>Requests</span>
             <span class="sidebar-badge">${pendingRequests.length}</span>
           </div>
           <div class="sidebar-item" data-view="active-jobs">
-            <span>⚡</span>
+            <i data-lucide="zap" class="lucide-sm"></i>
             <span>Active Jobs</span>
             <span class="sidebar-badge">${activeJobs.length}</span>
           </div>
           <div class="sidebar-item" data-view="schedule">
-            <span>⏰</span>
+            <i data-lucide="clock" class="lucide-sm"></i>
             <span>Availability</span>
           </div>
           <div class="sidebar-item" data-view="earnings">
-            <span>💰</span>
+            <i data-lucide="wallet" class="lucide-sm"></i>
             <span>Earnings</span>
           </div>
           <div class="sidebar-item" data-view="profile">
-            <span>👤</span>
+            <i data-lucide="user" class="lucide-sm"></i>
             <span>My Profile</span>
           </div>
         </aside>
@@ -91,6 +91,10 @@ export const WorkerFrontend = {
     `;
 
     this.attachEvents(container);
+
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') {
+      window.refreshIcons();
+    }
   },
 
   renderOverviewView(worker, pendingRequests, activeJobs, completedJobs, totalEarnings) {
@@ -98,19 +102,20 @@ export const WorkerFrontend = {
     return `
       <div class="dashboard-header">
         <div>
-          <h1>Welcome, ${esc(worker.name)}! 👋</h1>
+          <h1>Welcome back, ${esc(worker.name)}! 👋</h1>
           <p>
             Service Area: <strong>${esc(worker.serviceArea || worker.baseLocality?.toUpperCase() || 'Mumbai')}</strong>
             &nbsp;·&nbsp;
-            Status: <span style="font-weight: 700; color: ${isOnline ? 'var(--success)' : 'var(--danger)'}; display: inline-flex; align-items: center; gap: 4px;">
+            Status: <span style="font-weight: 700; color: ${isOnline ? 'var(--color-success)' : 'var(--color-danger)'}; display: inline-flex; align-items: center; gap: 4px;">
               <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
               ${isOnline ? 'Online & Discoverable' : 'Offline / Paused'}
             </span>
           </p>
         </div>
         <div>
-          <button class="btn ${isOnline ? 'btn-primary' : 'btn-outline'} btn-sm" id="quick-toggle-online">
-            ${isOnline ? '🟢 You Are Online' : '🔴 Go Online'}
+          <button class="btn ${isOnline ? 'btn-primary' : 'btn-outline'} btn-sm" id="quick-toggle-online" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i data-lucide="power" class="lucide-xs"></i>
+            ${isOnline ? 'You Are Online' : 'Go Online'}
           </button>
         </div>
       </div>
@@ -138,14 +143,16 @@ export const WorkerFrontend = {
       <!-- Pending Requests Section -->
       <div style="margin-bottom: 2rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <h3 style="font-size: 1.15rem; font-weight: 800;">
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary); margin: 0;">
             Incoming Booking Requests (${pendingRequests.length})
           </h3>
         </div>
 
         ${pendingRequests.length === 0 ? `
           <div class="empty-state" style="padding: 2rem 1rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📥</div>
+            <div class="empty-state-icon">
+              <i data-lucide="inbox" class="lucide-lg" style="color: var(--text-muted);"></i>
+            </div>
             <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem;">No pending booking requests</h4>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Make sure your status is set to online and discoverable.</p>
           </div>
@@ -154,7 +161,7 @@ export const WorkerFrontend = {
             ${pendingRequests.map(b => `
               <div class="request-card">
                 <div style="flex: 1; min-width: 240px;">
-                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
                     <span class="badge badge-pending">${esc(b.serviceCategory?.toUpperCase())}</span>
                     <strong style="font-size: 1.05rem;">${esc(b.serviceTask)}</strong>
                     <small style="color: var(--text-muted); font-size: 0.75rem;">(${esc(b.id)})</small>
@@ -174,13 +181,13 @@ export const WorkerFrontend = {
                 </div>
                 <div class="request-card-actions">
                   <button class="btn btn-primary btn-sm accept-request-btn" data-id="${esc(b.id)}">
-                    Accept (₹${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))})
+                    <i data-lucide="check" class="lucide-xs"></i> Accept (₹${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))})
                   </button>
                   <button class="btn btn-outline btn-sm counter-request-btn" data-id="${esc(b.id)}" data-current="${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))}">
-                    Counter Offer
+                    <i data-lucide="message-square" class="lucide-xs"></i> Counter Offer
                   </button>
                   <button class="btn btn-danger btn-sm reject-request-btn" data-id="${esc(b.id)}">
-                    Reject
+                    <i data-lucide="x" class="lucide-xs"></i> Reject
                   </button>
                 </div>
               </div>
@@ -192,14 +199,16 @@ export const WorkerFrontend = {
       <!-- Active Job Controls Section -->
       <div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <h3 style="font-size: 1.15rem; font-weight: 800;">
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary); margin: 0;">
             Active Job Lifecycle Controls (${activeJobs.length})
           </h3>
         </div>
 
         ${activeJobs.length === 0 ? `
           <div class="empty-state" style="padding: 2rem 1rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚡</div>
+            <div class="empty-state-icon">
+              <i data-lucide="zap" class="lucide-lg" style="color: var(--text-muted);"></i>
+            </div>
             <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem;">No active jobs in progress</h4>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Accepted jobs will appear here for step-by-step lifecycle management.</p>
           </div>
@@ -221,18 +230,26 @@ export const WorkerFrontend = {
                   </div>
                   <span class="badge badge-accepted">${esc(b.status)}</span>
                 </div>
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;">
                   ${b.status === 'Confirmed' ? `
-                    <button class="btn btn-outline btn-sm enroute-job-btn" data-id="${esc(b.id)}">🚗 I'm On My Way</button>
+                    <button class="btn btn-outline btn-sm enroute-job-btn" data-id="${esc(b.id)}">
+                      <i data-lucide="navigation" class="lucide-xs"></i> I'm En Route
+                    </button>
                   ` : ''}
                   ${b.status === 'Worker en route' ? `
-                    <button class="btn btn-outline btn-sm arrived-job-btn" data-id="${esc(b.id)}">📍 Confirm Arrival</button>
+                    <button class="btn btn-outline btn-sm arrived-job-btn" data-id="${esc(b.id)}">
+                      <i data-lucide="map-pin" class="lucide-xs"></i> Confirm Arrival
+                    </button>
                   ` : ''}
                   ${['Confirmed', 'Worker en route', 'Worker arrived'].includes(b.status) ? `
-                    <button class="btn btn-primary btn-sm start-job-btn" data-id="${esc(b.id)}">▶️ Start Job</button>
+                    <button class="btn btn-primary btn-sm start-job-btn" data-id="${esc(b.id)}">
+                      <i data-lucide="play" class="lucide-xs"></i> Start Job
+                    </button>
                   ` : ''}
                   ${b.status === 'Job in progress' ? `
-                    <button class="btn btn-success btn-sm complete-job-btn" data-id="${esc(b.id)}">✅ Complete Job</button>
+                    <button class="btn btn-success btn-sm complete-job-btn" data-id="${esc(b.id)}">
+                      <i data-lucide="check-circle" class="lucide-xs"></i> Complete Job
+                    </button>
                   ` : ''}
                 </div>
               </div>
@@ -366,8 +383,9 @@ export const WorkerFrontend = {
             <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 2px;">Online Discovery Status</h3>
             <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">When offline, your profile will not appear in customer searches.</p>
           </div>
-          <button class="btn ${isOnline ? 'btn-primary' : 'btn-outline'} btn-sm" id="toggle-online-status">
-            ${isOnline ? '🟢 You Are Online' : '🔴 You Are Offline'}
+          <button class="btn ${isOnline ? 'btn-primary' : 'btn-outline'} btn-sm" id="toggle-online-status" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i data-lucide="power" class="lucide-xs"></i>
+            ${isOnline ? 'You Are Online' : 'You Are Offline'}
           </button>
         </div>
 
@@ -376,8 +394,9 @@ export const WorkerFrontend = {
             <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 2px;">Pause New Bookings</h3>
             <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">Temporarily pause new requests while you finish existing jobs.</p>
           </div>
-          <button class="btn ${worker.pauseNewBookings ? 'btn-danger' : 'btn-outline'} btn-sm" id="toggle-pause-bookings">
-            ${worker.pauseNewBookings ? '⏸️ Bookings Paused' : '▶️ Accepting Requests'}
+          <button class="btn ${worker.pauseNewBookings ? 'btn-danger' : 'btn-outline'} btn-sm" id="toggle-pause-bookings" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i data-lucide="pause-circle" class="lucide-xs"></i>
+            ${worker.pauseNewBookings ? 'Bookings Paused' : 'Accepting Requests'}
           </button>
         </div>
 
@@ -517,8 +536,8 @@ export const WorkerFrontend = {
         </p>
 
         <form id="onboarding-form" style="background: var(--bg-card); border: 1.5px solid var(--border-color); border-radius: var(--radius-xl); padding: clamp(20px, 3.5vw, 36px); display: flex; flex-direction: column; gap: 1.25rem; box-shadow: var(--shadow-card); width: 100%;">
-          <h3 style="font-size: 1.1rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-            Step 1 — Basic Profile Information
+          <h3 style="font-size: 1.1rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="user" class="lucide-sm"></i> Step 1 — Basic Profile Information
           </h3>
 
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
@@ -565,8 +584,8 @@ export const WorkerFrontend = {
             </div>
           </div>
 
-          <h3 style="font-size: 1.1rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 0.5rem;">
-            Step 2 — Select Specialities &amp; Services
+          <h3 style="font-size: 1.1rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-top: 0.5rem; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="wrench" class="lucide-sm"></i> Step 2 — Select Specialities &amp; Services
           </h3>
           <p style="font-size: 0.85rem; color: var(--text-secondary); margin: -0.5rem 0 0;">
             Select one or more categories you provide services for:
@@ -577,19 +596,23 @@ export const WorkerFrontend = {
               <label style="display: flex; align-items: center; gap: 0.6rem; background: var(--bg-secondary); padding: 0.65rem 0.85rem; border-radius: 8px; border: 1.5px solid var(--border-color); cursor: pointer; transition: all 0.15s ease;">
                 <input type="checkbox" name="speciality" value="${esc(c.id)}" style="width: 16px; height: 16px;" ${c.id === 'electrician' ? 'checked' : ''}>
                 <div>
-                  <div style="font-weight: 600; font-size: 0.85rem;">${esc(c.icon)} ${esc(c.name)}</div>
+                  <div style="font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 4px;">
+                    <i data-lucide="${esc(c.lucideIcon || 'wrench')}" class="lucide-xs"></i> ${esc(c.name)}
+                  </div>
                   <div style="font-size: 0.75rem; color: var(--text-muted);">From ₹350</div>
                 </div>
               </label>
             `).join('')}
           </div>
 
-          <button type="submit" class="btn btn-primary btn-full" style="margin-top: 1rem; padding: 12px; font-size: 1rem;">
+          <button type="submit" class="btn btn-primary btn-full" style="margin-top: 1rem; padding: 12px; font-size: 1rem; justify-content: center;">
             Complete Onboarding &amp; Go Online →
           </button>
         </form>
       </div>
     `;
+
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
 
     container.querySelector('#onboarding-form').onsubmit = (e) => {
       e.preventDefault();
@@ -760,6 +783,10 @@ export const WorkerFrontend = {
           this.attachProfileEvents(container, worker);
         }
         this.attachActionEvents(container);
+
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') {
+          window.refreshIcons();
+        }
       });
     });
 

@@ -25,23 +25,23 @@ export const CustomerFrontend = {
         <aside class="sidebar">
           <div class="sidebar-section-label">Navigation</div>
           <div class="sidebar-item active" data-view="discover">
-            <span>🔍</span>
+            <i data-lucide="compass" class="lucide-sm"></i>
             <span>Discover Services</span>
           </div>
           <div class="sidebar-item" data-view="bookings">
-            <span>📅</span>
+            <i data-lucide="calendar" class="lucide-sm"></i>
             <span>My Bookings</span>
             <span class="sidebar-badge">${bookings.length}</span>
           </div>
           <div class="sidebar-item" data-view="compare" id="compare-sidebar-btn">
-            <span>⚖️</span>
+            <i data-lucide="scale" class="lucide-sm"></i>
             <span>Compare</span>
             <span class="sidebar-badge">${this.comparedWorkers.length}/3</span>
           </div>
 
           <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-            <label for="locality-select" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: block; margin-bottom: 0.35rem;">
-              Service Location
+            <label for="locality-select" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-bottom: 0.4rem;">
+              <i data-lucide="map-pin" class="lucide-xs"></i> Service Location
             </label>
             <select id="locality-select" class="form-select" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
               ${LOCALITIES.map(l => `<option value="${esc(l.id)}" ${l.id === customerLocality ? 'selected' : ''}>${esc(l.name)} (${esc(l.zone)})</option>`).join('')}
@@ -57,6 +57,10 @@ export const CustomerFrontend = {
     `;
 
     this.attachEvents(container);
+
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') {
+      window.refreshIcons();
+    }
   },
 
   sortWorkers(workers) {
@@ -85,13 +89,17 @@ export const CustomerFrontend = {
       <!-- Categories Shortcuts (Scrollable Pill Row) -->
       <div style="margin-bottom: 1.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-          <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Browse by Category</span>
+          <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
+            Browse by Category
+          </span>
         </div>
         <div class="cat-scroll-row" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; -webkit-overflow-scrolling: touch;">
-          <button class="chip ${this.currentCategory === 'all' ? 'active' : ''} cat-shortcut-btn" data-cat="all">🌟 All Categories</button>
+          <button class="chip ${this.currentCategory === 'all' ? 'active' : ''} cat-shortcut-btn" data-cat="all">
+            <i data-lucide="layout-grid" class="lucide-xs"></i> All Categories
+          </button>
           ${CATEGORIES.map(c => `
             <button class="chip ${this.currentCategory === c.id ? 'active' : ''} cat-shortcut-btn" data-cat="${esc(c.id)}">
-              <span>${esc(c.icon)}</span> ${esc(c.name)}
+              <i data-lucide="${esc(c.lucideIcon || 'wrench')}" class="lucide-xs"></i> ${esc(c.name)}
             </button>
           `).join('')}
         </div>
@@ -114,19 +122,21 @@ export const CustomerFrontend = {
 
       <!-- Workers Results Header -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-        <h3 style="font-size: 1.15rem; font-weight: 700;">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0;">
           Available Professionals Nearby (${eligibleWorkers.length})
         </h3>
         ${this.comparedWorkers.length > 0 ? `
-          <button class="btn btn-outline btn-sm" id="open-comparison-modal" style="font-size: 0.8rem;">
-            ⚖️ View Comparison (${this.comparedWorkers.length})
+          <button class="btn btn-outline btn-sm" id="open-comparison-modal" style="font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px;">
+            <i data-lucide="scale" class="lucide-xs"></i> View Comparison (${this.comparedWorkers.length})
           </button>
         ` : ''}
       </div>
 
       ${eligibleWorkers.length === 0 ? `
         <div class="empty-state">
-          <div class="empty-state-icon">🔍</div>
+          <div class="empty-state-icon">
+            <i data-lucide="search-x" class="lucide-lg" style="color: var(--text-muted);"></i>
+          </div>
           <h3>No online professionals found</h3>
           <p>Try selecting a different service category, expanding your location, or switching worker online in worker mode.</p>
           <button class="btn btn-outline btn-sm" id="reset-filter-btn" style="margin-top: 0.5rem;">Reset Filters</button>
@@ -142,16 +152,19 @@ export const CustomerFrontend = {
             return `
               <div class="worker-card">
                 <div class="worker-header">
-                  <img src="${esc(w.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150')}" alt="${esc(w.name)}" class="worker-avatar" loading="lazy">
+                  <div class="worker-avatar-box">
+                    <img src="${esc(w.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150')}" alt="${esc(w.name)}" class="worker-avatar" loading="lazy">
+                    <div class="worker-online-dot" title="Online &amp; Discoverable"></div>
+                  </div>
                   <div class="worker-info">
                     <h3>
                       ${esc(w.name)}
-                      ${w.verificationStatus === 'Verified' ? '<span title="Verified Professional" style="color: #10b981; font-size: 0.95rem;">✓</span>' : ''}
+                      ${w.verificationStatus === 'Verified' ? '<i data-lucide="badge-check" class="lucide-xs" style="color: #10b981;" title="Verified Professional"></i>' : ''}
                     </h3>
                     <span class="worker-cat-badge">${esc(catObj.name)}</span>
                   </div>
                   <div>
-                    <label style="font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem; cursor: pointer; white-space: nowrap;">
+                    <label style="font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.35rem; cursor: pointer; white-space: nowrap; user-select: none;">
                       <input type="checkbox" class="compare-checkbox" data-id="${esc(w.id)}" ${this.comparedWorkers.includes(w.id) ? 'checked' : ''}>
                       <span>Compare</span>
                     </label>
@@ -160,22 +173,20 @@ export const CustomerFrontend = {
 
                 <div class="worker-meta">
                   <div class="worker-meta-item">
-                    <span>Distance &amp; ETA</span>
-                    <span>📍 ${w.distance || '2.5'} km (~${w.eta || '25'}m)</span>
+                    <span><i data-lucide="map-pin" class="lucide-xs"></i> Distance &amp; ETA</span>
+                    <span>${w.distance || '2.5'} km (~${w.eta || '25'}m)</span>
                   </div>
                   <div class="worker-meta-item">
-                    <span>Rating</span>
-                    <span>⭐ ${w.ratingAverage || '4.8'} (${w.ratingCount || 12})</span>
+                    <span><i data-lucide="star" class="lucide-xs" style="color:#d97706;fill:#d97706;"></i> Rating</span>
+                    <span>${w.ratingAverage || '4.8'} (${w.ratingCount || 12})</span>
                   </div>
                   <div class="worker-meta-item">
-                    <span>Experience</span>
-                    <span>🏆 ${w.experience || 3} Years</span>
+                    <span><i data-lucide="award" class="lucide-xs"></i> Experience</span>
+                    <span>${w.experience || 3} Years</span>
                   </div>
                   <div class="worker-meta-item">
-                    <span>Status</span>
-                    <span style="color: var(--success); display: inline-flex; align-items: center; gap: 4px;">
-                      <span class="status-dot online"></span> Online
-                    </span>
+                    <span><i data-lucide="circle-dot" class="lucide-xs" style="color: var(--color-success);"></i> Status</span>
+                    <span style="color: var(--color-success);">Online</span>
                   </div>
                 </div>
 
@@ -189,7 +200,9 @@ export const CustomerFrontend = {
                   </div>
                   <div style="display: flex; gap: 0.5rem; align-items: center;">
                     <button class="btn btn-outline btn-sm view-worker-profile-btn" data-id="${esc(w.id)}">Profile</button>
-                    <button class="btn btn-primary btn-sm book-worker-btn" data-id="${esc(w.id)}">Book</button>
+                    <button class="btn btn-primary btn-sm book-worker-btn" data-id="${esc(w.id)}">
+                      Book Now <i data-lucide="arrow-right" class="lucide-xs"></i>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -214,10 +227,14 @@ export const CustomerFrontend = {
 
       ${bookings.length === 0 ? `
         <div class="empty-state">
-          <div class="empty-state-icon">📅</div>
+          <div class="empty-state-icon">
+            <i data-lucide="calendar" class="lucide-lg" style="color: var(--text-muted);"></i>
+          </div>
           <h3>No bookings found yet</h3>
           <p>Browse our verified home service experts and book your first service in minutes!</p>
-          <button class="btn btn-primary btn-sm" id="empty-discover-btn">Discover Services</button>
+          <button class="btn btn-primary btn-sm" id="empty-discover-btn">
+            Discover Services <i data-lucide="arrow-right" class="lucide-xs"></i>
+          </button>
         </div>
       ` : `
         <div class="table-container">
@@ -261,10 +278,10 @@ export const CustomerFrontend = {
                     </td>
                     <td>
                       <strong style="color: var(--text-primary);">${esc(b.serviceTask || b.serviceCategory)}</strong><br>
-                      <span style="color: var(--accent-primary); font-size: 0.85rem; font-weight: 500;">👤 ${esc(worker.name)}</span>
+                      <span style="color: var(--accent-primary); font-size: 0.85rem; font-weight: 600;">👤 ${esc(worker.name)}</span>
                     </td>
                     <td>
-                      <div style="font-size: 0.85rem;">${esc(b.appointmentDate)}</div>
+                      <div style="font-size: 0.85rem; font-weight: 600;">${esc(b.appointmentDate)}</div>
                       <small style="color: var(--text-muted);">${esc(b.appointmentTime)} · ${esc(b.locality?.toUpperCase())}</small>
                     </td>
                     <td>
@@ -286,8 +303,14 @@ export const CustomerFrontend = {
                           <button class="btn btn-danger btn-xs cancel-booking-btn" data-id="${esc(b.id)}">Cancel</button>
                         ` : ''}
                         ${b.status === 'Job completed' ? `
-                          <button class="btn btn-primary btn-xs invoice-btn" data-id="${esc(b.id)}">Invoice</button>
-                          ${!b.reviewId ? `<button class="btn btn-outline btn-xs review-booking-btn" data-id="${esc(b.id)}">⭐ Review</button>` : ''}
+                          <button class="btn btn-primary btn-xs invoice-btn" data-id="${esc(b.id)}">
+                            <i data-lucide="file-text" class="lucide-xs"></i> Invoice
+                          </button>
+                          ${!b.reviewId ? `
+                            <button class="btn btn-outline btn-xs review-booking-btn" data-id="${esc(b.id)}">
+                              <i data-lucide="star" class="lucide-xs"></i> Review
+                            </button>
+                          ` : ''}
                         ` : ''}
                       </div>
                     </td>
@@ -331,6 +354,10 @@ export const CustomerFrontend = {
         } else if (view === 'compare') {
           this.showComparisonModal(container);
         }
+
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') {
+          window.refreshIcons();
+        }
       });
     });
 
@@ -348,6 +375,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     }
 
@@ -361,6 +389,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     }
 
@@ -373,6 +402,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     });
 
@@ -388,6 +418,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     }
 
@@ -407,11 +438,13 @@ export const CustomerFrontend = {
         }
         const compareBtn = container.querySelector('#compare-sidebar-btn');
         if (compareBtn) {
-          compareBtn.innerHTML = `<span>⚖️</span><span>Compare</span><span class="sidebar-badge">${this.comparedWorkers.length}/3</span>`;
+          compareBtn.innerHTML = `<i data-lucide="scale" class="lucide-sm"></i><span>Compare</span><span class="sidebar-badge">${this.comparedWorkers.length}/3</span>`;
+          if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         }
         const openCompareModalBtn = container.querySelector('#open-comparison-modal');
         if (openCompareModalBtn) {
-          openCompareModalBtn.textContent = `⚖️ View Comparison (${this.comparedWorkers.length})`;
+          openCompareModalBtn.innerHTML = `<i data-lucide="scale" class="lucide-xs"></i> View Comparison (${this.comparedWorkers.length})`;
+          if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         }
       });
     });
@@ -448,6 +481,7 @@ export const CustomerFrontend = {
         eligible = this.sortWorkers(eligible);
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     }
 
@@ -468,6 +502,7 @@ export const CustomerFrontend = {
         Toast.show(`Counter-offer accepted! Appointment confirmed.`, 'success');
         container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
         this.attachBookingsEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     });
 
@@ -482,6 +517,7 @@ export const CustomerFrontend = {
           Toast.show('Counter-offer declined. Booking cancelled.', 'info');
           container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
           this.attachBookingsEvents(container);
+          if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         }
       });
     });
@@ -496,6 +532,7 @@ export const CustomerFrontend = {
           Toast.show('Booking cancelled successfully', 'info');
           container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
           this.attachBookingsEvents(container);
+          if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         }
       });
     });
@@ -530,16 +567,16 @@ export const CustomerFrontend = {
         <div style="display: flex; gap: 1.25rem; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap;">
           <img src="${esc(worker.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150')}" alt="${esc(worker.name)}" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-primary);">
           <div>
-            <h2 style="font-size: 1.4rem; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+            <h2 style="font-size: 1.4rem; font-weight: 800; display: flex; align-items: center; gap: 6px; margin: 0;">
               ${esc(worker.name)}
-              ${worker.verificationStatus === 'Verified' ? '<span style="color: #10b981; font-size: 1rem;" title="Verified Pro">✓ Verified</span>' : ''}
+              ${worker.verificationStatus === 'Verified' ? '<i data-lucide="badge-check" class="lucide-sm" style="color: #10b981;" title="Verified Pro"></i>' : ''}
             </h2>
             <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem;">
-              📍 Base: <strong>${esc(worker.baseLocality?.toUpperCase())}</strong> · Service Area: ${esc(worker.serviceArea)} · 🏆 ${worker.experience || 3} Yrs Exp
+              📍 Base: <strong>${esc(worker.baseLocality?.toUpperCase())}</strong> · Area: ${esc(worker.serviceArea)} · 🏆 ${worker.experience || 3} Yrs Exp
             </p>
             <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
               <span style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">⭐ ${worker.ratingAverage || '4.8'}</span>
-              <span style="color: var(--text-muted); font-size: 0.8rem;">(${worker.ratingCount || 10} reviews)</span>
+              <span style="color: var(--text-muted); font-size: 0.8rem;">(${worker.ratingCount || 10} verified reviews)</span>
             </div>
           </div>
         </div>
@@ -556,7 +593,7 @@ export const CustomerFrontend = {
             return `
               <div style="background: var(--bg-card); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap; gap: 4px;">
-                  <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--accent-primary);">${esc(catObj.name)}</h4>
+                  <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--accent-primary); margin: 0;">${esc(catObj.name)}</h4>
                   <span style="font-size: 1rem; font-weight: 800; color: var(--text-primary);">
                     ₹${info.startingPrice} <small style="font-weight: 400; font-size: 0.8rem; color: var(--text-muted);">(${esc(info.pricingMethod || 'hourly')})</small>
                   </span>
@@ -574,12 +611,16 @@ export const CustomerFrontend = {
 
         <div style="display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
           <button class="btn btn-outline btn-sm" id="close-btn">Close</button>
-          <button class="btn btn-primary btn-sm" id="modal-book-btn" data-id="${esc(worker.id)}">Book Appointment Now →</button>
+          <button class="btn btn-primary btn-sm" id="modal-book-btn" data-id="${esc(worker.id)}">
+            Book Appointment Now →
+          </button>
         </div>
       </div>
     `;
 
     document.body.appendChild(modal);
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#close-btn').onclick = () => modal.remove();
     modal.querySelector('#modal-book-btn').onclick = () => {
@@ -761,13 +802,15 @@ export const CustomerFrontend = {
     modal.innerHTML = `
       <div class="modal-card" style="max-width: 850px;">
         <button class="modal-close" id="close-modal" aria-label="Close modal">×</button>
-        <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 1rem;">
-          Side-by-Side Worker Comparison (${compared.length}/3)
+        <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="scale" class="lucide-md"></i> Side-by-Side Worker Comparison (${compared.length}/3)
         </h2>
 
         ${compared.length === 0 ? `
           <div class="empty-state">
-            <div class="empty-state-icon">⚖️</div>
+            <div class="empty-state-icon">
+              <i data-lucide="scale" class="lucide-lg" style="color: var(--text-muted);"></i>
+            </div>
             <p>No professionals selected for comparison yet. Check the 'Compare' box on worker cards.</p>
           </div>
         ` : `
@@ -796,11 +839,11 @@ export const CustomerFrontend = {
                     </div>
                     <div style="display: flex; justify-content: space-between;">
                       <span style="color: var(--text-secondary);">Status:</span>
-                      <strong style="color: var(--success);">🟢 Online</strong>
+                      <strong style="color: var(--color-success);">🟢 Online</strong>
                     </div>
                   </div>
 
-                  <button class="btn btn-primary btn-sm book-worker-from-compare" data-id="${esc(w.id)}" style="width: 100%;">
+                  <button class="btn btn-primary btn-sm book-worker-from-compare" data-id="${esc(w.id)}" style="width: 100%; justify-content: center;">
                     Book Now
                   </button>
                 </div>
@@ -812,6 +855,8 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelectorAll('.book-worker-from-compare').forEach(btn => {
       btn.onclick = () => {
@@ -835,7 +880,7 @@ export const CustomerFrontend = {
       <div class="modal-card" style="max-width: 580px;">
         <button class="modal-close" id="close-modal" aria-label="Close modal">×</button>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 8px;">
-          <h2 style="font-size: 1.3rem; font-weight: 800;">Booking Details</h2>
+          <h2 style="font-size: 1.3rem; font-weight: 800; margin: 0;">Booking Details</h2>
           <span class="badge badge-accepted">${esc(booking.status)}</span>
         </div>
 
@@ -939,13 +984,17 @@ export const CustomerFrontend = {
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-          <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Print Receipt</button>
+          <button class="btn btn-outline btn-sm" onclick="window.print()">
+            <i data-lucide="printer" class="lucide-xs"></i> Print Receipt
+          </button>
           <button class="btn btn-primary btn-sm" id="close-inv">Done</button>
         </div>
       </div>
     `;
 
     document.body.appendChild(modal);
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#close-inv').onclick = () => modal.remove();
   },
@@ -1009,6 +1058,7 @@ export const CustomerFrontend = {
       Toast.show('Review submitted successfully! Thank you.', 'success');
       container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
       this.attachBookingsEvents(container);
+      if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
     };
   }
 };
