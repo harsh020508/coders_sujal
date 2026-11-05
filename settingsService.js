@@ -189,6 +189,18 @@ function rgbaOf(hex, alpha) {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 }
 
+function mixHex(hexA, hexB, weightB) {
+  const a = hexToRgb(hexA);
+  const b = hexToRgb(hexB);
+  if (!a || !b) return hexA;
+  const w = Math.max(0, Math.min(1, weightB));
+  return rgbToHex(a.r + (b.r - a.r) * w, a.g + (b.g - a.g) * w, a.b + (b.b - a.b) * w);
+}
+
+function clampSat(s, min, max) {
+  return Math.max(min, Math.min(max, s));
+}
+
 function shade(hex, amount) {
   const rgb = hexToRgb(hex);
   if (!rgb) return hex;
@@ -268,6 +280,48 @@ export function getAccentPalette(baseHex, resolvedTheme) {
     ? '#121411'
     : '#ffffff';
 
+  // ---- Full-background theming: surfaces + text + borders follow the accent
+  // in both modes (user asked: change colour → whole backdrop changes,
+  // including dark mode, not just buttons). Derived from the accent hue so
+  // every preset/custom stays cohesive yet keeps AAA-ish text contrast.
+  let surfaces;
+  if (!isDark) {
+    const lp = hexToRgb(lightPrimary);
+    const lpHsl = lp ? rgbToHsl(lp.r, lp.g, lp.b) : { h: 90, s: 40, l: 20 };
+    // Light-mode tinted creams (deeper than a whisper so the change reads
+    // across the whole page, but kept at L>=86 for text contrast).
+    const bgPrimary = mixHex('#fbf9f4', lightPrimary, 0.13);
+    const bgSecondary = mixHex('#f4f0e6', lightPrimary, 0.2);
+    const bgCard = mixHex('#ffffff', lightPrimary, 0.05);
+    const borderColor = mixHex('#d6d3ca', lightPrimary, 0.32);
+    const borderLight = mixHex('#e8e5dc', lightPrimary, 0.16);
+    // Ink = darkened accent capped at L22 (forest #1a3300 stays itself,
+    // brighter customs like terracotta/teal darken to readable ink).
+    const inkL = Math.min(lpHsl.l, 22);
+    const textPrimary = hslToHex(lpHsl.h, clampSat(lpHsl.s, 18, 80), inkL);
+    // Secondary/muted pull the ink toward the proven neutral greys so small
+    // text still clears AA on the tinted cream.
+    const textSecondary = mixHex(textPrimary, '#44483d', 0.45);
+    const textMuted = mixHex(textPrimary, '#74796c', 0.55);
+    surfaces = { bgPrimary, bgSecondary, bgCard, borderColor, borderLight, textPrimary, textSecondary, textMuted };
+  } else {
+    const dp = hexToRgb(darkPrimary);
+    const dpHsl = dp ? rgbToHsl(dp.r, dp.g, dp.b) : { h: 90, s: 40, l: 70 };
+    const hue = dpHsl.h;
+    // Dark tinted near-blacks: same hue, low saturation, low lightness.
+    const bgPrimary = hslToHex(hue, clampSat(dpHsl.s * 0.55, 18, 38), 7.5);
+    const bgSecondary = hslToHex(hue, clampSat(dpHsl.s * 0.55, 18, 38), 10.5);
+    const bgCard = hslToHex(hue, clampSat(dpHsl.s * 0.5, 16, 34), 13);
+    const borderColor = hslToHex(hue, clampSat(dpHsl.s * 0.4, 12, 30), 24);
+    const borderLight = hslToHex(hue, clampSat(dpHsl.s * 0.4, 12, 30), 17);
+    // Near-white ink with a whisper of hue (keeps the warm-white feel while
+    // still visibly shifting with the accent).
+    const textPrimary = hslToHex(hue, clampSat(dpHsl.s * 0.35, 8, 28), 90);
+    const textSecondary = hslToHex(hue, clampSat(dpHsl.s * 0.3, 6, 24), 74);
+    const textMuted = hslToHex(hue, clampSat(dpHsl.s * 0.25, 5, 20), 62);
+    surfaces = { bgPrimary, bgSecondary, bgCard, borderColor, borderLight, textPrimary, textSecondary, textMuted };
+  }
+
   return {
     base: cleaned,
     lightPrimary,
@@ -280,7 +334,8 @@ export function getAccentPalette(baseHex, resolvedTheme) {
       ? hslToHex(pHsl.h, pHsl.s, isDark ? Math.min(90, pHsl.l + 10) : Math.max(6, pHsl.l * 0.7))
       : primary,
     contrast,
-    focus: rgbaOf(primary, 0.35)
+    focus: rgbaOf(primary, 0.35),
+    ...surfaces
   };
 }
 
@@ -296,7 +351,23 @@ const ACCENT_CSS_VARS = [
   '--peacock-500',
   '--peacock-600',
   '--peacock-700',
-  '--focus'
+  '--focus',
+  '--bg-primary',
+  '--bg-secondary',
+  '--bg-card',
+  '--text-primary',
+  '--text-secondary',
+  '--text-muted',
+  '--border-color',
+  '--border-light',
+  '--bg',
+  '--surface',
+  '--surface-2',
+  '--ink',
+  '--ink-2',
+  '--muted',
+  '--line',
+  '--line-strong'
 ];
 
 function migrateLegacy(legacy) {
@@ -556,6 +627,30 @@ class SettingsManager {
     root.style.setProperty('--peacock-600', palette.hover);
     root.style.setProperty('--peacock-700', palette.peacock700);
     root.style.setProperty('--focus', palette.focus);
+    // Whole backdrop: page bg, card/secondary surfaces, borders and ink all
+    // shift with the accent (styles.css tokens), plus the parallel ui.css
+    // tokens so ui-* cards/search/modals move too.
+    root.style.setProperty('--bg-primary', palette.bgPrimary);
+    root.style.setProperty('--bg-secondary', palette.bgSecondary);
+    root.style.setProperty('--bg-card', palette.bgCard);
+    root.style.setProperty('--text-primary', palette.textPrimary);
+    root.style.setProperty('--text-secondary', palette.textSecondary);
+    root.style.setProperty('--text-muted', palette.textMuted);
+    root.style.setProperty('--border-color', palette.borderColor);
+    root.style.setProperty('--border-light', palette.borderLight);
+    root.style.setProperty('--bg', palette.bgPrimary);
+    root.style.setProperty('--surface', palette.bgCard);
+    root.style.setProperty('--surface-2', palette.bgSecondary);
+    root.style.setProperty('--ink', palette.textPrimary);
+    root.style.setProperty('--ink-2', palette.textSecondary);
+    root.style.setProperty('--muted', palette.textMuted);
+    root.style.setProperty('--line', palette.borderLight);
+    root.style.setProperty('--line-strong', palette.borderColor);
+    // Browser chrome follows too (scrollbars, native controls, address bar).
+    try {
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', palette.bgPrimary);
+    } catch (e) {}
   }
 
   applyFontSize() {

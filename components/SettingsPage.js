@@ -789,7 +789,7 @@ export const SettingsPage = {
               <input type="color" id="appearance-custom-accent" value="${esc(accent || '#1a3300')}" aria-label="Choose a custom accent colour">
             </label>
           </div>
-          <p class="settings-field-note">Every colour adapts automatically for dark mode — presets use a brighter variant so text stays readable on dark surfaces.</p>
+          <p class="settings-field-note">Recolours the whole theme — page background, cards, borders and text shift to this hue in both light and dark mode (dark uses a brighter variant so text stays readable).</p>
         </fieldset>
       `)}
 
