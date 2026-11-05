@@ -43,30 +43,30 @@ export const CustomerFrontend = {
           <div class="sidebar-section-label">Navigation</div>
           <div class="sidebar-nav-list">
             <div class="sidebar-item active" data-view="discover">
-              <span>🔍</span>
+              <span><i data-lucide="search" class="lucide-xs"></i></span>
               <span>Discover Services</span>
             </div>
             <div class="sidebar-item" data-view="bookings">
-              <span>📅</span>
+              <span><i data-lucide="calendar" class="lucide-xs"></i></span>
               <span>My Bookings</span>
               <span class="sidebar-badge">${bookings.length}</span>
             </div>
             <div class="sidebar-item" data-view="notifications">
-              <span>🔔</span>
+              <span><i data-lucide="bell" class="lucide-xs"></i></span>
               <span>Notifications</span>
               ${unreadNotifsCount > 0 ? `<span class="sidebar-badge" style="background:#ef4444;color:#fff;">${unreadNotifsCount}</span>` : ''}
             </div>
             <div class="sidebar-item" data-view="compare" id="compare-sidebar-btn">
-              <span>⚖️</span>
+              <span><i data-lucide="scale" class="lucide-xs"></i></span>
               <span>Compare</span>
               <span class="sidebar-badge">${this.comparedWorkers.length}/3</span>
             </div>
             <div class="sidebar-item" data-view="help-centre">
-              <span>❓</span>
+              <span><i data-lucide="help-circle" class="lucide-xs"></i></span>
               <span>Help Centre</span>
             </div>
             <div class="sidebar-item" data-view="complaints">
-              <span>⚠️</span>
+              <span><i data-lucide="triangle-alert" class="lucide-xs"></i></span>
               <span>Complaints</span>
             </div>
           </div>
@@ -144,10 +144,10 @@ export const CustomerFrontend = {
         </div>
         <div style="display: flex; gap: 0.5rem; align-items: center; width: auto; flex-shrink: 0;">
           <select id="sort-by-select" class="form-select" style="min-width: 160px; font-size: 0.85rem;">
-            <option value="match" ${this.sortBy === 'match' ? 'selected' : ''}>✨ Best Match</option>
-            <option value="rating" ${this.sortBy === 'rating' ? 'selected' : ''}>⭐ Highest Rated</option>
-            <option value="price_low" ${this.sortBy === 'price_low' ? 'selected' : ''}>💵 Lowest Price</option>
-            <option value="distance" ${this.sortBy === 'distance' ? 'selected' : ''}>📍 Nearest First</option>
+            <option value="match" ${this.sortBy === 'match' ? 'selected' : ''}>Best Match</option>
+            <option value="rating" ${this.sortBy === 'rating' ? 'selected' : ''}>Highest Rated</option>
+            <option value="price_low" ${this.sortBy === 'price_low' ? 'selected' : ''}>Lowest Price</option>
+            <option value="distance" ${this.sortBy === 'distance' ? 'selected' : ''}>Nearest First</option>
           </select>
         </div>
       </div>
@@ -214,8 +214,8 @@ export const CustomerFrontend = {
                   </div>
 
                   <div style="display:flex;gap:12px;font-size:0.8rem;background:var(--surface-2);padding:6px 10px;border-radius:8px;justify-content:space-between;align-items:center;">
-                    <span>📍 <strong>${w.distance || '2.5'} km</strong> (~${w.eta || '25'}m)</span>
-                    <span>🏆 <strong>${w.experience || 3} yrs</strong> exp</span>
+                    <span><i data-lucide="map-pin" class="lucide-xs"></i> <strong>${w.distance || '2.5'} km</strong> (~${w.eta || '25'}m)</span>
+                    <span><i data-lucide="award" class="lucide-xs"></i> <strong>${w.experience || 3} yrs</strong> exp</span>
                     <span style="color:var(--ok);font-weight:600;display:inline-flex;align-items:center;gap:4px;">
                       <span class="status-dot online"></span> Online
                     </span>
@@ -381,9 +381,11 @@ export const CustomerFrontend = {
         } else if (view === 'help-centre') {
           mainContent.innerHTML = this.renderHelpCentreView();
           this.attachHelpEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         } else if (view === 'complaints') {
           mainContent.innerHTML = this.renderComplaintsView();
           this.attachComplaintEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         }
       });
     });
@@ -394,10 +396,10 @@ export const CustomerFrontend = {
 
   getSupportCategoryIcon(categoryId) {
     const icons = {
-      booking: '📅', payment: '💰', late_no_show: '⏰', cancellation: '🚫',
-      quality: '⭐', account: '👤', safety: '🛡️', general: '❓'
+      booking: 'calendar', payment: 'credit-card', late_no_show: 'clock', cancellation: 'x-circle',
+      quality: 'star', account: 'user', safety: 'shield-check', general: 'help-circle'
     };
-    return icons[categoryId] || '❓';
+    return icons[categoryId] || 'help-circle';
   },
 
   // Re-render only the results area so typing in #service-search-input
@@ -484,7 +486,7 @@ export const CustomerFrontend = {
         }
         const compareBtn = container.querySelector('#compare-sidebar-btn');
         if (compareBtn) {
-          compareBtn.innerHTML = `<span>⚖️</span><span>Compare</span><span class="sidebar-badge">${this.comparedWorkers.length}/3</span>`;
+          compareBtn.innerHTML = `<span><i data-lucide="scale" class="lucide-xs"></i></span><span>Compare</span><span class="sidebar-badge">${this.comparedWorkers.length}/3</span>`;
         }
         const openCompareModalBtn = container.querySelector('#open-comparison-modal');
         if (openCompareModalBtn) {
@@ -519,7 +521,7 @@ export const CustomerFrontend = {
     const tickets = StorageService.getSupportTickets();
     const categoryList = SUPPORT_CATEGORIES.map(cat => `
       <button class="btn ${this.helpCategory === cat.id ? 'btn-primary' : 'btn-outline'} btn-sm help-cat-btn" data-cat="${esc(cat.id)}" style="justify-content: flex-start; width: 100%; text-align: left;">
-        ${this.getSupportCategoryIcon(cat.id)} ${esc(cat.name)}
+        <i data-lucide="${this.getSupportCategoryIcon(cat.id)}" class="lucide-xs"></i> ${esc(cat.name)}
       </button>
     `).join('');
 
@@ -659,6 +661,7 @@ export const CustomerFrontend = {
         this.helpCategory = btn.getAttribute('data-cat');
         container.querySelector('#customer-main-content').innerHTML = this.renderHelpCentreView();
         this.attachHelpEvents(container);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     });
 
@@ -1621,11 +1624,11 @@ export const CustomerFrontend = {
           <div>
             <label class="form-label">Rating</label>
             <select id="rev-rating" class="form-select">
-              <option value="5">⭐⭐⭐⭐⭐ 5 - Excellent (Highly Recommended)</option>
-              <option value="4">⭐⭐⭐⭐ 4 - Very Good (Prompt &amp; Professional)</option>
-              <option value="3">⭐⭐⭐ 3 - Average (Satisfactory Work)</option>
-              <option value="2">⭐⭐ 2 - Below Expectations</option>
-              <option value="1">⭐ 1 - Poor Service</option>
+              <option value="5">5 - Excellent (Highly Recommended)</option>
+              <option value="4">4 - Very Good (Prompt &amp; Professional)</option>
+              <option value="3">3 - Average (Satisfactory Work)</option>
+              <option value="2">2 - Below Expectations</option>
+              <option value="1">1 - Poor Service</option>
             </select>
           </div>
           <div>

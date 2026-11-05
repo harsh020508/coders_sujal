@@ -830,10 +830,10 @@ export const WorkerFrontend = {
                     <td><span class="badge badge-accepted">${esc(b.status)}</span></td>
                     <td>
                       <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-                        ${['Confirmed', 'Accepted'].includes(b.status) ? `<button class="btn btn-outline btn-xs enroute-job-btn" data-id="${esc(b.id)}">🚗 En Route</button>` : ''}
-                        ${b.status === 'Worker en route' ? `<button class="btn btn-outline btn-xs arrived-job-btn" data-id="${esc(b.id)}">📍 Arrived</button>` : ''}
-                        ${b.status === 'Worker arrived' ? `<button class="btn btn-primary btn-xs start-job-btn" data-id="${esc(b.id)}">▶️ Start Job</button>` : ''}
-                        ${b.status === 'Job in progress' ? `<button class="btn btn-success btn-xs complete-job-btn" data-id="${esc(b.id)}">✅ Complete Job</button>` : ''}
+                        ${['Confirmed', 'Accepted'].includes(b.status) ? `<button class="btn btn-outline btn-xs enroute-job-btn" data-id="${esc(b.id)}"><i data-lucide="truck" class="lucide-xs"></i> En Route</button>` : ''}
+                        ${b.status === 'Worker en route' ? `<button class="btn btn-outline btn-xs arrived-job-btn" data-id="${esc(b.id)}"><i data-lucide="map-pin" class="lucide-xs"></i> Arrived</button>` : ''}
+                        ${b.status === 'Worker arrived' ? `<button class="btn btn-primary btn-xs start-job-btn" data-id="${esc(b.id)}"><i data-lucide="play" class="lucide-xs"></i> Start Job</button>` : ''}
+                        ${b.status === 'Job in progress' ? `<button class="btn btn-success btn-xs complete-job-btn" data-id="${esc(b.id)}"><i data-lucide="check-circle" class="lucide-xs"></i> Complete Job</button>` : ''}
                       </div>
                     </td>
                   </tr>
@@ -957,8 +957,8 @@ export const WorkerFrontend = {
                     <td><strong>₹${c.total.toLocaleString('en-IN')}</strong></td>
                     <td>
                       <div style="display: flex; gap: 6px;">
-                        <a href="tel:${esc(c.phone)}" class="btn btn-outline btn-xs" style="text-decoration: none;">📞 Call</a>
-                        <a href="https://wa.me/${esc(c.phone.replace(/[^0-9]/g, ''))}" target="_blank" class="btn btn-outline btn-xs" style="text-decoration: none;">💬 WhatsApp</a>
+                        <a href="tel:${esc(c.phone)}" class="btn btn-outline btn-xs" style="text-decoration: none;"><i data-lucide="phone" class="lucide-xs"></i> Call</a>
+                        <a href="https://wa.me/${esc(c.phone.replace(/[^0-9]/g, ''))}" target="_blank" class="btn btn-outline btn-xs" style="text-decoration: none;"><i data-lucide="message-circle" class="lucide-xs"></i> WhatsApp</a>
                       </div>
                     </td>
                   </tr>
@@ -1017,7 +1017,7 @@ export const WorkerFrontend = {
               <div class="dash-card">
                 <div class="dash-card-header">
                   <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.75rem;">${catObj?.icon || '🛠️'}</span>
+                    <span style="display:inline-flex;align-items:center;gap:8px;"><i data-lucide="${catObj?.lucideIcon || 'wrench'}" class="lucide-sm"></i></span>
                     <div>
                       <h3>${esc(catObj?.name || catKey.toUpperCase())}</h3>
                       <p class="dash-card-sub">${info.pricingMethod || 'Hourly'} Pricing</p>
@@ -1482,6 +1482,7 @@ export const WorkerFrontend = {
         if (mainContent) {
           mainContent.innerHTML = this.renderMainContent(view, worker, pendingRequests, activeJobs, completedJobs, totalEarnings, bookings);
           this.attachViewEvents(view, container, worker);
+        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         }
       });
     });

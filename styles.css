@@ -1772,7 +1772,11 @@ select, input, textarea { font-family: inherit; }
     max-height: 92vh;
   }
 
-  .data-table { min-width: 560px; }
+  /* Tables fit the phone instead of clipping empty-state text off-screen */
+  .table-container { overflow-x: auto; }
+  .data-table { min-width: 0; font-size: 0.85rem; }
+  .data-table th { white-space: normal; line-height: 1.3; }
+  .data-table td { white-space: normal; word-break: break-word; padding: 10px 12px; }
 }
 
 /* ---- Small Mobile: < 375px ---- */
