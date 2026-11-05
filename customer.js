@@ -601,13 +601,13 @@ export const CustomerFrontend = {
     const careInput = container.querySelector('#care-input');
     const careSend = container.querySelector('#care-send');
     const appendCare = (role, text) => {
-      if (!careBox) return;
+      if (!careBox) return null;
       const who = role === 'user' ? 'You' : 'Care';
       const div = document.createElement('div');
       div.style.cssText = 'font-size:0.85rem; padding:10px; border-radius:10px; max-width:92%; white-space:pre-wrap; word-break:break-word; ' + (role === 'user'
         ? 'align-self:flex-end; background:var(--accent-primary); color:#fff;'
         : 'align-self:flex-start; background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border-color);');
-      div.innerHTML = esc(text);
+      div.textContent = text;
       const label = document.createElement('div');
       label.style.cssText = 'font-size:0.7rem; font-weight:700; letter-spacing:0.04em; opacity:0.7; margin-bottom:2px;';
       label.textContent = who.toUpperCase();
@@ -617,15 +617,19 @@ export const CustomerFrontend = {
       wrap.appendChild(div);
       careBox.appendChild(wrap);
       careBox.scrollTop = careBox.scrollHeight;
+      return div;
     };
+    let careBusy = false;
     const sendCare = async () => {
+      if (careBusy) return;
       const text = (careInput?.value || '').trim();
       if (!text || !careInput) return;
+      careBusy = true;
       careInput.value = '';
       appendCare('user', text);
       careHistory.push({ role: 'user', content: text });
       if (careSend) { careSend.disabled = true; careSend.textContent = '…'; }
-      appendCare('assistant', 'Thinking…');
+      const thinkingBubble = appendCare('assistant', 'Thinking…');
       try {
         const res = await fetch('/api/customer-care', {
           method: 'POST',
@@ -633,17 +637,16 @@ export const CustomerFrontend = {
           body: JSON.stringify({ message: text, history: careHistory.slice(-10) })
         });
         const data = await res.json().catch(() => ({}));
-        // Replace the "Thinking…" bubble
-        const last = careBox?.lastElementChild?.querySelector('div:last-child');
         const reply = (data && data.reply) || 'I could not answer right now. Please open a Support Ticket below.';
-        if (last) last.textContent = reply;
+        if (thinkingBubble) thinkingBubble.textContent = reply;
         else appendCare('assistant', reply);
         careHistory.push({ role: 'assistant', content: reply });
       } catch (e) {
-        const last = careBox?.lastElementChild?.querySelector('div:last-child');
-        if (last) last.textContent = 'I could not reach the care server. Please open a Support Ticket below.';
-        else appendCare('assistant', 'I could not reach the care server. Please open a Support Ticket below.');
+        const msg = 'I could not reach the care server. Please open a Support Ticket below.';
+        if (thinkingBubble) thinkingBubble.textContent = msg;
+        else appendCare('assistant', msg);
       } finally {
+        careBusy = false;
         if (careSend) { careSend.disabled = false; careSend.textContent = 'Send'; }
         careInput?.focus();
       }
