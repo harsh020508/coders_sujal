@@ -1135,6 +1135,22 @@ export const INITIAL_WORKERS = [
 }
 ];
 
+// Attach geo coordinates to seeded workers so the live map can plot them even
+// though the worker records themselves do not store latitude/longitude.
+const LOCALITY_COORDS = LOCALITIES.reduce((acc, l) => {
+  acc[l.id] = { lat: l.lat, lng: l.lng };
+  return acc;
+}, {});
+const DEMO_CITY = { lat: 19.0760, lng: 72.8777 };
+
+INITIAL_WORKERS.forEach((w, index) => {
+  const coords = LOCALITY_COORDS[w.baseLocality] || DEMO_CITY;
+  const jitter = ((index % 7) - 3) * 0.0035;
+  if (w.lat == null) w.lat = Number((coords.lat + jitter).toFixed(5));
+  if (w.lng == null) w.lng = Number((coords.lng - jitter).toFixed(5));
+  if (!w.location) w.location = { type: 'Point', coordinates: [w.lng, w.lat] };
+});
+
 export const INITIAL_BOOKINGS = [
   {
     id: 'BK-10492',

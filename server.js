@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { INITIAL_WORKERS, INITIAL_BOOKINGS, INITIAL_REVIEWS, INITIAL_COMPLAINTS } from './data.js';
 import { sendArrivalOtpSms, isSmsConfigured } from './smsService.js';
+import { getPriceTablePromptSummary } from './pricingTable.js';
 
 // Load environment variables from .env if present (relative to this file,
 // not the shell cwd, so `node server.js` works from any directory)
@@ -138,6 +139,11 @@ export const stmtUpdateOtpDelivery = db.prepare(`
 `);
 
 export const stmtClearOtps = db.prepare(`DELETE FROM booking_otps`);
+
+// Non-production only: remember the plaintext OTP in memory so the
+// *customer* dashboard can display it (production relies on SMS).
+// Never persisted, never returned to the worker.
+const devOtpPlaintext = new Map();
 
 export function getStore(key, fallback) {
   try {
@@ -315,12 +321,78 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
+// ---- Haversine distance (km) ----
+function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ---- Rate limiter for photo analysis (5 req/min/IP) ----
+const photoRateLimits = new Map();
+function checkPhotoRateLimit(ip) {
+  const now = Date.now();
+  const windowMs = 60_000;
+  const max = 5;
+  let record = photoRateLimits.get(ip);
+  if (!record) { record = []; photoRateLimits.set(ip, record); }
+  // Remove old timestamps
+  while (record.length && record[0] < now - windowMs) record.shift();
+  if (record.length >= max) return false;
+  record.push(now);
+  return true;
+}
+
+// ---- Demo fallback AI result ----
+function getDemoAiResult(note) {
+  const n = (note || '').toLowerCase();
+  if (n.includes('electric') || n.includes('wire') || n.includes('spark') || n.includes('switch')) {
+    return {
+      problem_found: true, issue: 'Faulty electrical switchboard with exposed wiring',
+      service_category: 'electrician', urgency: 'emergency',
+      price_min: 800, price_max: 2500, likely_materials: ['MCB breaker', 'Electrical tape', 'Wire connectors'],
+      estimated_duration_minutes: 45, safety_warning: 'Do NOT touch exposed wires. Turn off the main breaker immediately.',
+      confidence: 'high', follow_up_question: null
+    };
+  }
+  if (n.includes('paint') || n.includes('damp') || n.includes('wall') || n.includes('peel')) {
+    return {
+      problem_found: true, issue: 'Damp wall with paint peeling and possible seepage',
+      service_category: 'painter', urgency: 'medium',
+      price_min: 1500, price_max: 5000, likely_materials: ['Primer', 'Waterproof putty', 'Emulsion paint'],
+      estimated_duration_minutes: 180, safety_warning: null,
+      confidence: 'high', follow_up_question: null
+    };
+  }
+  if (n.includes('carpenter') || n.includes('wood') || n.includes('door') || n.includes('furniture')) {
+    return {
+      problem_found: true, issue: 'Damaged wooden door hinge and frame repair needed',
+      service_category: 'carpenter', urgency: 'low',
+      price_min: 500, price_max: 2000, likely_materials: ['Door hinges', 'Wood screws', 'Wood filler'],
+      estimated_duration_minutes: 60, safety_warning: null,
+      confidence: 'high', follow_up_question: null
+    };
+  }
+  // Default: leaking tap / plumber
+  return {
+    problem_found: true, issue: 'Leaking kitchen tap with worn-out washer',
+    service_category: 'plumber', urgency: 'medium',
+    price_min: 300, price_max: 800, likely_materials: ['Tap washer', 'Teflon tape', 'Adjustable wrench'],
+    estimated_duration_minutes: 30, safety_warning: null,
+    confidence: 'high', follow_up_question: null
+  };
+}
+
 export function readBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', chunk => {
       body += chunk;
-      if (body.length > 5 * 1024 * 1024) {
+      if (body.length > 10 * 1024 * 1024) {
         reject(new Error('Payload too large'));
       }
     });
@@ -839,6 +911,184 @@ export const server = http.createServer(async (req, res) => {
     }
   }
 
+  // ---- Nearby Workers API (Public, Geo-sorted) ----
+  if (pathname === '/api/workers/nearby' && req.method === 'GET') {
+    const lat = parseFloat(url.searchParams.get('lat'));
+    const lng = parseFloat(url.searchParams.get('lng'));
+    const radius = parseFloat(url.searchParams.get('radius')) || 10;
+    const serviceFilter = url.searchParams.get('service') || '';
+    const minRating = parseFloat(url.searchParams.get('minRating')) || 0;
+    const availableOnly = url.searchParams.get('availableOnly') !== 'false';
+
+    if (isNaN(lat) || isNaN(lng)) {
+      return sendJson(res, 400, { error: 'lat and lng query params are required' });
+    }
+
+    const workers = getStore('localkaam_workers', INITIAL_WORKERS);
+    const results = workers
+      .filter(w => {
+        if (availableOnly && (!w.available || w.pauseNewBookings)) return false;
+        if (minRating && (w.ratingAverage || 0) < minRating) return false;
+        if (serviceFilter && serviceFilter !== 'all') {
+          const cats = Object.keys(w.specialities || {});
+          const cat = w.category || '';
+          const match = cats.includes(serviceFilter) || cat === serviceFilter ||
+            (serviceFilter === 'cleaner' && (cats.includes('cleaning') || cat === 'cleaning')) ||
+            (serviceFilter === 'cleaning' && (cats.includes('cleaner') || cat === 'cleaner'));
+          if (!match) return false;
+        }
+        return w.lat != null && w.lng != null;
+      })
+      .map(w => {
+        const distanceKm = haversineDistanceKm(lat, lng, w.lat, w.lng);
+        const estimatedArrivalMinutes = Math.round(distanceKm * 4 + 5); // ~15 km/h avg in city + 5 min prep
+        return { ...w, distanceKm: Math.round(distanceKm * 100) / 100, estimatedArrivalMinutes };
+      })
+      .filter(w => w.distanceKm <= radius)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+
+    return sendJson(res, 200, results);
+  }
+
+  // ---- Photo Analysis (AI Diagnosis) ----
+  if (pathname === '/api/analyze-photo' && req.method === 'POST') {
+    const clientIp = req.socket.remoteAddress || 'unknown';
+    if (!checkPhotoRateLimit(clientIp)) {
+      return sendJson(res, 429, { error: 'Rate limit exceeded. Max 5 requests per minute.' });
+    }
+
+    try {
+      const body = await readBody(req);
+      const { image, note } = body;
+      if (!image) {
+        return sendJson(res, 400, { error: 'image field (base64 data URL) is required' });
+      }
+
+      const DEMO_MODE = process.env.DEMO_MODE === 'true';
+      const API_KEY = process.env.AI_API_KEY || process.env.GEMINI_API_KEY || '';
+
+      // Use demo fallback if no key or demo mode
+      if (DEMO_MODE || !API_KEY) {
+        const demoResult = getDemoAiResult(note);
+        return sendJson(res, 200, { success: true, diagnosis: demoResult, ...demoResult });
+      }
+
+      // Extract base64 data from data URL
+      const base64Match = image.match(/^data:image\/(jpeg|png|webp);base64,(.+)$/);
+      if (!base64Match) {
+        return sendJson(res, 400, { error: 'Invalid image format. Expected data:image/(jpeg|png|webp);base64,...' });
+      }
+      const mimeType = `image/${base64Match[1]}`;
+      const base64Data = base64Match[2];
+
+      const pricingSummary = getPriceTablePromptSummary();
+      const systemPrompt = `You are an expert home-services diagnostic assistant for LocalKaam, an Indian blue-collar services marketplace in Mumbai.
+
+PRICING TABLE (use ONLY these ranges for estimates):
+${pricingSummary}
+
+Analyze the photo and any note the customer provides. Reply with ONLY valid JSON (no markdown fences):
+{
+  "problem_found": true/false,
+  "issue": "short plain-language description",
+  "service_category": "plumber|electrician|painter|cleaner|carpenter|appliance_repair",
+  "urgency": "low|medium|high|emergency",
+  "price_min": number_in_INR,
+  "price_max": number_in_INR,
+  "likely_materials": ["item1", "item2"],
+  "estimated_duration_minutes": number,
+  "safety_warning": "string or null",
+  "confidence": "low|medium|high",
+  "follow_up_question": "string or null"
+}
+
+Rules:
+- Set problem_found=false and ask a follow_up_question if the photo is unclear or not a household problem.
+- Set urgency=emergency and add safety_warning for hazards (exposed wires, sparks, water near electricity, gas leaks).
+- Prices MUST come from the pricing table above.`;
+
+      const geminiBody = {
+        contents: [{
+          parts: [
+            { text: systemPrompt + (note ? `\n\nCustomer note: "${note}"` : '\n\nNo additional note provided.') },
+            { inline_data: { mime_type: mimeType, data: base64Data } }
+          ]
+        }],
+        generationConfig: {
+          response_mime_type: 'application/json',
+          temperature: 0.3
+        }
+      };
+
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+      const aiRes = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(geminiBody)
+      });
+
+      if (!aiRes.ok) {
+        console.error('Gemini API error:', aiRes.status);
+        // Fallback to demo on API error
+        const fallback = getDemoAiResult(note);
+        return sendJson(res, 200, { success: true, diagnosis: fallback, ...fallback });
+      }
+
+      const aiData = await aiRes.json();
+      let text = aiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      // Strip markdown fences if present
+      text = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+
+      try {
+        const parsed = JSON.parse(text);
+        return sendJson(res, 200, { success: true, diagnosis: parsed, ...parsed });
+      } catch (parseErr) {
+        console.error('AI response parse error, using fallback');
+        const fallback = getDemoAiResult(note);
+        return sendJson(res, 200, { success: true, diagnosis: fallback, ...fallback });
+      }
+    } catch (err) {
+      console.error('analyze-photo error:', err);
+      const fallback = getDemoAiResult('');
+      return sendJson(res, 200, { success: true, diagnosis: fallback, ...fallback });
+    }
+  }
+
+  // ---- Worker Location Update (POST /api/workers/:id/location) ----
+  if (pathname.match(/^\/api\/workers\/[^/]+\/location$/) && req.method === 'POST') {
+    const workerId = pathname.split('/')[3];
+    try {
+      const body = await readBody(req);
+      const { lat, lng } = body;
+      if (lat == null || lng == null) {
+        return sendJson(res, 400, { error: 'lat and lng are required' });
+      }
+
+      const workers = getStore('localkaam_workers', INITIAL_WORKERS);
+      const idx = workers.findIndex(w => w.id === workerId);
+      if (idx < 0) {
+        return sendJson(res, 404, { error: 'Worker not found' });
+      }
+
+      workers[idx].lat = lat;
+      workers[idx].lng = lng;
+      workers[idx].location = { type: 'Point', coordinates: [lng, lat] };
+      setStore('localkaam_workers', workers);
+
+      // Broadcast location update for live tracking
+      broadcastEvent('WORKER_LOCATION_UPDATED', {
+        workerId,
+        lat,
+        lng,
+        timestamp: Date.now()
+      });
+
+      return sendJson(res, 200, { success: true, lat, lng });
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
   // Workers API
   if (pathname === '/api/workers') {
     if (req.method === 'GET') {
@@ -1057,6 +1307,7 @@ export const server = http.createServer(async (req, res) => {
 
     // Generate cryptographically secure 6-digit OTP
     const otpPlain = String(crypto.randomInt(100000, 999999));
+    devOtpPlaintext.set(bookingId, otpPlain);
 
     // Hash the OTP — only the hash is ever stored
     const otpHash = crypto.createHash('sha256').update(otpPlain).digest('hex');
@@ -1245,6 +1496,7 @@ export const server = http.createServer(async (req, res) => {
 
     // Issue fresh OTP (invalidates old one via upsert)
     const otpPlain  = String(crypto.randomInt(100000, 999999));
+    devOtpPlaintext.set(bookingId, otpPlain);
     const otpHash   = crypto.createHash('sha256').update(otpPlain).digest('hex');
     const now       = Date.now();
     const expiresAt = now + 30 * 60 * 1000;
@@ -1306,17 +1558,25 @@ export const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { exists: false });
     }
 
-    const now = Date.now();
+    const nowDate = Date.now();
+    const isExpired = nowDate > otpRecord.expires_at;
+    const isConsumed = Boolean(otpRecord.consumed_at);
+    // Non-production only: reveal the code to the booking *customer*
+    // so the demo flow can complete without SMS. Never expose to workers.
+    const showDevOtp = process.env.NODE_ENV !== 'production' && !isExpired && !isConsumed
+      && (isBookingCustomer(booking, user) || user.role === 'admin');
+    const devOtp = showDevOtp ? (devOtpPlaintext.get(bookingId) || null) : null;
     return sendJson(res, 200, {
       exists: true,
       bookingId,
       deliveryStatus: otpRecord.delivery_status,
-      isExpired: now > otpRecord.expires_at,
-      isConsumed: Boolean(otpRecord.consumed_at),
+      isExpired,
+      isConsumed,
       expiresAt: new Date(otpRecord.expires_at).toISOString(),
       attemptsUsed: otpRecord.attempts,
       maxAttempts: otpRecord.max_attempts,
-      createdAt: new Date(otpRecord.created_at).toISOString()
+      createdAt: new Date(otpRecord.created_at).toISOString(),
+      ...(devOtp ? { otp: devOtp } : {})
       // otp_hash is intentionally NEVER returned
     });
   }

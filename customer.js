@@ -8,6 +8,8 @@ import { esc } from './utils.js';
 import { initScrollReveal } from './transitions.js';
 import { i18n } from './i18n.js';
 import { avatar, rating, statusBadge, emptyState, trapFocus } from './ui.js';
+import { CustomerMap } from './customerMap.js';
+import { PhotoDiagnosis } from './photoDiagnosis.js';
 
 // Helper to get all feedback tags
 const FEEDBACK_TAGS = [
@@ -26,6 +28,7 @@ export const CustomerFrontend = {
   helpCategory: 'booking',
   supportTicketCategory: 'booking',
   supportTicketPriority: 'Medium',
+  hasGlobalListeners: false,
 
   render(container) {
     const workers = StorageService.getWorkers();
@@ -45,6 +48,14 @@ export const CustomerFrontend = {
             <div class="sidebar-item active" data-view="discover">
               <span><i data-lucide="search" class="lucide-xs"></i></span>
               <span>Discover Services</span>
+            </div>
+            <div class="sidebar-item" data-view="map">
+              <span>🗺️</span>
+              <span>Live Map &amp; Nearby</span>
+            </div>
+            <div class="sidebar-item" data-view="photo">
+              <span>📸</span>
+              <span>AI Photo Diagnosis</span>
             </div>
             <div class="sidebar-item" data-view="bookings">
               <span><i data-lucide="calendar" class="lucide-xs"></i></span>
@@ -119,6 +130,39 @@ export const CustomerFrontend = {
         <div>
           <h1>Find Verified Professionals</h1>
           <p>Book expert electricians, plumbers, carpenters, and technicians in <strong>${esc(localityObj.name)}</strong> with upfront pricing.</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Cards: AI Photo Diagnosis & Live Interactive Map -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.75rem;">
+        <div style="background: linear-gradient(135deg, rgba(26, 51, 0, 0.05), rgba(213, 245, 194, 0.35)); border: 1.5px solid var(--accent-primary); border-radius: 12px; padding: 1.15rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: var(--shadow-subtle);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.4rem; font-weight: 800; font-size: 1.05rem; color: var(--text-primary); margin-bottom: 0.2rem;">
+              <span>📸</span> AI Photo Diagnosis
+              <span class="badge" style="background: var(--accent-primary); color: white; font-size: 0.65rem;">Gemini</span>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0; line-height: 1.3;">
+              Upload a picture of any broken fixture. AI identifies category, likely materials &amp; Mumbai rate estimate.
+            </p>
+          </div>
+          <button class="btn btn-primary btn-sm" id="hero-btn-ai-photo" style="flex-shrink: 0; white-space: nowrap;">
+            Diagnose →
+          </button>
+        </div>
+
+        <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(219, 234, 254, 0.4)); border: 1.5px solid #2563eb; border-radius: 12px; padding: 1.15rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: var(--shadow-subtle);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.4rem; font-weight: 800; font-size: 1.05rem; color: #1e40af; margin-bottom: 0.2rem;">
+              <span>🗺️</span> Interactive Live Map
+              <span class="badge" style="background: #2563eb; color: white; font-size: 0.65rem;">OSM Free</span>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0; line-height: 1.3;">
+              Explore workers on map with live distance, Nominatim address search &amp; live OSRM turn-by-turn tracking.
+            </p>
+          </div>
+          <button class="btn btn-outline btn-sm" id="hero-btn-live-map" style="flex-shrink: 0; white-space: nowrap; border-color: #2563eb; color: #2563eb; background: white;">
+            Open Map →
+          </button>
         </div>
       </div>
 
@@ -321,6 +365,11 @@ export const CustomerFrontend = {
                     <td>
                       <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
                         <button class="btn btn-outline btn-xs view-booking-details-btn" data-id="${esc(b.id)}">Details</button>
+                        ${['Confirmed', 'Worker en route', 'Worker arrived', 'Job in progress'].includes(b.status) ? `
+                          <button class="btn btn-primary btn-xs track-on-map-btn" data-id="${esc(b.id)}" style="background: #2563eb; border-color: #2563eb; color: white;">
+                            🗺️ Live Track
+                          </button>
+                        ` : ''}
                         ${hasCounterWaiting ? `
                           <button class="btn btn-success btn-xs cust-accept-counter-btn" data-id="${esc(b.id)}" title="Accept Worker Counter Offer of ₹${lastCounter.amount}">Accept ₹${lastCounter.amount}</button>
                           <button class="btn btn-danger btn-xs cust-decline-counter-btn" data-id="${esc(b.id)}" title="Decline Counter Offer">Decline</button>
@@ -357,42 +406,93 @@ export const CustomerFrontend = {
     container.querySelectorAll('.sidebar-item').forEach(item => {
       item.addEventListener('click', () => {
         const view = item.getAttribute('data-view');
-        container.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-
-        const mainContent = container.querySelector('#customer-main-content');
-        if (view === 'discover') {
-          const workers = StorageService.getWorkers();
-          const customerLocality = StorageService.getCustomerLocality();
-          let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
-          eligible = this.sortWorkers(eligible);
-          mainContent.innerHTML = this.renderDiscoverView(eligible);
-          this.attachDiscoverEvents(container);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
-        } else if (view === 'bookings') {
-          mainContent.innerHTML = this.renderBookingsView();
-          this.attachBookingsEvents(container);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
-        } else if (view === 'notifications') {
-          mainContent.innerHTML = this.renderNotificationsView();
-          this.attachNotificationsEvents(container);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
-        } else if (view === 'compare') {
-          this.showComparisonModal(container);
-        } else if (view === 'help-centre') {
-          mainContent.innerHTML = this.renderHelpCentreView();
-          this.attachHelpEvents(container);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
-        } else if (view === 'complaints') {
-          mainContent.innerHTML = this.renderComplaintsView();
-          this.attachComplaintEvents(container);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
-        }
+        this.switchView(view, {}, container);
       });
     });
 
+    // Global listeners for cross-component events (Map, Photo Diagnosis, Booking)
+    if (!this.hasGlobalListeners) {
+      this.hasGlobalListeners = true;
+
+      window.addEventListener('localkaam:book-worker', (e) => {
+        const workerId = e.detail?.workerId;
+        if (workerId) this.showBookingModal(workerId, container);
+      });
+
+      window.addEventListener('localkaam:open-map', (e) => {
+        const service = e.detail?.service || 'all';
+        this.currentCategory = service;
+        this.switchView('map', { preselectedService: service }, container);
+      });
+
+      window.addEventListener('localkaam:book-with-diagnosis', (e) => {
+        const { diagnosis, photoUrl } = e.detail || {};
+        const workers = StorageService.getWorkers();
+        const customerLocality = StorageService.getCustomerLocality();
+        const eligible = MatchingService.getEligibleWorkers(workers, customerLocality, diagnosis?.service_category || 'all');
+        const chosenWorker = eligible.length > 0 ? eligible[0] : workers[0];
+
+        if (chosenWorker) {
+          this.showBookingModal(chosenWorker.id, container, {
+            photoUrl,
+            aiDiagnosis: diagnosis,
+            jobDescription: diagnosis ? `[AI Diagnosis: ${diagnosis.issue}]` : '',
+            urgency: diagnosis?.urgency || 'medium',
+            serviceKey: diagnosis?.service_category,
+            customerOffer: diagnosis?.price_min
+          });
+        } else {
+          Toast.show('No online workers available for this category. Opening map...', 'info');
+          this.switchView('map', { preselectedService: diagnosis?.service_category }, container);
+        }
+      });
+    }
+
     this.attachDiscoverEvents(container);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+  },
+
+  switchView(viewName, options = {}, container) {
+    const sidebar = container.querySelector('.sidebar');
+    if (sidebar) {
+      sidebar.querySelectorAll('.sidebar-item').forEach(i => {
+        i.classList.toggle('active', i.getAttribute('data-view') === viewName);
+      });
+    }
+
+    const mainContent = container.querySelector('#customer-main-content');
+    if (!mainContent) return;
+
+    if (viewName !== 'map') CustomerMap.cleanup();
+
+    if (viewName === 'discover') {
+      const workers = StorageService.getWorkers();
+      const customerLocality = StorageService.getCustomerLocality();
+      let eligible = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
+      eligible = this.sortWorkers(eligible);
+      mainContent.innerHTML = this.renderDiscoverView(eligible);
+      this.attachDiscoverEvents(container);
+    } else if (viewName === 'map') {
+      CustomerMap.mount(mainContent, options);
+    } else if (viewName === 'photo') {
+      PhotoDiagnosis.render(mainContent);
+    } else if (viewName === 'bookings') {
+      mainContent.innerHTML = this.renderBookingsView();
+      this.attachBookingsEvents(container);
+    } else if (viewName === 'notifications') {
+      mainContent.innerHTML = this.renderNotificationsView();
+      this.attachNotificationsEvents(container);
+    } else if (viewName === 'compare') {
+      this.showComparisonModal(container);
+    } else if (viewName === 'help-centre') {
+      mainContent.innerHTML = this.renderHelpCentreView();
+      this.attachHelpEvents(container);
+    } else if (viewName === 'complaints') {
+      mainContent.innerHTML = this.renderComplaintsView();
+      this.attachComplaintEvents(container);
+    }
+
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
   },
 
   getSupportCategoryIcon(categoryId) {
@@ -455,6 +555,16 @@ export const CustomerFrontend = {
         this._refreshDiscoverResults(container);
       });
     });
+
+    const heroAiBtn = container.querySelector('#hero-btn-ai-photo');
+    if (heroAiBtn) {
+      heroAiBtn.addEventListener('click', () => this.switchView('photo', {}, container));
+    }
+
+    const heroMapBtn = container.querySelector('#hero-btn-live-map');
+    if (heroMapBtn) {
+      heroMapBtn.addEventListener('click', () => this.switchView('map', {}, container));
+    }
 
     this.attachDiscoverResultEvents(container);
   },
@@ -691,6 +801,14 @@ export const CustomerFrontend = {
   },
 
   attachBookingsEvents(container) {
+    container.querySelectorAll('.track-on-map-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const bookingId = btn.getAttribute('data-id');
+        const booking = StorageService.getBookings().find(b => b.id === bookingId);
+        if (booking) this.switchView('map', { trackingBooking: booking }, container);
+      });
+    });
+
     const emptyDiscoverBtn = container.querySelector('#empty-discover-btn');
     if (emptyDiscoverBtn) {
       emptyDiscoverBtn.addEventListener('click', () => {
@@ -1183,7 +1301,7 @@ export const CustomerFrontend = {
     modal.querySelector('#close-profile-btn').onclick = () => modal.remove();
   },
 
-  showBookingModal(workerId, container) {
+  showBookingModal(workerId, container, prefillOptions = {}) {
     const workers = StorageService.getWorkers();
     const worker = workers.find(w => w.id === workerId);
     if (!worker) return;
@@ -1203,7 +1321,10 @@ export const CustomerFrontend = {
     }
 
     const specialities = worker.specialities || {};
-    const firstInfo = Object.values(specialities)[0] || { startingPrice: 350, visitingCharge: 100 };
+    const defaultSpecKey = (prefillOptions.serviceKey && specialities[prefillOptions.serviceKey])
+      ? prefillOptions.serviceKey
+      : (Object.keys(specialities)[0] || 'general');
+    const firstInfo = specialities[defaultSpecKey] || { startingPrice: 350, visitingCharge: 100, tasks: ['General Repair'] };
 
     const modal = document.createElement('div');
     modal.className = 'ui-overlay modal-overlay';
@@ -1239,6 +1360,27 @@ export const CustomerFrontend = {
           </div>
         </div>
 
+        ${prefillOptions.photoUrl ? `
+          <!-- Attached AI Photo Diagnosis Preview -->
+          <div style="display: flex; gap: 0.85rem; align-items: center; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 16px;">
+            <img src="${prefillOptions.photoUrl}" alt="Problem preview" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; border: 1.5px solid #3b82f6; flex-shrink: 0;" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 2px;">
+                <span class="badge" style="background: #2563eb; color: white; font-size: 0.7rem;">📸 AI Diagnosis Attached</span>
+                ${prefillOptions.aiDiagnosis?.urgency === 'emergency' ? '<span class="badge" style="background: #dc2626; color: white; font-size: 0.7rem;">🚨 Emergency</span>' : ''}
+              </div>
+              <div style="font-weight: 700; font-size: 0.88rem; color: #1e40af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${esc(prefillOptions.aiDiagnosis?.issue || prefillOptions.jobDescription || 'Household Issue')}
+              </div>
+              ${prefillOptions.aiDiagnosis ? `
+                <div style="font-size: 0.75rem; color: #15803d; font-weight: 600; margin-top: 2px;">
+                  Estimated Rate: ₹${prefillOptions.aiDiagnosis.price_min} – ₹${prefillOptions.aiDiagnosis.price_max}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        ` : ''}
+
         <form id="booking-form" style="display: flex; flex-direction: column; gap: 14px;">
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
             <div class="ui-field">
@@ -1246,7 +1388,7 @@ export const CustomerFrontend = {
               <select id="book-category" class="ui-select form-select">
                 ${Object.keys(specialities).map(sk => {
                   const catObj = CATEGORIES.find(c => c.id === sk) || { name: sk };
-                  return `<option value="${esc(sk)}">${esc(catObj.name)}</option>`;
+                  return `<option value="${esc(sk)}" ${sk === defaultSpecKey ? 'selected' : ''}>${esc(catObj.name)}</option>`;
                 }).join('')}
               </select>
             </div>
@@ -1260,7 +1402,7 @@ export const CustomerFrontend = {
 
           <div class="ui-field">
             <label class="ui-label" for="job-desc">Problem Scope</label>
-            <textarea id="job-desc" class="ui-textarea form-control" rows="2" placeholder="Briefly describe what needs fixing..." required>Need prompt assistance for repair work.</textarea>
+            <textarea id="job-desc" class="ui-textarea form-control" rows="2" placeholder="Briefly describe what needs fixing..." required>${esc(prefillOptions.jobDescription || 'Need prompt assistance for repair work.')}</textarea>
           </div>
 
           <div class="ui-field">
@@ -1306,7 +1448,7 @@ export const CustomerFrontend = {
               </label>
               <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
                 <span style="font-weight: 700; color: var(--muted);">₹</span>
-                <input type="number" id="cust-custom-offer" class="ui-input form-control" placeholder="Leave empty for standard rate" min="100" max="25000" style="min-height:38px;padding:6px 10px;font-size:0.9rem;">
+                <input type="number" id="cust-custom-offer" class="ui-input form-control" placeholder="Leave empty for standard rate" min="100" max="25000" value="${prefillOptions.customerOffer || ''}" style="min-height:38px;padding:6px 10px;font-size:0.9rem;">
               </div>
             </div>
           </div>
@@ -1362,18 +1504,24 @@ export const CustomerFrontend = {
       const customerOffer = customOfferVal ? parseFloat(customOfferVal) : null;
 
       const customerProfile = AuthService.getProfile() || {};
+      const customerLocalityId = StorageService.getCustomerLocality();
+      const localityInfo = LOCALITIES.find(l => l.id === customerLocalityId);
       const customerData = {
         id: customerProfile.id || null,
         customerId: customerProfile.id || null,
         name: customerProfile.fullName || customerProfile.full_name || 'Customer',
         phone: customerProfile.phone || '+91 98765 43210',
         address: modal.querySelector('#cust-address').value,
-        locality: StorageService.getCustomerLocality()
+        locality: customerLocalityId,
+        coordinates: localityInfo ? { lat: localityInfo.lat, lng: localityInfo.lng } : null
       };
       const bookingDetails = {
         serviceKey: sk,
         serviceTask: taskSelect.value,
         jobDescription: modal.querySelector('#job-desc').value,
+        photoUrl: prefillOptions.photoUrl || null,
+        aiDiagnosis: prefillOptions.aiDiagnosis || null,
+        urgency: prefillOptions.urgency || (prefillOptions.aiDiagnosis ? prefillOptions.aiDiagnosis.urgency : 'medium'),
         bookingType: 'scheduled',
         appointmentDate: modal.querySelector('#book-date').value,
         appointmentTime: modal.querySelector('#book-time').value,
@@ -1519,6 +1667,22 @@ export const CustomerFrontend = {
           <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Service Address</strong><br>${esc(booking.address)} (${esc(booking.locality?.toUpperCase())})</div>
           <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Slot</strong><br>${esc(booking.appointmentDate)} @ ${esc(booking.appointmentTime)}</div>
           <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Agreed Amount</strong><br><strong style="font-size: 1.1rem; color: var(--text-primary);">₹${booking.agreedPrice}</strong></div>
+          ${booking.photoUrl ? `
+            <div style="margin-top: 4px;">
+              <strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Attached Problem Photo</strong><br>
+              <img src="${esc(booking.photoUrl)}" alt="Problem photo" style="max-height: 140px; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 4px; object-fit: cover; max-width: 100%;">
+            </div>
+          ` : ''}
+          ${booking.aiDiagnosis ? `
+            <div style="background: var(--bg-card); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); margin-top: 4px;">
+              <strong style="font-size: 0.8rem; color: #15803d;">🤖 AI Diagnosis:</strong> ${esc(booking.aiDiagnosis.issue || 'Identified')}<br>
+              <small style="color: var(--text-muted);">
+                Estimated Price: ₹${booking.aiDiagnosis.price_min} – ₹${booking.aiDiagnosis.price_max} · 
+                Urgency: <span class="diagnosis-urgency-badge urgency-${esc(booking.aiDiagnosis.urgency || 'medium')}" style="font-size: 0.65rem; padding: 2px 6px;">${esc((booking.aiDiagnosis.urgency || 'medium').toUpperCase())}</span>
+                ${booking.aiDiagnosis.estimated_duration_minutes ? ` · ~${booking.aiDiagnosis.estimated_duration_minutes} min` : ''}
+              </small>
+            </div>
+          ` : ''}
         </div>
 
         <!-- Counter Offer History if present -->
@@ -1812,12 +1976,15 @@ export const CustomerFrontend = {
         } else {
           const expiry = new Date(data.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           const label = {
-            sent: '📱 OTP sent to your registered phone via SMS.',
-            dev_console: '📱 OTP generated (sent to registered phone).',
-            failed: '⚠️ SMS delivery failed. Use Resend OTP.',
-            pending: '⏳ Sending OTP...'
+            sent: 'OTP sent to your registered phone via SMS.',
+            dev_console: 'OTP generated (SMS not configured — code shown below).',
+            failed: 'SMS delivery failed. Use Resend OTP.',
+            pending: 'Sending OTP...'
           }[data.deliveryStatus] || 'OTP generated.';
-          statusEl.innerHTML = `<span style="color:#166534;">${label} <span style="font-weight:normal;color:#4b5563;">(Valid until ${expiry})</span></span>`;
+          const otpHtml = data.otp
+            ? `<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="color:#4b5563;font-weight:600;">Your arrival code:</span><strong style="font-family:'JetBrains Mono',monospace;font-size:1.2rem;letter-spacing:0.12em;color:#1a3300;background:#ffe95c;padding:2px 10px;border-radius:8px;">${esc(data.otp)}</strong><span style="color:#4b5563;">Share it verbally with the technician.</span></div>`
+            : '';
+          statusEl.innerHTML = `<span style="color:#166534;">${label} <span style="font-weight:normal;color:#4b5563;">(Valid until ${expiry})</span></span>${otpHtml}`;
         }
       } catch (e) {
         statusEl.textContent = '';
