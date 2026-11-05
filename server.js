@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { INITIAL_WORKERS, INITIAL_BOOKINGS, INITIAL_REVIEWS, INITIAL_COMPLAINTS } from './data.js';
+import { sendArrivalOtpSms, isSmsConfigured } from './smsService.js';
 
 // Load environment variables from .env if present
 if (typeof process.loadEnvFile === 'function') {
@@ -43,6 +44,29 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
   CREATE INDEX IF NOT EXISTS idx_notifications_booking_id ON notifications(booking_id);
+
+  -- ───────────────────────────────────────────────────────
+  -- Booking Arrival OTPs  (server-generated, hash-only)
+  -- ───────────────────────────────────────────────────────
+  CREATE TABLE IF NOT EXISTS booking_otps (
+    id              TEXT PRIMARY KEY,
+    booking_id      TEXT NOT NULL,
+    customer_id     TEXT NOT NULL,
+    worker_id       TEXT NOT NULL,
+    otp_hash        TEXT NOT NULL,
+    expires_at      INTEGER NOT NULL,
+    attempts        INTEGER NOT NULL DEFAULT 0,
+    max_attempts    INTEGER NOT NULL DEFAULT 5,
+    consumed_at     INTEGER,
+    delivery_status TEXT NOT NULL DEFAULT 'pending',
+    created_at      INTEGER NOT NULL,
+    updated_at      INTEGER NOT NULL,
+    UNIQUE(booking_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_otps_booking  ON booking_otps(booking_id);
+  CREATE INDEX IF NOT EXISTS idx_otps_customer ON booking_otps(customer_id);
+  CREATE INDEX IF NOT EXISTS idx_otps_worker   ON booking_otps(worker_id);
 `);
 
 const stmtGet = db.prepare('SELECT value FROM store WHERE key = ?');
@@ -74,6 +98,42 @@ export const stmtMarkAllNotificationsRead = db.prepare(`
 export const stmtClearNotifications = db.prepare(`
   DELETE FROM notifications
 `);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OTP prepared statements
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const stmtUpsertOtp = db.prepare(`
+  INSERT INTO booking_otps
+    (id, booking_id, customer_id, worker_id, otp_hash, expires_at, attempts, max_attempts,
+     consumed_at, delivery_status, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, 0, 5, NULL, ?, ?, ?)
+  ON CONFLICT(booking_id) DO UPDATE SET
+    otp_hash        = excluded.otp_hash,
+    expires_at      = excluded.expires_at,
+    attempts        = 0,
+    consumed_at     = NULL,
+    delivery_status = excluded.delivery_status,
+    updated_at      = excluded.updated_at
+`);
+
+export const stmtGetOtpByBooking = db.prepare(`
+  SELECT * FROM booking_otps WHERE booking_id = ?
+`);
+
+export const stmtIncrementAttempts = db.prepare(`
+  UPDATE booking_otps SET attempts = attempts + 1, updated_at = ? WHERE booking_id = ?
+`);
+
+export const stmtConsumeOtp = db.prepare(`
+  UPDATE booking_otps SET consumed_at = ?, updated_at = ? WHERE booking_id = ?
+`);
+
+export const stmtUpdateOtpDelivery = db.prepare(`
+  UPDATE booking_otps SET delivery_status = ?, updated_at = ? WHERE booking_id = ?
+`);
+
+export const stmtClearOtps = db.prepare(`DELETE FROM booking_otps`);
 
 export function getStore(key, fallback) {
   try {
@@ -614,6 +674,16 @@ export const server = http.createServer(async (req, res) => {
         const prevStatus = existing.status;
         const newStatus = updatedBooking.status;
 
+        // Security rule: Non-admin users cannot bypass arrival OTP verification to jump into "Worker arrived"
+        if (newStatus === 'Worker arrived' && prevStatus !== 'Worker arrived' && user.role !== 'admin') {
+          const otpRecord = stmtGetOtpByBooking.get(bookingId);
+          if (!otpRecord || !otpRecord.consumed_at) {
+            return sendJson(res, 403, {
+              error: 'Forbidden: Booking cannot transition to "Worker arrived" without valid customer OTP verification via /api/bookings/:id/verify-arrival.'
+            });
+          }
+        }
+
         bookings[idx] = { ...existing, ...updatedBooking };
         setStore('localkaam_bookings', bookings);
         broadcastEvent('BOOKINGS_UPDATED', { key: 'localkaam_bookings', value: bookings });
@@ -798,6 +868,7 @@ export const server = http.createServer(async (req, res) => {
     setStore('localkaam_reviews', INITIAL_REVIEWS);
     setStore('localkaam_complaints', INITIAL_COMPLAINTS);
     try { stmtClearNotifications.run(); } catch(e) {}
+    try { stmtClearOtps.run(); } catch(e) {}
     broadcastEvent('RESET', {
       workers: INITIAL_WORKERS,
       bookings: INITIAL_BOOKINGS,
@@ -805,6 +876,306 @@ export const server = http.createServer(async (req, res) => {
       complaints: INITIAL_COMPLAINTS
     });
     return sendJson(res, 200, { success: true, message: 'Database reset to initial demo data' });
+  }
+
+  // ══════════════════════════════════════════════════════
+  // BOOKING ARRIVAL OTP ENDPOINTS  (Protected)
+  // ══════════════════════════════════════════════════════
+
+  /**
+   * POST /api/bookings/:id/generate-arrival-otp
+   * Called automatically when the worker accepts a booking.
+   * Generates a cryptographically secure 6-digit OTP, stores its SHA-256 hash,
+   * and sends it to the customer's registered phone via SMS.
+   *
+   * Auth: worker who owns the booking  OR  admin.
+   */
+  const otpGenerateMatch = pathname.match(/^\/api\/bookings\/([^/]+)\/generate-arrival-otp$/);
+  if (otpGenerateMatch && req.method === 'POST') {
+    const user = await requireAuth(req, res);
+    if (!user) return;
+
+    const bookingId = otpGenerateMatch[1];
+    const bookings  = getStore('localkaam_bookings', INITIAL_BOOKINGS);
+    const booking   = bookings.find(b => b.id === bookingId);
+
+    if (!booking) return sendJson(res, 404, { error: 'Booking not found' });
+
+    const isWorker = (booking.workerId === user.id || booking.worker_id === user.id);
+    if (!isWorker && user.role !== 'admin') {
+      return sendJson(res, 403, { error: 'Forbidden: only the assigned worker can generate the arrival OTP' });
+    }
+
+    // Only generate after the booking has been accepted (status = Confirmed)
+    const acceptedStatuses = ['Confirmed', 'Accepted', 'Worker en route'];
+    if (!acceptedStatuses.includes(booking.status)) {
+      return sendJson(res, 400, { error: `OTP can only be generated for accepted bookings. Current status: ${booking.status}` });
+    }
+
+    // Check resend cooldown (60 seconds) using existing OTP record
+    const existingOtp = stmtGetOtpByBooking.get(bookingId);
+    if (existingOtp) {
+      const secondsSinceLast = (Date.now() - existingOtp.updated_at) / 1000;
+      if (secondsSinceLast < 60) {
+        return sendJson(res, 429, {
+          error: 'Resend cooldown active',
+          retryAfterSeconds: Math.ceil(60 - secondsSinceLast)
+        });
+      }
+    }
+
+    // Generate cryptographically secure 6-digit OTP
+    const otpPlain = String(crypto.randomInt(100000, 999999));
+
+    // Hash the OTP — only the hash is ever stored
+    const otpHash = crypto.createHash('sha256').update(otpPlain).digest('hex');
+
+    const now       = Date.now();
+    const expiresAt = now + 30 * 60 * 1000; // 30 minutes
+    const otpId     = `otp_${bookingId}_${now}`;
+
+    stmtUpsertOtp.run(
+      otpId, bookingId,
+      booking.customerId || booking.customer_id,
+      booking.workerId   || booking.worker_id,
+      otpHash,
+      expiresAt,
+      'pending',
+      now, now
+    );
+
+    // Send SMS to customer's phone
+    const customerPhone = booking.customerPhone || booking.customer_phone || '';
+    let smsResult = { success: false, error: 'SMS_NOT_CONFIGURED' };
+
+    if (customerPhone && isSmsConfigured()) {
+      smsResult = await sendArrivalOtpSms(customerPhone, otpPlain, bookingId);
+      const deliveryStatus = smsResult.success ? 'sent' : 'failed';
+      stmtUpdateOtpDelivery.run(deliveryStatus, Date.now(), bookingId);
+    } else if (!isSmsConfigured()) {
+      // Dev/demo mode: log OTP to server console only (never to client response)
+      console.log(`[DEV OTP] Booking ${bookingId}: OTP is ${otpPlain} (SMS not configured)`);
+      stmtUpdateOtpDelivery.run('dev_console', Date.now(), bookingId);
+    }
+
+    // Always return success to worker, even if SMS failed (customer sees OTP in dashboard)
+    return sendJson(res, 200, {
+      success: true,
+      bookingId,
+      smsDelivered: smsResult.success,
+      smsConfigure: isSmsConfigured(),
+      expiresAt: new Date(expiresAt).toISOString(),
+      message: smsResult.success
+        ? 'OTP sent to customer via SMS'
+        : (isSmsConfigured() ? 'OTP generated but SMS delivery failed — customer can view in dashboard' : 'OTP generated (SMS not configured — dev mode)')
+    });
+  }
+
+  /**
+   * POST /api/bookings/:id/verify-arrival
+   * Worker submits the OTP the customer shared verbally.
+   * On success, transitions booking to "Worker arrived".
+   *
+   * Auth: assigned worker only.
+   */
+  const otpVerifyMatch = pathname.match(/^\/api\/bookings\/([^/]+)\/verify-arrival$/);
+  if (otpVerifyMatch && req.method === 'POST') {
+    const user = await requireAuth(req, res);
+    if (!user) return;
+
+    const bookingId = otpVerifyMatch[1];
+    const body = await readBody(req).catch(() => null);
+    const submittedOtp = (body?.otp || '').toString().trim();
+
+    if (!submittedOtp || !/^\d{6}$/.test(submittedOtp)) {
+      return sendJson(res, 400, { error: 'Invalid OTP format. Must be a 6-digit number.' });
+    }
+
+    const bookings = getStore('localkaam_bookings', INITIAL_BOOKINGS);
+    const booking  = bookings.find(b => b.id === bookingId);
+
+    if (!booking) return sendJson(res, 404, { error: 'Booking not found' });
+
+    const isWorker = (booking.workerId === user.id || booking.worker_id === user.id);
+    if (!isWorker) {
+      return sendJson(res, 403, { error: 'Forbidden: only the assigned worker can verify arrival' });
+    }
+
+    // Retrieve OTP record
+    const otpRecord = stmtGetOtpByBooking.get(bookingId);
+    if (!otpRecord) {
+      return sendJson(res, 400, { error: 'No OTP generated for this booking. Please generate one first.' });
+    }
+
+    // Single-use check
+    if (otpRecord.consumed_at) {
+      return sendJson(res, 400, { error: 'This OTP has already been used.' });
+    }
+
+    // Expiry check
+    if (Date.now() > otpRecord.expires_at) {
+      return sendJson(res, 400, { error: 'OTP has expired. Please request a new OTP.' });
+    }
+
+    // Attempt-limit check
+    if (otpRecord.attempts >= otpRecord.max_attempts) {
+      return sendJson(res, 429, { error: 'Maximum OTP attempts exceeded. Please request a new OTP.' });
+    }
+
+    // Timing-safe hash comparison
+    const submittedHash = crypto.createHash('sha256').update(submittedOtp).digest('hex');
+    const storedHashBuf   = Buffer.from(otpRecord.otp_hash, 'hex');
+    const submittedHashBuf = Buffer.from(submittedHash, 'hex');
+
+    const isValid = storedHashBuf.length === submittedHashBuf.length &&
+      crypto.timingSafeEqual(storedHashBuf, submittedHashBuf);
+
+    const now = Date.now();
+    stmtIncrementAttempts.run(now, bookingId);
+
+    if (!isValid) {
+      const remaining = otpRecord.max_attempts - otpRecord.attempts - 1;
+      return sendJson(res, 400, {
+        error: 'Incorrect OTP.',
+        attemptsRemaining: remaining > 0 ? remaining : 0
+      });
+    }
+
+    // ✅ OTP is valid — consume it atomically and transition booking status
+    stmtConsumeOtp.run(now, now, bookingId);
+
+    const idx = bookings.findIndex(b => b.id === bookingId);
+    const prevStatus = bookings[idx].status;
+    bookings[idx] = { ...bookings[idx], status: 'Worker arrived', arrivedAt: new Date(now).toISOString() };
+    setStore('localkaam_bookings', bookings);
+    broadcastEvent('BOOKINGS_UPDATED', { key: 'localkaam_bookings', value: bookings });
+
+    // Trigger the WORKER_ARRIVED notification to the customer
+    handleBookingStatusNotification(bookings[idx], prevStatus, 'Worker arrived');
+
+    return sendJson(res, 200, {
+      success: true,
+      bookingId,
+      status: 'Worker arrived',
+      message: 'OTP verified. Booking status updated to Worker arrived.'
+    });
+  }
+
+  /**
+   * POST /api/bookings/:id/resend-arrival-otp
+   * Customer requests a new OTP (previous one is invalidated).
+   * Auth: the customer who owns the booking.
+   */
+  const otpResendMatch = pathname.match(/^\/api\/bookings\/([^/]+)\/resend-arrival-otp$/);
+  if (otpResendMatch && req.method === 'POST') {
+    const user = await requireAuth(req, res);
+    if (!user) return;
+
+    const bookingId = otpResendMatch[1];
+    const bookings  = getStore('localkaam_bookings', INITIAL_BOOKINGS);
+    const booking   = bookings.find(b => b.id === bookingId);
+
+    if (!booking) return sendJson(res, 404, { error: 'Booking not found' });
+
+    const isCustomer = (booking.customerId === user.id || booking.customer_id === user.id);
+    if (!isCustomer && user.role !== 'admin') {
+      return sendJson(res, 403, { error: 'Forbidden: only the booking customer can resend the OTP' });
+    }
+
+    // Resend cooldown: 60 seconds between resends
+    const existingOtp = stmtGetOtpByBooking.get(bookingId);
+    if (existingOtp) {
+      const secondsSinceLast = (Date.now() - existingOtp.updated_at) / 1000;
+      if (secondsSinceLast < 60) {
+        return sendJson(res, 429, {
+          error: 'Please wait before requesting another OTP.',
+          retryAfterSeconds: Math.ceil(60 - secondsSinceLast)
+        });
+      }
+    }
+
+    const acceptedStatuses = ['Confirmed', 'Accepted', 'Worker en route'];
+    if (!acceptedStatuses.includes(booking.status)) {
+      return sendJson(res, 400, { error: 'OTP resend is only available for active bookings.' });
+    }
+
+    // Issue fresh OTP (invalidates old one via upsert)
+    const otpPlain  = String(crypto.randomInt(100000, 999999));
+    const otpHash   = crypto.createHash('sha256').update(otpPlain).digest('hex');
+    const now       = Date.now();
+    const expiresAt = now + 30 * 60 * 1000;
+    const otpId     = `otp_${bookingId}_${now}`;
+
+    stmtUpsertOtp.run(
+      otpId, bookingId,
+      booking.customerId || booking.customer_id,
+      booking.workerId   || booking.worker_id,
+      otpHash,
+      expiresAt,
+      'pending',
+      now, now
+    );
+
+    const customerPhone = booking.customerPhone || booking.customer_phone || '';
+    let smsResult = { success: false };
+
+    if (customerPhone && isSmsConfigured()) {
+      smsResult = await sendArrivalOtpSms(customerPhone, otpPlain, bookingId);
+      stmtUpdateOtpDelivery.run(smsResult.success ? 'sent' : 'failed', Date.now(), bookingId);
+    } else {
+      console.log(`[DEV OTP] Resend for booking ${bookingId}: OTP is ${otpPlain}`);
+      stmtUpdateOtpDelivery.run('dev_console', Date.now(), bookingId);
+    }
+
+    return sendJson(res, 200, {
+      success: true,
+      bookingId,
+      smsDelivered: smsResult.success,
+      expiresAt: new Date(expiresAt).toISOString(),
+      message: smsResult.success ? 'New OTP sent to your registered phone number.' : 'New OTP generated (SMS not configured).'
+    });
+  }
+
+  /**
+   * GET /api/bookings/:id/otp-status
+   * Returns OTP metadata (NO hash, NO plaintext) for the customer dashboard display.
+   * Auth: booking customer or booking worker or admin.
+   */
+  const otpStatusMatch = pathname.match(/^\/api\/bookings\/([^/]+)\/otp-status$/);
+  if (otpStatusMatch && req.method === 'GET') {
+    const user = await requireAuth(req, res);
+    if (!user) return;
+
+    const bookingId = otpStatusMatch[1];
+    const bookings  = getStore('localkaam_bookings', INITIAL_BOOKINGS);
+    const booking   = bookings.find(b => b.id === bookingId);
+
+    if (!booking) return sendJson(res, 404, { error: 'Booking not found' });
+
+    const isCustomer = (booking.customerId === user.id || booking.customer_id === user.id);
+    const isWorker   = (booking.workerId === user.id   || booking.worker_id === user.id);
+    if (!isCustomer && !isWorker && user.role !== 'admin') {
+      return sendJson(res, 403, { error: 'Forbidden' });
+    }
+
+    const otpRecord = stmtGetOtpByBooking.get(bookingId);
+    if (!otpRecord) {
+      return sendJson(res, 200, { exists: false });
+    }
+
+    const now = Date.now();
+    return sendJson(res, 200, {
+      exists: true,
+      bookingId,
+      deliveryStatus: otpRecord.delivery_status,
+      isExpired: now > otpRecord.expires_at,
+      isConsumed: Boolean(otpRecord.consumed_at),
+      expiresAt: new Date(otpRecord.expires_at).toISOString(),
+      attemptsUsed: otpRecord.attempts,
+      maxAttempts: otpRecord.max_attempts,
+      createdAt: new Date(otpRecord.created_at).toISOString()
+      // otp_hash is intentionally NEVER returned
+    });
   }
 
   // ----------------------------------------------------

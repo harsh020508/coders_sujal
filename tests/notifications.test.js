@@ -422,4 +422,10 @@ test('LocalKaam Real-Time Order Notifications Test Suite', async (t) => {
     assert.strictEqual(res3, null, 'Null booking must produce null');
   });
 
+  t.after(() => {
+    try {
+      NotificationService.destroy();
+    } catch(e) {}
+  });
+
 });

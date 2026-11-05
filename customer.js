@@ -307,6 +307,7 @@ export const CustomerFrontend = {
                     </td>
                     <td>
                       <span class="badge ${statusBadgeClass}">${esc(b.status)}</span>
+                  ${this.renderOtpStatusPanel(b)}
                     </td>
                     <td>
                       <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
@@ -675,6 +676,45 @@ export const CustomerFrontend = {
         this.showReviewModal(bookingId, container);
       });
     });
+    // ── OTP: resend handler (customer dashboard)
+    container.querySelectorAll('.resend-arrival-otp-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const bookingId = btn.getAttribute('data-booking-id');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+        try {
+          const { AuthService } = await import('./authService.js');
+          const session = AuthService.getSession();
+          if (!session?.access_token) {
+            Toast.show('Please sign in to request a new OTP.', 'error');
+            btn.disabled = false; btn.textContent = originalText; return;
+          }
+          const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}/resend-arrival-otp`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            Toast.show('New OTP sent to your registered phone ✅', 'success');
+            btn.textContent = '✅ OTP Sent';
+          } else if (res.status === 429) {
+            Toast.show(`Please wait ${data.retryAfterSeconds || 60}s before resending.`, 'info');
+            btn.disabled = false; btn.textContent = originalText;
+          } else {
+            Toast.show(data.error || 'Failed to resend OTP.', 'error');
+            btn.disabled = false; btn.textContent = originalText;
+          }
+        } catch (e) {
+          Toast.show('Network error. Please try again.', 'error');
+          btn.disabled = false; btn.textContent = originalText;
+        }
+      });
+    });
+
+    // ── OTP: async load OTP status panels
+    this.loadOtpStatusForBookings(container).catch(() => {});
+
   },
 
   getFAQsForCategory(category) {
@@ -1546,6 +1586,79 @@ export const CustomerFrontend = {
       this.attachEvents(container);
     };
   },
+
+  /**
+   * Render a compact OTP info panel for active booking cards.
+   * Shown to customers for Confirmed/Accepted/Worker en route bookings.
+   */
+  renderOtpStatusPanel(booking) {
+    const statuses = ['Confirmed', 'Accepted', 'Worker en route'];
+    if (!statuses.includes(booking.status)) return '';
+    return `
+      <div class="otp-status-panel" data-otp-booking-id="${esc(booking.id)}"
+        style="margin-top:10px;padding:10px 14px;border-radius:10px;background:#eff6ff;border:1.5px solid #bfdbfe;display:flex;align-items:flex-start;gap:10px;">
+        <span style="font-size:1.3rem;flex-shrink:0;">🔐</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:0.85rem;color:#1e40af;margin-bottom:2px;">Arrival OTP Verification</div>
+          <p style="font-size:0.8rem;color:#1e3a8a;margin:0 0 6px;line-height:1.45;">
+            Your service provider will ask for a <strong>6-digit OTP</strong> upon arrival to confirm they've reached your location. It is sent to your registered phone.
+          </p>
+          <div class="otp-panel-status-${esc(booking.id)}" style="font-size:0.78rem;color:#374151;margin-bottom:6px;">
+            <span style="color:#6b7280;">Checking OTP status…</span>
+          </div>
+          <button class="btn btn-outline btn-xs resend-arrival-otp-btn"
+            data-booking-id="${esc(booking.id)}"
+            style="font-size:0.75rem;padding:2px 10px;border-color:#2563eb;color:#2563eb;">
+            🔁 Resend OTP
+          </button>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Load OTP status for all booking OTP panels asynchronously after render.
+   * Updates status display without exposing sensitive data.
+   */
+  async loadOtpStatusForBookings(container) {
+    const panels = container.querySelectorAll('[data-otp-booking-id]');
+    if (!panels.length) return;
+    let session = null;
+    try {
+      const { AuthService } = await import('./authService.js');
+      session = AuthService.getSession();
+    } catch (e) {}
+
+    for (const panel of panels) {
+      const bookingId = panel.getAttribute('data-otp-booking-id');
+      const statusEl = panel.querySelector(`.otp-panel-status-${bookingId}`);
+      if (!statusEl) continue;
+      try {
+        const headers = session?.access_token
+          ? { 'Authorization': `Bearer ${session.access_token}` } : {};
+        const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}/otp-status`, { headers });
+        if (!res.ok) { statusEl.textContent = ''; continue; }
+        const data = await res.json();
+        if (!data.exists) {
+          statusEl.innerHTML = '<span style="color:#f59e0b;">⏳ OTP will be generated once the worker accepts your booking.</span>';
+        } else if (data.isConsumed) {
+          statusEl.innerHTML = '<span style="color:#16a34a;font-weight:700;">✅ Arrival verified — your worker has checked in!</span>';
+        } else if (data.isExpired) {
+          statusEl.innerHTML = '<span style="color:#dc2626;">⚠️ OTP expired. Click Resend OTP to get a new code.</span>';
+        } else {
+          const expiry = new Date(data.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const label = {
+            sent: '📱 OTP sent to your registered phone.',
+            dev_console: '🛠️ OTP generated (SMS not configured — dev mode).',
+            failed: '⚠️ SMS delivery failed. Use Resend OTP.',
+            pending: '⏳ Sending OTP…'
+          }[data.deliveryStatus] || 'OTP generated.';
+          statusEl.innerHTML = `<span style="color:#1e40af;">${label} Valid until ${expiry}.</span>`;
+        }
+      } catch (e) { statusEl.textContent = ''; }
+    }
+  },
+
 
   renderNotificationsView() {
     const notifications = StorageService.getNotifications();
