@@ -14,6 +14,11 @@
   background-repeat: repeat;
 }
 
+.lk-hero-single {
+  grid-template-columns: 1fr;
+  max-width: 760px;
+}
+
 .lk-eyebrow {
   display: inline-flex;
   align-items: center;
@@ -33,12 +38,12 @@
   border-radius: 2px;
 }
 
-.hero-content h1 {
+.landing-hero h1 {
   font-size: clamp(2.4rem, 5.2vw, 3.9rem);
   letter-spacing: -0.02em;
   text-wrap: balance;
 }
-.hero-content h1 .highlight {
+.landing-hero h1 .highlight {
   background: none;
   color: inherit;
   padding: 0;
