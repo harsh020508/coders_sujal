@@ -19,7 +19,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT,
-  role TEXT DEFAULT 'customer' CHECK (role IN ('customer', 'worker', 'admin')),
+  role TEXT DEFAULT 'customer' CHECK (role IN ('customer', 'worker')),
   full_name TEXT,
   phone TEXT,
   locality TEXT DEFAULT 'andheri',
@@ -329,7 +329,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
-  AFTER INSERT OR UPDATE ON auth.users
+  AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ==============================================================================

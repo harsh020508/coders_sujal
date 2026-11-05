@@ -28,6 +28,8 @@ export const WorkerFrontend = {
         currentWorkerId = myWorker.id;
         StorageService.setSelectedWorkerId(myWorker.id);
       }
+      currentWorkerId = myWorker.id;
+      StorageService.setSelectedWorkerId(myWorker.id);
     }
 
     let worker = workers.find(w => w.id === currentWorkerId) || workers[0];
@@ -45,6 +47,7 @@ export const WorkerFrontend = {
     const activeJobs = bookings.filter(b => !['Pending confirmation', 'Job completed', 'Cancelled', 'Disputed'].includes(b.status));
     const completedJobs = bookings.filter(b => b.status === 'Job completed');
     const totalEarnings = completedJobs.reduce((sum, b) => sum + (b.agreedPrice || 0), 0);
+    const currentView = this.activeView || 'profile';
 
     const view = this.currentView || 'overview';
     const isOnline = worker.available && !worker.pauseNewBookings;
@@ -1294,6 +1297,9 @@ export const WorkerFrontend = {
       targetWorker.profileCompleted = true;
       targetWorker.available = true;
       targetWorker.pauseNewBookings = false;
+      targetWorker.verificationStatus = 'Verified';
+      targetWorker.ratingAverage = targetWorker.ratingAverage || 5.0;
+      targetWorker.ratingCount = targetWorker.ratingCount || 1;
 
       StorageService.saveWorkers(workers);
       StorageService.setSelectedWorkerId(targetWorker.id);
@@ -1322,13 +1328,16 @@ export const WorkerFrontend = {
         const newW = {
           id: `w-${Date.now()}`,
           name: 'New Professional',
-          profileCompleted: false,
-          specialities: {}
+          profileCompleted: true,
+          specialities: {},
+          verificationStatus: 'Pending',
+          available: true
         };
         workers.push(newW);
         StorageService.saveWorkers(workers);
         StorageService.setSelectedWorkerId(newW.id);
         this.render(container);
+        this.showSetupModal(newW, 1, () => this.render(container));
       };
     }
 
@@ -1356,6 +1365,24 @@ export const WorkerFrontend = {
         }
       });
     });
+
+    const selectWorkerManageDocsBtn = container.querySelector('#select-worker-manage-docs-btn');
+    if (selectWorkerManageDocsBtn) {
+      selectWorkerManageDocsBtn.onclick = () => {
+        const workers = StorageService.getWorkers();
+        const worker = workers.find(w => w.id === StorageService.getSelectedWorkerId()) || workers[0];
+        this.showSetupModal(worker, 2, () => this.render(container));
+      };
+    }
+
+    const openProfileSetupBtn = container.querySelector('#open-profile-setup-btn');
+    if (openProfileSetupBtn) {
+      openProfileSetupBtn.onclick = () => {
+        const workers = StorageService.getWorkers();
+        const worker = workers.find(w => w.id === StorageService.getSelectedWorkerId()) || workers[0];
+        this.showSetupModal(worker, 1, () => this.render(container));
+      };
+    }
 
     const quickToggle = container.querySelector('#quick-toggle-online');
     if (quickToggle) {
@@ -1971,6 +1998,642 @@ export const WorkerFrontend = {
       default:
         return '#3b82f6';
     }
+
+    const saveAndGotoDocsBtn = container.querySelector('#save-and-goto-docs-btn');
+    if (saveAndGotoDocsBtn) {
+      saveAndGotoDocsBtn.onclick = (e) => {
+        e.preventDefault();
+        saveProfileData();
+        Toast.show('Profile saved! Continuing to Manage Documents.', 'success');
+        this.activeView = 'manage-documents';
+        this.render(container);
+      };
+    }
+
+    const gotoStep2Btn = container.querySelector('#goto-step2-manage-docs-btn');
+    if (gotoStep2Btn) {
+      gotoStep2Btn.onclick = () => {
+        this.activeView = 'manage-documents';
+        this.render(container);
+      };
+    }
+  },
+
+  attachVerificationEvents(container, worker) {
+    // 1. Trigger file upload click
+    container.querySelectorAll('.trigger-upload-btn, .replace-doc-btn').forEach(btn => {
+      btn.onclick = () => {
+        const type = btn.getAttribute('data-type');
+        const fileInput = container.querySelector(`#file-input-${type}`);
+        if (fileInput) fileInput.click();
+      };
+    });
+
+    // 2. Handle file selection
+    container.querySelectorAll('.doc-file-input').forEach(input => {
+      input.onchange = (e) => {
+        const type = input.getAttribute('data-type');
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const workers = StorageService.getWorkers();
+          const target = workers.find(w => w.id === worker.id) || worker;
+          if (!target.documents) target.documents = {};
+
+          const fileSizeStr = file.size > 1024 * 1024 
+            ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
+            : `${Math.round(file.size / 1024)} KB`;
+
+          target.documents[type] = {
+            type,
+            title: file.name,
+            fileName: file.name,
+            fileSize: fileSizeStr,
+            uploadedAt: new Date().toISOString(),
+            status: 'Verified',
+            dataUrl: event.target.result
+          };
+          target.verificationStatus = 'Verified';
+
+          StorageService.saveWorkers(workers);
+          Toast.show(`Document "${file.name}" uploaded and verified successfully!`, 'success');
+          this.render(container);
+        };
+        reader.readAsDataURL(file);
+      };
+    });
+
+    // 3. Auto-fill demo document
+    container.querySelectorAll('.autofill-demo-doc-btn').forEach(btn => {
+      btn.onclick = () => {
+        const type = btn.getAttribute('data-type');
+        const fileName = btn.getAttribute('data-file') || `${type}_verified.pdf`;
+        const title = btn.getAttribute('data-title') || type;
+
+        const workers = StorageService.getWorkers();
+        const target = workers.find(w => w.id === worker.id) || worker;
+        if (!target.documents) target.documents = {};
+
+        target.documents[type] = {
+          type,
+          title,
+          fileName,
+          fileSize: '1.2 MB',
+          uploadedAt: new Date().toISOString(),
+          status: 'Verified'
+        };
+        target.verificationStatus = 'Verified';
+
+        StorageService.saveWorkers(workers);
+        Toast.show(`Sample document "${fileName}" verified successfully!`, 'success');
+        this.render(container);
+      };
+    });
+
+    // 4. Remove document
+    container.querySelectorAll('.remove-doc-btn').forEach(btn => {
+      btn.onclick = () => {
+        const type = btn.getAttribute('data-type');
+        if (confirm('Are you sure you want to remove this verified document?')) {
+          const workers = StorageService.getWorkers();
+          const target = workers.find(w => w.id === worker.id) || worker;
+          if (target.documents && target.documents[type]) {
+            delete target.documents[type];
+            StorageService.saveWorkers(workers);
+            Toast.show('Document removed.', 'info');
+            this.render(container);
+          }
+        }
+      };
+    });
+
+    // 5. Preview document modal
+    container.querySelectorAll('.preview-doc-btn').forEach(btn => {
+      btn.onclick = () => {
+        const type = btn.getAttribute('data-type');
+        const doc = worker.documents && worker.documents[type];
+        if (!doc) return;
+
+        this.showDocumentPreviewModal(doc, worker);
+      };
+    });
+
+    // 6. Navigation buttons
+    const backToProfileBtns = container.querySelectorAll('#back-to-profile-step-btn, #bottom-back-profile-btn');
+    backToProfileBtns.forEach(btn => {
+      btn.onclick = () => {
+        this.activeView = 'profile';
+        this.render(container);
+      };
+    });
+
+    const gotoOverviewBtn = container.querySelector('#bottom-goto-overview-btn');
+    if (gotoOverviewBtn) {
+      gotoOverviewBtn.onclick = () => {
+        this.activeView = 'overview';
+        this.render(container);
+      };
+    }
+  },
+
+  showDocumentPreviewModal(doc, worker) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.zIndex = '1200';
+    modal.innerHTML = `
+      <div class="modal-card" style="max-width: 600px;">
+        <button class="modal-close" id="close-doc-preview-modal">×</button>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
+          <div style="font-size: 2rem;">🛡️</div>
+          <div>
+            <h3 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 0.15rem;">${esc(doc.title || doc.fileName)}</h3>
+            <span class="badge" style="background: #10b981; color: white; font-size: 0.75rem;">✓ Verified Credential</span>
+          </div>
+        </div>
+
+        <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; font-size: 0.9rem; display: flex; flex-direction: column; gap: 0.6rem;">
+          <div><strong>Worker Name:</strong> ${esc(worker.name)}</div>
+          <div><strong>File Name:</strong> ${esc(doc.fileName)}</div>
+          <div><strong>File Size:</strong> ${esc(doc.fileSize || '1.2 MB')}</div>
+          <div><strong>Verification Date:</strong> ${new Date(doc.uploadedAt || Date.now()).toLocaleString()}</div>
+          <div><strong>Status:</strong> <span style="color: #10b981; font-weight: 700;">✓ Verified & Validated</span></div>
+        </div>
+
+        ${doc.dataUrl ? `
+          <div style="text-align: center; margin-bottom: 1.5rem; max-height: 350px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem;">
+            ${doc.dataUrl.startsWith('data:image/') ? `
+              <img src="${doc.dataUrl}" alt="Document Preview" style="max-width: 100%; border-radius: 4px;">
+            ` : `
+              <embed src="${doc.dataUrl}" type="application/pdf" width="100%" height="300px" />
+            `}
+          </div>
+        ` : `
+          <div style="text-align: center; padding: 2rem; background: var(--bg-primary); border-radius: 8px; margin-bottom: 1.5rem;">
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📄</div>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin: 0;">Verified digital certificate file attached and on record.</p>
+          </div>
+        `}
+
+        <div style="display: flex; justify-content: flex-end;">
+          <button class="btn btn-primary" id="close-preview-btn">Done</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    modal.querySelector('#close-doc-preview-modal').onclick = () => modal.remove();
+    modal.querySelector('#close-preview-btn').onclick = () => modal.remove();
+  },
+
+  showSetupModal(worker, initialStep = 1, onComplete) {
+    if (typeof document === 'undefined') return;
+
+    let currentStep = initialStep;
+    const existing = document.getElementById('worker-setup-modal-overlay');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'worker-setup-modal-overlay';
+    modal.className = 'modal-overlay';
+    modal.style.zIndex = '1050';
+
+    const renderModalStep = () => {
+      const workers = StorageService.getWorkers();
+      const authProfile = AuthService.getProfile();
+      let currentWorker = workers.find(w => w.id === worker.id) || worker;
+
+      if (authProfile && authProfile.role === 'worker' && authProfile.full_name) {
+        if (!currentWorker.name || currentWorker.name === 'New Professional' || currentWorker.name === 'Ramesh Kumar') {
+          currentWorker.name = authProfile.full_name;
+          if (authProfile.phone) currentWorker.phone = authProfile.phone;
+          let workersList = StorageService.getWorkers().map(w => w.id === currentWorker.id ? currentWorker : w);
+          StorageService.saveWorkers(workersList);
+        }
+      }
+
+      const docs = currentWorker.documents || {};
+      const reqDocs = REQUIRED_VERIFICATION_DOCUMENTS;
+      const uploadedCount = reqDocs.filter(d => docs[d.type]).length;
+      const isFullyVerified = uploadedCount >= 3;
+
+      modal.innerHTML = `
+        <div class="modal-card" style="max-width: 820px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 2rem; position: relative;">
+          <button class="modal-close" id="close-setup-modal" title="Close Window">×</button>
+
+          <!-- Modal Header -->
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div style="font-size: 2rem; background: var(--color-highlighter-yellow); width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">🛠️</div>
+              <div>
+                <h2 style="font-size: 1.4rem; font-weight: 800; margin: 0; font-family: 'Bricolage Grotesque', sans-serif;">Worker Profile & Document Verification</h2>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0.2rem 0 0 0;">Configuring details & verification for <strong>${esc(currentWorker.name)}</strong></p>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span class="badge" style="background: ${isFullyVerified ? '#10b981' : '#f59e0b'}; color: white; font-size: 0.75rem; padding: 4px 10px; border-radius: 999px;">
+                ${isFullyVerified ? '🛡️ Verified Pro Active' : '⏳ Verification In Progress'}
+              </span>
+            </div>
+          </div>
+
+          <!-- Stepper Tab Bar -->
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--bg-primary); padding: 6px; border-radius: 12px; border: 1px solid var(--border-color);">
+            <button type="button" class="btn ${currentStep === 1 ? 'btn-primary' : 'btn-outline'} btn-sm" id="modal-tab-step1" style="flex: 1; border-radius: 8px; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.6rem;">
+              <span>1️⃣</span> <strong>Step 1: Profile & Specialities</strong>
+            </button>
+            <button type="button" class="btn ${currentStep === 2 ? 'btn-primary' : 'btn-outline'} btn-sm" id="modal-tab-step2" style="flex: 1; border-radius: 8px; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.6rem;">
+              <span>2️⃣</span> <strong>Step 2: Manage Documents & KYC</strong>
+              <span style="font-size: 0.75rem; opacity: 0.9;">(${uploadedCount}/${reqDocs.length})</span>
+            </button>
+          </div>
+
+          ${currentStep === 1 ? `
+            <!-- Step 1: Profile & Specialities Form -->
+            <form id="modal-profile-form" style="display: flex; flex-direction: column; gap: 1.25rem;">
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                <div>
+                  <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Full Name</label>
+                  <input type="text" id="m-wp-name" class="form-control" value="${esc(currentWorker.name)}" required>
+                </div>
+                <div>
+                  <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Phone Number</label>
+                  <input type="text" id="m-wp-phone" class="form-control" value="${esc(currentWorker.phone || '')}" required>
+                </div>
+              </div>
+
+              <div>
+                <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Professional Bio</label>
+                <textarea id="m-wp-bio" class="form-control" rows="2" required>${esc(currentWorker.bio || '')}</textarea>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                <div>
+                  <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Past Experience / Portfolio <small style="color: var(--text-secondary);">(Optional)</small></label>
+                  <textarea id="m-wp-experience" class="form-control" rows="2" placeholder="e.g. 5+ years experience in Mumbai residential electricals">${esc(currentWorker.pastExperience || '')}</textarea>
+                </div>
+                <div>
+                  <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Certifications / Licenses <small style="color: var(--text-secondary);">(Optional)</small></label>
+                  <input type="text" id="m-wp-certifications" class="form-control" value="${esc(currentWorker.certifications || '')}" placeholder="e.g. ITI Certified, Electrical License">
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                <div>
+                  <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Base Locality</label>
+                  <select id="m-wp-locality" class="form-select">
+                    ${LOCALITIES.map(l => `<option value="${esc(l.id)}" ${l.id === currentWorker.baseLocality ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Service Area Description</label>
+                  <input type="text" id="m-wp-area" class="form-control" value="${esc(currentWorker.serviceArea || '')}" required>
+                </div>
+                <div>
+                  <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Service Radius (km)</label>
+                  <input type="number" id="m-wp-radius" class="form-control" value="${currentWorker.serviceRadius || 10}" min="1" max="50" required>
+                </div>
+              </div>
+
+              <!-- Specialities Checklist -->
+              <div style="border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
+                <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem;">Service Specialities & Categories</h4>
+                <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 0.75rem;">Check trade categories you are skilled to service:</p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+                  ${CATEGORIES.map(c => {
+                    const isChecked = Boolean(currentWorker.specialities && currentWorker.specialities[c.id]);
+                    return `
+                      <label style="display: flex; align-items: center; gap: 0.65rem; background: var(--bg-primary); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
+                        <input type="checkbox" name="m-wp-speciality" value="${esc(c.id)}" ${isChecked ? 'checked' : ''} style="width: 17px; height: 17px;">
+                        <div>
+                          <div style="font-weight: 600; font-size: 0.85rem;">${esc(c.icon)} ${esc(c.name)}</div>
+                          <div style="font-size: 0.7rem; color: var(--text-secondary);">Available for bookings</div>
+                        </div>
+                      </label>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- Step 1 Footer -->
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+                <button type="button" class="btn btn-outline" id="m-close-modal-btn">Skip to Dashboard</button>
+                <button type="submit" class="btn btn-primary" id="m-save-goto-step2-btn" style="background: #047857; border-color: #047857; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem;">
+                  <span>Save & Continue to Manage Documents</span>
+                  <span>→</span>
+                </button>
+              </div>
+            </form>
+          ` : `
+            <!-- Step 2: Manage Documents & Verification -->
+            <div>
+              <!-- Trust Status Overview Banner -->
+              <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(2, 132, 199, 0.08) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                  <div>
+                    <h3 style="font-size: 1.15rem; font-weight: 800; margin-bottom: 0.25rem;">
+                      ${isFullyVerified ? '✓ All Verification Requirements Met!' : 'Verification in Progress'}
+                    </h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">
+                      ${isFullyVerified ? 'Your identity, local Mumbai address, and trade skills are verified. Customers book with 100% confidence.' : 'Upload the remaining required documents to unlock maximum search visibility.'}
+                    </p>
+                  </div>
+                  <div style="text-align: right; min-width: 130px;">
+                    <div style="font-size: 1.75rem; font-weight: 800; color: #047857;">${uploadedCount} / ${reqDocs.length}</div>
+                    <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Uploaded</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Documents List Grid -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                ${reqDocs.map(docMeta => {
+                  const doc = docs[docMeta.type];
+                  const isUploaded = Boolean(doc);
+                  return `
+                    <div class="verification-card" style="background: var(--bg-card); border: 1px solid ${isUploaded ? 'rgba(16, 185, 129, 0.35)' : 'var(--border-color)'}; border-radius: var(--radius); padding: 1.15rem; display: flex; flex-direction: column; justify-content: space-between;">
+                      <div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                          <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.5rem;">${docMeta.icon}</span>
+                            <div>
+                              <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.1rem;">${esc(docMeta.title)}</h4>
+                              <span style="font-size: 0.7rem; color: var(--text-secondary);">${docMeta.required ? '<span style="color: #dc2626; font-weight: 600;">* Mandatory</span>' : '<span style="color: var(--text-secondary);">Optional Evidence</span>'}</span>
+                            </div>
+                          </div>
+                          <span class="badge" style="background: ${isUploaded ? '#10b981' : 'var(--bg-primary)'}; color: ${isUploaded ? 'white' : 'var(--text-secondary)'}; font-size: 0.7rem; border: 1px solid ${isUploaded ? 'transparent' : 'var(--border-color)'};">
+                            ${isUploaded ? '✓ Verified' : 'Action Required'}
+                          </span>
+                        </div>
+
+                        <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.4; margin-bottom: 0.85rem;">
+                          ${esc(docMeta.subtitle)}
+                        </p>
+
+                        ${isUploaded ? `
+                          <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.65rem 0.85rem; margin-bottom: 0.85rem;">
+                            <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.2rem;">
+                              <span style="color: #10b981; font-weight: 700;">📄</span>
+                              <strong style="font-size: 0.8rem; word-break: break-all;">${esc(doc.fileName || docMeta.title)}</strong>
+                            </div>
+                            <div style="font-size: 0.7rem; color: var(--text-secondary);">
+                              Size: ${esc(doc.fileSize || '1.2 MB')} • Uploaded: ${new Date(doc.uploadedAt || Date.now()).toLocaleDateString()}
+                            </div>
+                          </div>
+                        ` : `
+                          <div style="border: 2px dashed var(--border-color); border-radius: 6px; padding: 0.85rem; text-align: center; margin-bottom: 0.85rem; background: var(--bg-primary);">
+                            <div style="font-size: 1.25rem; margin-bottom: 0.25rem;">📤</div>
+                            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary);">Upload Document Copy</div>
+                            <div style="font-size: 0.7rem; color: var(--text-secondary);">Supports PDF, PNG, JPG (Max 5MB)</div>
+                          </div>
+                        `}
+                      </div>
+
+                      <div>
+                        <input type="file" id="modal-file-input-${docMeta.type}" class="modal-doc-file-input" data-type="${docMeta.type}" accept="image/*,application/pdf" style="display: none;">
+                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                          ${isUploaded ? `
+                            <button type="button" class="btn btn-outline btn-sm modal-preview-doc-btn" data-type="${docMeta.type}" style="flex: 1; font-size: 0.75rem; padding: 4px 8px;">
+                              👁️ Preview
+                            </button>
+                            <button type="button" class="btn btn-outline btn-sm modal-replace-doc-btn" data-type="${docMeta.type}" style="font-size: 0.75rem; padding: 4px 8px;">
+                              🔄 Replace
+                            </button>
+                            <button type="button" class="btn btn-outline btn-sm modal-remove-doc-btn" data-type="${docMeta.type}" style="color: #dc2626; font-size: 0.75rem; padding: 4px 8px;" title="Remove Document">
+                              🗑️
+                            </button>
+                          ` : `
+                            <button type="button" class="btn btn-primary btn-sm modal-trigger-upload-btn" data-type="${docMeta.type}" style="flex: 1; font-size: 0.75rem; padding: 4px 8px;">
+                              📁 Upload File
+                            </button>
+                            <button type="button" class="btn btn-outline btn-sm modal-autofill-demo-doc-btn" data-type="${docMeta.type}" data-title="${esc(docMeta.title)}" data-file="${esc(docMeta.demoFileName)}" style="font-size: 0.75rem; padding: 4px 8px;" title="Instantly test with sample document">
+                              ⚡ Demo Upload
+                            </button>
+                          `}
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+
+              <!-- Step 2 Footer -->
+              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+                <button type="button" class="btn btn-outline" id="m-back-to-step1-btn">← Back to Profile</button>
+                <button type="button" class="btn btn-primary" id="m-finish-dashboard-btn" style="background: #10b981; border-color: #10b981; padding: 0.65rem 1.5rem; font-weight: 700;">
+                  ✓ Complete & Enter Dashboard →
+                </button>
+              </div>
+            </div>
+          `}
+        </div>
+      `;
+
+      // Attach event listeners for current modal state
+      const closeSetupBtn = modal.querySelector('#close-setup-modal');
+      if (closeSetupBtn) {
+        closeSetupBtn.onclick = () => {
+          modal.remove();
+          if (onComplete) onComplete();
+        };
+      }
+
+      const tab1 = modal.querySelector('#modal-tab-step1');
+      if (tab1) {
+        tab1.onclick = () => {
+          currentStep = 1;
+          renderModalStep();
+        };
+      }
+
+      const tab2 = modal.querySelector('#modal-tab-step2');
+      if (tab2) {
+        tab2.onclick = () => {
+          currentStep = 2;
+          renderModalStep();
+        };
+      }
+
+      if (currentStep === 1) {
+        const form = modal.querySelector('#modal-profile-form');
+        const saveModalProfile = () => {
+          currentWorker.name = modal.querySelector('#m-wp-name')?.value?.trim() || currentWorker.name;
+          currentWorker.phone = modal.querySelector('#m-wp-phone')?.value?.trim() || currentWorker.phone;
+          currentWorker.bio = modal.querySelector('#m-wp-bio')?.value?.trim() || currentWorker.bio;
+          currentWorker.pastExperience = modal.querySelector('#m-wp-experience')?.value?.trim() || currentWorker.pastExperience;
+          currentWorker.certifications = modal.querySelector('#m-wp-certifications')?.value?.trim() || currentWorker.certifications;
+          currentWorker.baseLocality = modal.querySelector('#m-wp-locality')?.value || currentWorker.baseLocality;
+          currentWorker.serviceArea = modal.querySelector('#m-wp-area')?.value?.trim() || currentWorker.serviceArea;
+          currentWorker.serviceRadius = parseFloat(modal.querySelector('#m-wp-radius')?.value) || currentWorker.serviceRadius || 10;
+
+          // Sync with active auth profile
+          const prof = AuthService.getProfile();
+          if (prof) {
+            prof.full_name = currentWorker.name;
+            if (currentWorker.phone) prof.phone = currentWorker.phone;
+            localStorage.setItem('localkaam_cached_profile', JSON.stringify(prof));
+          }
+
+          const updatedSpecialities = {};
+          modal.querySelectorAll('input[name="m-wp-speciality"]:checked').forEach(chk => {
+            const catId = chk.value;
+            const catObj = CATEGORIES.find(c => c.id === catId);
+            updatedSpecialities[catId] = (currentWorker.specialities && currentWorker.specialities[catId]) || {
+              tasks: catObj ? catObj.subcategories : ['General Repair'],
+              pricingMethod: 'hourly',
+              startingPrice: 350,
+              visitingCharge: 100,
+              estDuration: '1-2 hours',
+              experience: 5
+            };
+          });
+
+          if (Object.keys(updatedSpecialities).length > 0) {
+            currentWorker.specialities = updatedSpecialities;
+            currentWorker.skills = Object.keys(updatedSpecialities);
+          }
+
+          let workersList = StorageService.getWorkers();
+          workersList = workersList.map(w => w.id === currentWorker.id ? currentWorker : w);
+          StorageService.saveWorkers(workersList);
+        };
+
+        if (form) {
+          form.onsubmit = (e) => {
+            e.preventDefault();
+            saveModalProfile();
+            Toast.show('Profile saved! Continuing to Manage Documents.', 'success');
+            currentStep = 2;
+            renderModalStep();
+          };
+        }
+
+        const closeBtn = modal.querySelector('#m-close-modal-btn');
+        if (closeBtn) {
+          closeBtn.onclick = () => {
+            modal.remove();
+            if (onComplete) onComplete();
+          };
+        }
+      } else {
+        // Step 2 events
+        const backBtn = modal.querySelector('#m-back-to-step1-btn');
+        if (backBtn) {
+          backBtn.onclick = () => {
+            currentStep = 1;
+            renderModalStep();
+          };
+        }
+
+        const finishBtn = modal.querySelector('#m-finish-dashboard-btn');
+        if (finishBtn) {
+          finishBtn.onclick = () => {
+            modal.remove();
+            Toast.show('Worker setup and documents verified! Welcome to your dashboard.', 'success');
+            if (onComplete) onComplete();
+          };
+        }
+
+        modal.querySelectorAll('.modal-trigger-upload-btn, .modal-replace-doc-btn').forEach(btn => {
+          btn.onclick = () => {
+            const type = btn.getAttribute('data-type');
+            const fileInput = modal.querySelector(`#modal-file-input-${type}`);
+            if (fileInput) fileInput.click();
+          };
+        });
+
+        modal.querySelectorAll('.modal-doc-file-input').forEach(input => {
+          input.onchange = (e) => {
+            const type = input.getAttribute('data-type');
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              const workersList = StorageService.getWorkers();
+              const target = workersList.find(w => w.id === currentWorker.id) || currentWorker;
+              if (!target.documents) target.documents = {};
+
+              const fileSizeStr = file.size > 1024 * 1024 
+                ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
+                : `${Math.round(file.size / 1024)} KB`;
+
+              target.documents[type] = {
+                type,
+                title: file.name,
+                fileName: file.name,
+                fileSize: fileSizeStr,
+                uploadedAt: new Date().toISOString(),
+                status: 'Verified',
+                dataUrl: event.target.result
+              };
+              target.verificationStatus = 'Verified';
+
+              StorageService.saveWorkers(workersList);
+              Toast.show(`Document "${file.name}" uploaded and verified successfully!`, 'success');
+              renderModalStep();
+            };
+            reader.readAsDataURL(file);
+          };
+        });
+
+        modal.querySelectorAll('.modal-autofill-demo-doc-btn').forEach(btn => {
+          btn.onclick = () => {
+            const type = btn.getAttribute('data-type');
+            const fileName = btn.getAttribute('data-file') || `${type}_verified.pdf`;
+            const title = btn.getAttribute('data-title') || type;
+
+            const workersList = StorageService.getWorkers();
+            const target = workersList.find(w => w.id === currentWorker.id) || currentWorker;
+            if (!target.documents) target.documents = {};
+
+            target.documents[type] = {
+              type,
+              title,
+              fileName,
+              fileSize: '1.2 MB',
+              uploadedAt: new Date().toISOString(),
+              status: 'Verified'
+            };
+            target.verificationStatus = 'Verified';
+
+            StorageService.saveWorkers(workersList);
+            Toast.show(`Sample document "${fileName}" verified successfully!`, 'success');
+            renderModalStep();
+          };
+        });
+
+        modal.querySelectorAll('.modal-remove-doc-btn').forEach(btn => {
+          btn.onclick = () => {
+            const type = btn.getAttribute('data-type');
+            if (confirm('Are you sure you want to remove this verified document?')) {
+              const workersList = StorageService.getWorkers();
+              const target = workersList.find(w => w.id === currentWorker.id) || currentWorker;
+              if (target.documents && target.documents[type]) {
+                delete target.documents[type];
+                StorageService.saveWorkers(workersList);
+                Toast.show('Document removed.', 'info');
+                renderModalStep();
+              }
+            }
+          };
+        });
+
+        modal.querySelectorAll('.modal-preview-doc-btn').forEach(btn => {
+          btn.onclick = () => {
+            const type = btn.getAttribute('data-type');
+            const doc = currentWorker.documents && currentWorker.documents[type];
+            if (!doc) return;
+            this.showDocumentPreviewModal(doc, currentWorker);
+          };
+        });
+      }
+    };
+
+    renderModalStep();
+    document.body.appendChild(modal);
   }
 };
 

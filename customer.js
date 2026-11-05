@@ -483,6 +483,13 @@ export const CustomerFrontend = {
       });
     });
 
+    container.querySelectorAll('.view-worker-docs-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const workerId = btn.getAttribute('data-id');
+        this.showWorkerDocumentsModal(workerId);
+      });
+    });
+
     container.querySelectorAll('.book-worker-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const workerId = btn.getAttribute('data-id');
@@ -1048,6 +1055,20 @@ export const CustomerFrontend = {
     const workers = StorageService.getWorkers();
     const worker = workers.find(w => w.id === workerId);
     if (!worker) return;
+
+    // SECURITY: Enforce verification and availability on booking
+    if (worker.verificationStatus !== 'Verified') {
+      Toast.show('Cannot book an unverified professional. Only Verified experts can receive bookings.', 'error');
+      return;
+    }
+    if (worker.isSuspended) {
+      Toast.show('This professional account is suspended and cannot accept bookings.', 'error');
+      return;
+    }
+    if (!worker.available) {
+      Toast.show('This professional is currently offline and not accepting new bookings.', 'warning');
+      return;
+    }
 
     const specialities = worker.specialities || {};
     const firstInfo = Object.values(specialities)[0] || { startingPrice: 350, visitingCharge: 100 };

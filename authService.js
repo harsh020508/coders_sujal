@@ -382,7 +382,7 @@ class AuthServiceManager {
               id: `w_${data.user.id.substring(0, 8)}`,
               user_id: data.user.id,
               name: fullName,
-              category: 'plumber',
+              category: 'general',
               skills: ['General Service'],
               experience: 1,
               hourly_rate: 300,
@@ -390,12 +390,12 @@ class AuthServiceManager {
               service_radius: 10,
               working_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
               working_hours: { start: '09:00', end: '18:00' },
-              available: true,
-              verification_status: 'Verified',
-              rating_average: 5.0,
-              rating_count: 1,
+              available: false,
+              verification_status: 'Pending',
+              rating_average: 0,
+              rating_count: 0,
               phone,
-              bio: `${fullName} - Verified local service professional in ${locality}.`
+              bio: `${fullName} - Service professional in ${locality}. Verification pending.`
             });
           } catch (workerErr) {
             console.warn('[Auth] Worker initial upsert failed:', workerErr);

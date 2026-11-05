@@ -341,6 +341,8 @@ export const SupabaseDataService = {
     }
   },
 
+
+
   // BOOKINGS
   async fetchBookings() {
     const client = await SupabaseService.getClient();

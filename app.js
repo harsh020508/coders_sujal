@@ -15,9 +15,17 @@ export const App = {
     this.applyTheme(StorageService.getTheme());
     
     // Handle initial URL hash or history state
-    const hash = window.location.hash.replace('#', '');
+    let hash = (typeof window !== 'undefined' && window.location.hash) ? window.location.hash.replace('#', '') : '';
+    if (hash === 'admin') {
+      hash = 'landing';
+      if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
     if (['landing', 'role-select', 'customer', 'worker'].includes(hash)) {
       StorageService.setCurrentRole(hash);
+    } else {
+      StorageService.setCurrentRole('landing');
     }
 
     this.render();
@@ -25,12 +33,14 @@ export const App = {
     // Handle browser back/forward navigation smoothly without exiting app
     if (typeof window !== 'undefined') {
       window.addEventListener('popstate', (e) => {
-        if (e.state && e.state.role) {
+        if (e.state && e.state.role && ['landing', 'role-select', 'customer', 'worker'].includes(e.state.role)) {
           StorageService.setCurrentRole(e.state.role);
         } else {
-          const h = window.location.hash.replace('#', '');
+          let h = window.location.hash.replace('#', '');
           if (['landing', 'role-select', 'customer', 'worker'].includes(h)) {
             StorageService.setCurrentRole(h);
+          } else {
+            StorageService.setCurrentRole('landing');
           }
         }
         this.render();
@@ -52,7 +62,16 @@ export const App = {
     });
   },
 
-  navigateToRole(role) {
+  navigateToRole(role, options = {}) {
+    if (!['landing', 'role-select', 'customer', 'worker'].includes(role)) {
+      role = 'landing';
+    }
+    if (role === 'worker') {
+      WorkerFrontend.activeView = 'overview';
+      if (options.openSetupModal !== false) {
+        WorkerFrontend.shouldOpenSetupModal = true;
+      }
+    }
     StorageService.setCurrentRole(role);
     try {
       if (window.history && window.history.pushState) {
@@ -75,7 +94,11 @@ export const App = {
     const root = document.getElementById('app');
     if (!root) return;
 
-    const role = StorageService.getCurrentRole();
+    let role = StorageService.getCurrentRole();
+    if (!['landing', 'role-select', 'customer', 'worker'].includes(role)) {
+      role = 'landing';
+      StorageService.setCurrentRole('landing');
+    }
 
     try {
       if (role === 'landing') {
@@ -108,6 +131,9 @@ export const App = {
           }
         }
         this.attachShellEvents(root);
+      } else {
+        root.innerHTML = this.renderLandingPage();
+        this.attachLandingEvents(root);
       }
     } catch (err) {
       console.error('App render fatal error:', err);
@@ -462,7 +488,7 @@ export const App = {
             Choose your experience. You can switch between customer and worker modes anytime.
           </p>
 
-          <div class="role-cards">
+          <div class="role-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; max-width: 820px; margin: 0 auto;">
             <!-- Customer Card -->
             <div class="role-card" id="select-customer-role" role="button" tabindex="0">
               <div class="role-icon" style="display:flex;align-items:center;justify-content:center;">
@@ -728,6 +754,7 @@ export const App = {
         this.navigateToRole('worker');
       } else {
         AuthModal.show('worker', () => {
+          WorkerFrontend.shouldOpenSetupModal = true;
           this.navigateToRole('worker');
         });
       }
