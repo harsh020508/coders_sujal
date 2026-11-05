@@ -78,25 +78,25 @@ export const CATEGORIES = [
     id: 'other', 
     name: 'Other services', 
     icon: '🛠️', 
-    description: 'General handyman, gardening, security setup & odd jobs.',
-    subcategories: ['General Handyman', 'Gardening & Plants', 'CCTV & Security Setup', 'Smart Lock Installation']
+    description: 'Bespoke handymen tasks, drill hanging, lock assembly & maintenance.',
+    subcategories: ['Drilling & Wall Hanging', 'Curtain Rod Installation', 'General Handyman Support']
   }
 ];
 
 export const INITIAL_WORKERS = [
   {
     id: 'w1',
-    name: 'Ramesh Kumar',
+    name: 'Rajesh Kumar',
     phone: '+91 98211 44551',
-    bio: 'Expert plumber & electrician with 8+ years experience fixing residential leaks and sanitaryware in Andheri & Bandra.',
+    bio: 'Punctual, certified master plumber and residential electrician with 8+ years experience across Western Mumbai.',
     city: 'Mumbai',
     baseLocality: 'andheri',
-    serviceArea: 'Andheri West, Bandra West, Juhu',
+    serviceArea: 'Andheri West, Juhu, Lokhandwala, Versova',
     serviceRadius: 10,
     experience: 8,
-    languages: ['Hindi', 'English', 'Marathi'],
-    workingHours: { start: '08:00', end: '20:00' },
-    workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    languages: ['Hindi', 'Marathi', 'English'],
+    workingHours: { start: '08:30', end: '20:00' },
+    workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     available: true,
     pauseNewBookings: false,
     profileCompleted: true,
@@ -236,6 +236,73 @@ export const INITIAL_WORKERS = [
   }
 ];
 
-export const INITIAL_BOOKINGS = [];
-export const INITIAL_REVIEWS = [];
+export const INITIAL_BOOKINGS = [
+  {
+    id: 'BK-10492',
+    workerId: 'w1',
+    customerName: 'Aarav Mehta',
+    customerPhone: '+91 98765 43210',
+    serviceCategory: 'plumber',
+    serviceTask: 'Leaking Tap & Faucet',
+    locality: 'andheri',
+    address: 'Flat 402, Titanium Heights, Andheri West',
+    jobDescription: 'Kitchen mixer faucet leaking continuously, requires cartridge or washer replacement.',
+    bookingType: 'scheduled',
+    appointmentDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    appointmentTime: '10:00 AM - 12:00 PM',
+    estimatedHours: 1,
+    basePrice: 300,
+    visitingCharge: 100,
+    customerOffer: 350,
+    counterOfferHistory: [
+      { sender: 'customer', amount: 350, note: 'Initial customer offer: ₹350' },
+      { sender: 'worker', amount: 400, note: 'Includes genuine ceramic spindle washer + 30-day guarantee' }
+    ],
+    agreedPrice: 400,
+    status: 'Pending confirmation',
+    reviewId: null,
+    complaintId: null,
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    completedAt: null
+  },
+  {
+    id: 'BK-10381',
+    workerId: 'w1',
+    customerName: 'Aarav Mehta',
+    customerPhone: '+91 98765 43210',
+    serviceCategory: 'electrician',
+    serviceTask: 'Switchboard Installation',
+    locality: 'andheri',
+    address: 'Flat 402, Titanium Heights, Andheri West',
+    jobDescription: 'Installed 8-module modular switchboard with heavy appliance MCB and surge protection.',
+    bookingType: 'scheduled',
+    appointmentDate: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+    appointmentTime: '02:00 PM - 04:00 PM',
+    estimatedHours: 1.5,
+    basePrice: 350,
+    visitingCharge: 150,
+    customerOffer: null,
+    counterOfferHistory: [],
+    agreedPrice: 500,
+    status: 'Job completed',
+    reviewId: 'REV-10381',
+    complaintId: null,
+    createdAt: new Date(Date.now() - 172800000).toISOString(),
+    completedAt: new Date(Date.now() - 82800000).toISOString()
+  }
+];
+
+export const INITIAL_REVIEWS = [
+  {
+    id: 'REV-10381',
+    bookingId: 'BK-10381',
+    workerId: 'w1',
+    customerId: 'cust-aarav',
+    customerName: 'Aarav Mehta',
+    rating: 5,
+    comment: 'Rajesh arrived right on time, explained the MCB specifications clearly, and finished the switchboard installation with zero mess. Highly recommended!',
+    createdAt: new Date(Date.now() - 80000000).toISOString()
+  }
+];
+
 export const INITIAL_COMPLAINTS = [];

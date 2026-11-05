@@ -2,16 +2,22 @@
 <html class="scroll-smooth" lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="description" content="LocalKaam — Hyperlocal Blue-Collar Services Marketplace in Mumbai. Connect with verified electricians, plumbers, carpenters, and technicians with transparent pricing and direct payouts.">
+  <meta name="theme-color" content="#1a3300">
   <title>LocalKaam — Hyperlocal Blue-Collar Services Marketplace</title>
+
+  <!-- Favicon SVG -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23ffe95c'/%3E%3Ctext x='16' y='21' font-size='14' font-weight='900' font-family='sans-serif' text-anchor='middle' fill='%231a3300'%3ELK%3C/text%3E%3C/svg%3E" type="image/svg+xml">
+
   <link rel="stylesheet" href="./styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-[#fbf9f4] text-[#1b1c19] antialiased min-h-screen flex flex-col">
-  <div id="app" class="flex flex-col min-h-screen"></div>
+<body>
+  <div id="app" class="app-container"></div>
 
   <script type="module">
     import { App } from './app.js';
@@ -25,7 +31,7 @@
         if (hash && (hash.includes('access_token') || hash.includes('error'))) {
           const appDiv = document.getElementById('app');
           if (appDiv) {
-            appDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;"><div style="font-size:2rem;margin-bottom:1rem;">⏳</div><p style="font-size:1.1rem;font-weight:600;color:#333;">Completing Sign-In...</p></div>';
+            appDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;"><div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div><p style="font-size:1.1rem;font-weight:600;color:var(--text-primary);">Completing Secure Sign-In...</p></div>';
           }
           try {
             const client = await SupabaseService.getClient();
