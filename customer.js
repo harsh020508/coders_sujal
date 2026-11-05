@@ -147,82 +147,73 @@ export const CustomerFrontend = {
         ` : ''}
       </div>
 
-      ${eligibleWorkers.length === 0 ? `
-        <div class="empty-state">
-          <div class="empty-state-icon"><i data-lucide="search-x" class="lucide-lg" style="color: var(--text-muted);"></i></div>
-          <h3>No online professionals found</h3>
-          <p>Try selecting a different service category, expanding your location, or switching worker online in worker mode.</p>
-          <button class="btn btn-outline btn-sm" id="reset-filter-btn" style="margin-top: 0.5rem;">Reset Filters</button>
-        </div>
-      ` : `
-        <div class="workers-grid">
-          ${eligibleWorkers.map(w => {
-            const specKeys = Object.keys(w.specialities || {});
-            const firstSpecKey = this.currentCategory !== 'all' && w.specialities[this.currentCategory] ? this.currentCategory : specKeys[0];
-            const specInfo = (w.specialities && w.specialities[firstSpecKey]) || { startingPrice: 350, tasks: [] };
-            const catObj = CATEGORIES.find(c => c.id === firstSpecKey) || { name: firstSpecKey || 'General' };
+      ${eligibleWorkers.length === 0 ? emptyState({
+        iconName: 'search-x',
+        title: 'No online professionals found',
+        text: 'Try selecting a different service category, expanding your location, or switching worker online in worker mode.',
+        actionHtml: '<button class="ui-btn ui-btn--secondary ui-btn--sm" id="reset-filter-btn" style="margin-top: 0.5rem;">Reset Filters</button>'
+      }) : (() => {
+        const sortedWorkers = [...eligibleWorkers].sort((a, b) => {
+          if (a.verificationStatus === 'Verified' && b.verificationStatus !== 'Verified') return -1;
+          if (a.verificationStatus !== 'Verified' && b.verificationStatus === 'Verified') return 1;
+          return (Number(b.ratingAverage) || 0) - (Number(a.ratingAverage) || 0);
+        });
 
-            return `
-              <div class="worker-card">
-                <div class="worker-header">
-                  <div class="worker-avatar-box">
-                    <img src="${esc(w.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150')}" alt="${esc(w.name)}" class="worker-avatar" loading="lazy">
-                    <div class="worker-online-dot" title="Online & Discoverable"></div>
-                  </div>
-                  <div class="worker-info">
-                    <h3>
-                      ${esc(w.name)}
-                      ${w.verificationStatus === 'Verified' ? '<span title="Verified Professional" style="color: #10b981; font-size: 0.95rem;">✓</span>' : ''}
-                    </h3>
-                    <span class="worker-cat-badge">${esc(catObj.name)}</span>
-                  </div>
-                  <div>
-                    <label style="font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem; cursor: pointer; white-space: nowrap;">
-                      <input type="checkbox" class="compare-checkbox" data-id="${esc(w.id)}" ${this.comparedWorkers.includes(w.id) ? 'checked' : ''}>
-                      <span>Compare</span>
-                    </label>
-                  </div>
-                </div>
+        return `
+          <div class="workers-grid ui-grid">
+            ${sortedWorkers.map(w => {
+              const specKeys = Object.keys(w.specialities || {});
+              const firstSpecKey = this.currentCategory !== 'all' && w.specialities[this.currentCategory] ? this.currentCategory : specKeys[0];
+              const specInfo = (w.specialities && w.specialities[firstSpecKey]) || { startingPrice: 350, tasks: [] };
+              const catObj = CATEGORIES.find(c => c.id === firstSpecKey) || { name: firstSpecKey || 'General' };
+              const tasks = specInfo.tasks || [];
 
-                <div class="worker-meta">
-                  <div class="worker-meta-item">
-                    <span>Distance &amp; ETA</span>
-                    <span>📍 ${w.distance || '2.5'} km (~${w.eta || '25'}m)</span>
+              return `
+                <article class="ui-card ui-worker worker-card" data-worker-id="${esc(w.id)}">
+                  <div class="ui-worker__head">
+                    ${avatar(w, 56)}
+                    <div style="flex:1;min-width:0;">
+                      <div class="ui-worker__name" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                        <span style="font-weight:700;font-size:1.05rem;color:var(--ink);">${esc(w.name)}</span>
+                        <label style="font-size: 0.75rem; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                          <input type="checkbox" class="compare-checkbox" data-id="${esc(w.id)}" ${this.comparedWorkers.includes(w.id) ? 'checked' : ''}>
+                          <span>Compare</span>
+                        </label>
+                      </div>
+                      <div class="ui-worker__meta" style="margin-top:4px;">
+                        ${rating(w.ratingAverage || 4.8, w.ratingCount || 12)}
+                        ${statusBadge(w.verificationStatus)}
+                        <span class="ui-badge ui-badge--info" style="font-size:var(--fs-xs);">${esc(catObj.name)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="worker-meta-item">
-                    <span>Rating</span>
-                    <span>⭐ ${w.ratingAverage || '4.8'} (${w.ratingCount || 12})</span>
-                  </div>
-                  <div class="worker-meta-item">
-                    <span>Experience</span>
-                    <span>🏆 ${w.experience || 3} Years</span>
-                  </div>
-                  <div class="worker-meta-item">
-                    <span>Status</span>
-                    <span style="color: var(--success); display: inline-flex; align-items: center; gap: 4px;">
+
+                  <div style="display:flex;gap:12px;font-size:0.8rem;background:var(--surface-2);padding:6px 10px;border-radius:8px;justify-content:space-between;align-items:center;">
+                    <span>📍 <strong>${w.distance || '2.5'} km</strong> (~${w.eta || '25'}m)</span>
+                    <span>🏆 <strong>${w.experience || 3} yrs</strong> exp</span>
+                    <span style="color:var(--ok);font-weight:600;display:inline-flex;align-items:center;gap:4px;">
                       <span class="status-dot online"></span> Online
                     </span>
                   </div>
-                </div>
 
-                <div class="worker-skills">
-                  ${(specInfo.tasks || []).slice(0, 3).map(t => `<span class="skill-tag">${esc(t)}</span>`).join('')}
-                </div>
+                  <div class="ui-chips">
+                    ${tasks.slice(0, 3).map(t => `<span class="ui-chip ui-chip--static">${esc(t)}</span>`).join('')}
+                    ${tasks.length > 3 ? `<span class="ui-chip ui-chip--static">+${tasks.length - 3} more</span>` : ''}
+                  </div>
 
-                <div class="worker-footer">
-                  <div class="worker-rate">
-                    ₹${specInfo.startingPrice || 350} <span>${specInfo.pricingMethod === 'fixed' ? 'fixed' : '/ hr'}</span>
+                  <div class="ui-worker__foot">
+                    <span class="ui-price">₹${specInfo.startingPrice || 350} <small>${specInfo.pricingMethod === 'fixed' ? 'fixed' : '/ hr'}</small></span>
+                    <div style="display:flex;gap:8px;">
+                      <button type="button" class="ui-btn ui-btn--secondary ui-btn--sm view-worker-profile-btn" data-id="${esc(w.id)}">Profile</button>
+                      <button type="button" class="ui-btn ui-btn--accent ui-btn--sm book-worker-btn" data-id="${esc(w.id)}">Request a visit</button>
+                    </div>
                   </div>
-                  <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <button class="btn btn-outline btn-sm view-worker-profile-btn" data-id="${esc(w.id)}">Profile</button>
-                    <button class="btn btn-primary btn-sm book-worker-btn" data-id="${esc(w.id)}">Book</button>
-                  </div>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      `}
+                </article>
+              `;
+            }).join('')}
+          </div>
+        `;
+      })()}
     `;
   },
 
