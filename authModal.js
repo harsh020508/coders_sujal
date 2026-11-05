@@ -32,6 +32,10 @@ export const AuthModal = {
           </p>
         </div>
 
+                <!-- Instant 1-Click Access Button -->
+        <button type="button" class="btn btn-primary" id="btn-quick-guest-top" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.6rem; padding: 0.75rem; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.85rem; border-radius: 8px; background: var(--color-forest-ink, #1a3300); color: #fff;">
+          ⚡ Continue as ${isWorker ? 'Worker Pro (Instant Access)' : 'Customer (Instant Access)'}
+        </button>
         <!-- Google OAuth Button -->
         <button type="button" class="btn btn-outline" id="google-signin-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.6rem; padding: 0.75rem; font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; border-radius: 8px;">
           <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -134,6 +138,15 @@ export const AuthModal = {
       }
     });
 
+    
+    modal.querySelector('#btn-quick-guest-top')?.addEventListener('click', () => {
+      AuthService.loginGuest(isWorker ? 'worker' : 'customer');
+      closeModal();
+      Toast.show(`Continuing as ${isWorker ? 'Worker' : 'Customer'}!`, 'info');
+      if (onAuthenticated) {
+        onAuthenticated(AuthService.getUser(), AuthService.getProfile());
+      }
+    });
     modal.querySelector('#close-auth-modal').onclick = closeModal;
 
     const errorDiv = modal.querySelector('#auth-error-display');
