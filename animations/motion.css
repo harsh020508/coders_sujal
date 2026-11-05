@@ -1,0 +1,179 @@
+/* animations/motion.css — foundation micro-interactions (Step 1).
+   Loaded last so it wins over styles.css/ui.css without editing them.
+   Rules: transform + opacity only, custom cubic-beziers (never linear/ease),
+   duplicated in animations/motion.js — keep in sync.
+   Tweak: change --motion-intensity (0 calm / 1 default / 1.5 playful). */
+
+:root {
+  --motion-intensity: 1;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-press: 120ms;
+  --dur-hover: 220ms;
+  --dur-med: 280ms;
+  --dur-reveal: 650ms;
+  --dur-page: 500ms;
+}
+
+/* Brand-consistent text selection (tints with accent, both modes). */
+::selection {
+  background: var(--accent-light);
+  color: var(--text-primary);
+}
+
+/* Consistent visible focus (keyboard only) — accent ring, readable in both modes. */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* --- Duolingo buttons: squish, spring back, 3D pressed shadow --- */
+.btn,
+.ui-btn {
+  transition:
+    transform var(--dur-press) var(--ease-spring),
+    box-shadow var(--dur-hover) var(--ease-out),
+    background-color var(--dur-hover) var(--ease-out),
+    border-color var(--dur-hover) var(--ease-out),
+    color var(--dur-hover) var(--ease-out);
+  will-change: transform;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:hover:not(:disabled),
+.ui-btn:hover:not([disabled]) {
+  transform: translateY(-1px);
+}
+.btn:active:not(:disabled),
+.ui-btn:active:not([disabled]) {
+  transform: scale(0.96);
+  transition-duration: 80ms;
+}
+
+/* Primary buttons get a Duolingo "thick base" that compresses on press —
+   box-shadow only, so zero layout shift. */
+.btn-primary {
+  box-shadow: 0 3px 0 0 var(--accent-hover), var(--shadow-sm);
+}
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 0 0 var(--accent-hover), var(--shadow-md);
+  transform: translateY(-1px);
+}
+.btn-primary:active:not(:disabled) {
+  box-shadow: 0 1px 0 0 var(--accent-hover), var(--shadow-xs);
+  transform: translateY(1px) scale(0.98);
+}
+
+/* Secondary (yellow) buttons get the same pressed base in forest ink. */
+.btn-secondary {
+  box-shadow: 0 3px 0 0 rgba(26, 51, 0, 0.22), var(--shadow-xs);
+}
+.btn-secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 0 rgba(26, 51, 0, 0.22), var(--shadow-sm);
+}
+.btn-secondary:active:not(:disabled) {
+  box-shadow: 0 1px 0 0 rgba(26, 51, 0, 0.22), var(--shadow-xs);
+  transform: translateY(1px) scale(0.98);
+}
+
+/* --- Chips / pills / nav links: springy tap feedback --- */
+.chip,
+.ui-chip,
+.nav-link,
+.sidebar-item {
+  transition:
+    transform var(--dur-press) var(--ease-spring),
+    background-color var(--dur-hover) var(--ease-out),
+    color var(--dur-hover) var(--ease-out),
+    border-color var(--dur-hover) var(--ease-out),
+    box-shadow var(--dur-hover) var(--ease-out);
+}
+.chip:hover,
+.ui-chip:hover,
+.ui-chip:active,
+.chip:active {
+  transform: translateY(-1px);
+}
+.chip:active,
+.ui-chip:active {
+  transform: scale(0.96);
+  transition-duration: 80ms;
+}
+
+/* --- Cards: springy lift, pop-in overshoot on entrance --- */
+.ui-card--interactive,
+.category-card,
+.worker-card,
+.role-card,
+.dash-hero-card,
+.dash-card {
+  transition:
+    transform var(--dur-med) var(--ease-spring),
+    box-shadow var(--dur-hover) var(--ease-out),
+    border-color var(--dur-hover) var(--ease-out);
+  will-change: transform;
+}
+.ui-card--interactive:hover,
+.category-card:hover,
+.worker-card:hover,
+.role-card:hover {
+  transform: translateY(-3px) scale(1.01);
+}
+.ui-card--interactive:active,
+.category-card:active,
+.worker-card:active,
+.role-card:active {
+  transform: scale(0.99);
+  transition-duration: 100ms;
+}
+
+/* Icon boxes ease alongside their card's spring. */
+.category-icon-badge,
+.role-icon-box {
+  transition: transform var(--dur-med) var(--ease-spring);
+}
+.category-card:hover .category-icon-badge,
+.role-card:hover .role-icon-box {
+  transform: scale(1.08);
+}
+
+/* --- Touch targets: never smaller than 44px (mobile safety) --- */
+.btn,
+.ui-btn {
+  min-height: 44px;
+}
+.btn-sm,
+.ui-btn--sm {
+  min-height: 44px;
+}
+
+/* --- Calm fallback: reduced motion or intensity 0 → simple fades only --- */
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .ui-btn,
+  .chip,
+  .ui-chip,
+  .nav-link,
+  .sidebar-item,
+  .ui-card--interactive,
+  .category-card,
+  .worker-card,
+  .role-card,
+  .dash-hero-card,
+  .dash-card {
+    transition: opacity 150ms ease, background-color 150ms ease, color 150ms ease;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}
+.motion-calm .btn,
+.motion-calm .ui-btn {
+  transition: opacity 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+.motion-calm .btn:hover,
+.motion-calm .ui-btn:hover,
+.motion-calm .btn:active,
+.motion-calm .ui-btn:active {
+  transform: none;
+}

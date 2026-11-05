@@ -9,6 +9,7 @@ import { NotificationService } from './notificationService.js';
 import { esc } from './utils.js';
 import { buildTaskIndex, searchTasks, catImage, icon } from './ui.js';
 import { initScrollReveal, fadeSlide } from './transitions.js';
+import { initMotion } from './animations/motion.js';
 import { Settings } from './settingsService.js';
 import { SettingsPage } from './components/SettingsPage.js';
 import { ProfileDropdown } from './components/ProfileDropdown.js';
@@ -24,6 +25,7 @@ export const App = {
 
   init() {
     Settings.init();
+    initMotion();
     this._bindGlobalEvents();
 
     // Handle initial URL hash or history state
