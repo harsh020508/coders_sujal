@@ -5,6 +5,7 @@ import { CATEGORIES, LOCALITIES, COMPLAINT_CATEGORIES, SUPPORT_CATEGORIES } from
 import { Toast } from './toast.js';
 import { AuthService } from './authService.js';
 import { esc } from './utils.js';
+import { initScrollReveal } from './transitions.js';
 
 // Helper to get all feedback tags
 const FEEDBACK_TAGS = [
@@ -80,6 +81,11 @@ export const CustomerFrontend = {
 
     this.attachEvents(container);
     if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+    if (typeof window !== "undefined") {
+      try {
+        initScrollReveal(container, ".ui-worker,.ui-card,.sidebar-item");
+      } catch (e) {}
+    }
   },
 
   sortWorkers(workers) {
@@ -147,82 +153,73 @@ export const CustomerFrontend = {
         ` : ''}
       </div>
 
-      ${eligibleWorkers.length === 0 ? `
-        <div class="empty-state">
-          <div class="empty-state-icon"><i data-lucide="search-x" class="lucide-lg" style="color: var(--text-muted);"></i></div>
-          <h3>No online professionals found</h3>
-          <p>Try selecting a different service category, expanding your location, or switching worker online in worker mode.</p>
-          <button class="btn btn-outline btn-sm" id="reset-filter-btn" style="margin-top: 0.5rem;">Reset Filters</button>
-        </div>
-      ` : `
-        <div class="workers-grid">
-          ${eligibleWorkers.map(w => {
-            const specKeys = Object.keys(w.specialities || {});
-            const firstSpecKey = this.currentCategory !== 'all' && w.specialities[this.currentCategory] ? this.currentCategory : specKeys[0];
-            const specInfo = (w.specialities && w.specialities[firstSpecKey]) || { startingPrice: 350, tasks: [] };
-            const catObj = CATEGORIES.find(c => c.id === firstSpecKey) || { name: firstSpecKey || 'General' };
+      ${eligibleWorkers.length === 0 ? emptyState({
+        iconName: 'search-x',
+        title: 'No online professionals found',
+        text: 'Try selecting a different service category, expanding your location, or switching worker online in worker mode.',
+        actionHtml: '<button class="ui-btn ui-btn--secondary ui-btn--sm" id="reset-filter-btn" style="margin-top: 0.5rem;">Reset Filters</button>'
+      }) : (() => {
+        const sortedWorkers = [...eligibleWorkers].sort((a, b) => {
+          if (a.verificationStatus === 'Verified' && b.verificationStatus !== 'Verified') return -1;
+          if (a.verificationStatus !== 'Verified' && b.verificationStatus === 'Verified') return 1;
+          return (Number(b.ratingAverage) || 0) - (Number(a.ratingAverage) || 0);
+        });
 
-            return `
-              <div class="worker-card">
-                <div class="worker-header">
-                  <div class="worker-avatar-box">
-                    <img src="${esc(w.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150')}" alt="${esc(w.name)}" class="worker-avatar" loading="lazy">
-                    <div class="worker-online-dot" title="Online & Discoverable"></div>
-                  </div>
-                  <div class="worker-info">
-                    <h3>
-                      ${esc(w.name)}
-                      ${w.verificationStatus === 'Verified' ? '<span title="Verified Professional" style="color: #10b981; font-size: 0.95rem;">✓</span>' : ''}
-                    </h3>
-                    <span class="worker-cat-badge">${esc(catObj.name)}</span>
-                  </div>
-                  <div>
-                    <label style="font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem; cursor: pointer; white-space: nowrap;">
-                      <input type="checkbox" class="compare-checkbox" data-id="${esc(w.id)}" ${this.comparedWorkers.includes(w.id) ? 'checked' : ''}>
-                      <span>Compare</span>
-                    </label>
-                  </div>
-                </div>
+        return `
+          <div class="workers-grid ui-grid">
+            ${sortedWorkers.map(w => {
+              const specKeys = Object.keys(w.specialities || {});
+              const firstSpecKey = this.currentCategory !== 'all' && w.specialities[this.currentCategory] ? this.currentCategory : specKeys[0];
+              const specInfo = (w.specialities && w.specialities[firstSpecKey]) || { startingPrice: 350, tasks: [] };
+              const catObj = CATEGORIES.find(c => c.id === firstSpecKey) || { name: firstSpecKey || 'General' };
+              const tasks = specInfo.tasks || [];
 
-                <div class="worker-meta">
-                  <div class="worker-meta-item">
-                    <span>Distance &amp; ETA</span>
-                    <span>📍 ${w.distance || '2.5'} km (~${w.eta || '25'}m)</span>
+              return `
+                <article class="ui-card ui-worker worker-card" data-worker-id="${esc(w.id)}">
+                  <div class="ui-worker__head">
+                    ${avatar(w, 56)}
+                    <div style="flex:1;min-width:0;">
+                      <div class="ui-worker__name" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                        <span style="font-weight:700;font-size:1.05rem;color:var(--ink);">${esc(w.name)}</span>
+                        <label style="font-size: 0.75rem; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                          <input type="checkbox" class="compare-checkbox" data-id="${esc(w.id)}" ${this.comparedWorkers.includes(w.id) ? 'checked' : ''}>
+                          <span>Compare</span>
+                        </label>
+                      </div>
+                      <div class="ui-worker__meta" style="margin-top:4px;">
+                        ${rating(w.ratingAverage || 4.8, w.ratingCount || 12)}
+                        ${statusBadge(w.verificationStatus)}
+                        <span class="ui-badge ui-badge--info" style="font-size:var(--fs-xs);">${esc(catObj.name)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="worker-meta-item">
-                    <span>Rating</span>
-                    <span>⭐ ${w.ratingAverage || '4.8'} (${w.ratingCount || 12})</span>
-                  </div>
-                  <div class="worker-meta-item">
-                    <span>Experience</span>
-                    <span>🏆 ${w.experience || 3} Years</span>
-                  </div>
-                  <div class="worker-meta-item">
-                    <span>Status</span>
-                    <span style="color: var(--success); display: inline-flex; align-items: center; gap: 4px;">
+
+                  <div style="display:flex;gap:12px;font-size:0.8rem;background:var(--surface-2);padding:6px 10px;border-radius:8px;justify-content:space-between;align-items:center;">
+                    <span>📍 <strong>${w.distance || '2.5'} km</strong> (~${w.eta || '25'}m)</span>
+                    <span>🏆 <strong>${w.experience || 3} yrs</strong> exp</span>
+                    <span style="color:var(--ok);font-weight:600;display:inline-flex;align-items:center;gap:4px;">
                       <span class="status-dot online"></span> Online
                     </span>
                   </div>
-                </div>
 
-                <div class="worker-skills">
-                  ${(specInfo.tasks || []).slice(0, 3).map(t => `<span class="skill-tag">${esc(t)}</span>`).join('')}
-                </div>
+                  <div class="ui-chips">
+                    ${tasks.slice(0, 3).map(t => `<span class="ui-chip ui-chip--static">${esc(t)}</span>`).join('')}
+                    ${tasks.length > 3 ? `<span class="ui-chip ui-chip--static">+${tasks.length - 3} more</span>` : ''}
+                  </div>
 
-                <div class="worker-footer">
-                  <div class="worker-rate">
-                    ₹${specInfo.startingPrice || 350} <span>${specInfo.pricingMethod === 'fixed' ? 'fixed' : '/ hr'}</span>
+                  <div class="ui-worker__foot">
+                    <span class="ui-price">₹${specInfo.startingPrice || 350} <small>${specInfo.pricingMethod === 'fixed' ? 'fixed' : '/ hr'}</small></span>
+                    <div style="display:flex;gap:8px;">
+                      <button type="button" class="ui-btn ui-btn--secondary ui-btn--sm view-worker-profile-btn" data-id="${esc(w.id)}">Profile</button>
+                      <button type="button" class="ui-btn ui-btn--accent ui-btn--sm book-worker-btn" data-id="${esc(w.id)}">Request a visit</button>
+                    </div>
                   </div>
-                  <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <button class="btn btn-outline btn-sm view-worker-profile-btn" data-id="${esc(w.id)}">Profile</button>
-                    <button class="btn btn-primary btn-sm book-worker-btn" data-id="${esc(w.id)}">Book</button>
-                  </div>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      `}
+                </article>
+              `;
+            }).join('')}
+          </div>
+        `;
+      })()}
     `;
   },
 
@@ -1045,53 +1042,76 @@ export const CustomerFrontend = {
     const firstInfo = Object.values(specialities)[0] || { startingPrice: 350, visitingCharge: 100 };
 
     const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
+    modal.className = 'ui-overlay modal-overlay';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
     modal.innerHTML = `
-      <div class="modal-card" style="max-width: 620px;">
-        <button class="modal-close" id="close-modal" aria-label="Close modal">×</button>
-        <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.25rem;">
-          Book with ${esc(worker.name)}
-        </h2>
-        <p style="color: var(--text-secondary); margin-bottom: 1.25rem; font-size: 0.875rem;">
-          Select service task, preferred slot, and submit booking or optional counter-offer.
-        </p>
-
-        <form id="booking-form" style="display: flex; flex-direction: column; gap: 1rem;">
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+      <div class="ui-modal modal-card" style="max-width: 540px; padding: clamp(20px, 4vw, 28px);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--peacock-50);color:var(--peacock-600);display:grid;place-items:center;font-weight:700;">
+              ${esc((worker.name || 'W').charAt(0))}
+            </div>
             <div>
-              <label class="form-label">Service Category</label>
-              <select id="book-category" class="form-select">
+              <h2 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: var(--ink);">
+                Request a Visit
+              </h2>
+              <p style="color: var(--muted); margin: 0; font-size: 0.8rem;">
+                Verified pro: ${esc(worker.name)}
+              </p>
+            </div>
+          </div>
+          <button class="modal-close" id="close-modal" aria-label="Close modal">×</button>
+        </div>
+
+        <!-- 3-step progress indicator -->
+        <div style="margin-bottom: 16px;">
+          <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);font-weight:600;color:var(--muted);margin-bottom:6px;">
+            <span>Step 2 of 3: Details &amp; Schedule</span>
+            <span>Fast response</span>
+          </div>
+          <div style="height:4px;background:var(--surface-2);border-radius:4px;overflow:hidden;">
+            <div style="width:66%;height:100%;background:var(--peacock-500);border-radius:4px;"></div>
+          </div>
+        </div>
+
+        <form id="booking-form" style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+            <div class="ui-field">
+              <label class="ui-label" for="book-category">Service Category</label>
+              <select id="book-category" class="ui-select form-select">
                 ${Object.keys(specialities).map(sk => {
                   const catObj = CATEGORIES.find(c => c.id === sk) || { name: sk };
                   return `<option value="${esc(sk)}">${esc(catObj.name)}</option>`;
                 }).join('')}
               </select>
             </div>
-            <div>
-              <label class="form-label">Specific Task</label>
-              <select id="book-task" class="form-select">
+            <div class="ui-field">
+              <label class="ui-label" for="book-task">Specific Task</label>
+              <select id="book-task" class="ui-select form-select">
                 ${(firstInfo.tasks || []).map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
               </select>
             </div>
           </div>
 
-          <div>
-            <label class="form-label">Problem Description &amp; Scope</label>
-            <textarea id="job-desc" class="form-control" rows="2" placeholder="Describe the problem..." required>Need prompt assistance for repair work.</textarea>
-          </div>
-          <div>
-            <label class="form-label">Service Address in Mumbai</label>
-            <input type="text" id="cust-address" class="form-control" value="Flat 402, Titanium Heights, Andheri West" required>
+          <div class="ui-field">
+            <label class="ui-label" for="job-desc">Problem Scope</label>
+            <textarea id="job-desc" class="ui-textarea form-control" rows="2" placeholder="Briefly describe what needs fixing..." required>Need prompt assistance for repair work.</textarea>
           </div>
 
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
-            <div>
-              <label class="form-label">Appointment Date</label>
-              <input type="date" id="book-date" class="form-control" value="${new Date().toISOString().split('T')[0]}" required>
+          <div class="ui-field">
+            <label class="ui-label" for="cust-address">Mumbai Service Address</label>
+            <input type="text" id="cust-address" class="ui-input form-control" value="Flat 402, Titanium Heights, Andheri West" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;">
+            <div class="ui-field">
+              <label class="ui-label" for="book-date">Appointment Date</label>
+              <input type="date" id="book-date" class="ui-input form-control" value="${new Date().toISOString().split('T')[0]}" required>
             </div>
-            <div>
-              <label class="form-label">Preferred Time Slot</label>
-              <select id="book-time" class="form-select">
+            <div class="ui-field">
+              <label class="ui-label" for="book-time">Preferred Slot</label>
+              <select id="book-time" class="ui-select form-select">
                 <option value="09:00 AM - 11:00 AM">09:00 AM - 11:00 AM</option>
                 <option value="11:00 AM - 01:00 PM">11:00 AM - 01:00 PM</option>
                 <option value="02:00 PM - 04:00 PM">02:00 PM - 04:00 PM</option>
@@ -1100,44 +1120,54 @@ export const CustomerFrontend = {
             </div>
           </div>
 
-          <!-- Price Breakdown & Optional Negotiation -->
-          <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
-            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
-              <span style="color: var(--text-secondary);">Service Base Estimate:</span>
+          <!-- Price Summary & Optional Counter Offer -->
+          <div style="background: var(--surface-2); padding: 12px 14px; border-radius: var(--r-md); border: 1px solid var(--line);">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+              <span class="ui-muted">Estimated Base:</span>
               <strong id="price-base">₹${firstInfo.startingPrice}</strong>
             </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
-              <span style="color: var(--text-secondary);">Visiting / Inspection Charge:</span>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+              <span class="ui-muted">Visiting / Inspection:</span>
               <strong id="price-visit">₹${firstInfo.visitingCharge}</strong>
             </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.95rem; font-weight: 800; border-top: 1px solid var(--border-color); padding-top: 0.4rem; margin-top: 0.4rem; color: var(--text-primary);">
+            <div style="display: flex; justify-content: space-between; font-size: 0.95rem; font-weight: 700; border-top: 1px solid var(--line); padding-top: 6px; margin-top: 6px; color: var(--ink);">
               <span>Standard Total:</span>
               <span id="price-total">₹${firstInfo.startingPrice + firstInfo.visitingCharge}</span>
             </div>
 
-            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-color);">
-              <label class="form-label" style="font-size: 0.8rem; display: flex; justify-content: space-between;">
-                <span>💬 Propose Custom Price Offer (Optional)</span>
-                <small style="color: var(--text-muted); font-weight: normal;">Negotiate directly</small>
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line-strong);">
+              <label class="ui-label" for="cust-custom-offer" style="font-size: 0.8rem; display: flex; justify-content: space-between;">
+                <span>Propose Custom Price Offer (Optional)</span>
+                <small class="ui-muted">Direct negotiation</small>
               </label>
-              <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <span style="font-weight: 700; color: var(--text-secondary);">₹</span>
-                <input type="number" id="cust-custom-offer" class="form-control" placeholder="Leave empty for standard rate" min="100" max="25000" style="padding: 6px 10px; font-size: 0.9rem;">
+              <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                <span style="font-weight: 700; color: var(--muted);">₹</span>
+                <input type="number" id="cust-custom-offer" class="ui-input form-control" placeholder="Leave empty for standard rate" min="100" max="25000" style="min-height:38px;padding:6px 10px;font-size:0.9rem;">
               </div>
             </div>
           </div>
 
-          <div style="display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
-            <button type="button" class="btn btn-outline btn-sm" id="close-btn">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-sm">Confirm &amp; Submit Booking</button>
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px;">
+            <button type="button" class="ui-btn ui-btn--secondary ui-btn--sm" id="close-btn">Cancel</button>
+            <button type="submit" class="ui-btn ui-btn--accent ui-btn--sm" id="submit-booking-btn">Send request</button>
           </div>
         </form>
       </div>
     `;
 
     document.body.appendChild(modal);
-    modal.querySelector('#close-modal').onclick = () => modal.remove();
-    modal.querySelector('#close-btn').onclick = () => modal.remove();
+    const release = trapFocus(modal, () => {
+      release();
+      modal.remove();
+    });
+
+    const closeModal = () => {
+      release();
+      modal.remove();
+    };
+
+    modal.querySelector('#close-modal').onclick = closeModal;
+    modal.querySelector('#close-btn').onclick = closeModal;
 
     const catSelect = modal.querySelector('#book-category');
     const taskSelect = modal.querySelector('#book-task');
@@ -1156,14 +1186,21 @@ export const CustomerFrontend = {
 
     modal.querySelector('#booking-form').onsubmit = (e) => {
       e.preventDefault();
+      const submitBtn = modal.querySelector('#submit-booking-btn');
+      if (submitBtn) {
+        submitBtn.setAttribute('aria-busy', 'true');
+        submitBtn.disabled = true;
+      }
+
       const sk = catSelect.value;
       const info = specialities[sk] || { startingPrice: 350, visitingCharge: 100 };
       const customOfferVal = modal.querySelector('#cust-custom-offer').value;
       const customerOffer = customOfferVal ? parseFloat(customOfferVal) : null;
 
+      const customerProfile = AuthService.getProfile() || {};
       const customerData = {
-        name: modal.querySelector('#customer-name').value,
-        phone: modal.querySelector('#customer-phone').value,
+        name: customerProfile.fullName || 'Customer',
+        phone: customerProfile.phone || '+91 98765 43210',
         address: modal.querySelector('#cust-address').value,
         locality: StorageService.getCustomerLocality()
       };
@@ -1185,9 +1222,39 @@ export const CustomerFrontend = {
       bookings.push(newBooking);
       StorageService.saveBookings(bookings);
 
-      modal.remove();
-      Toast.show(`Booking request ${newBooking.id} submitted!`, 'success');
-      this.render(container);
+      // Swap to Confirmation View per Section 6.4
+      const card = modal.querySelector('.modal-card');
+      if (card) {
+        card.innerHTML = `
+          <div style="text-align:center;padding:24px 16px;display:grid;gap:12px;place-items:center;">
+            <div style="width:64px;height:64px;border-radius:50%;background:var(--ok-bg);color:var(--ok);display:grid;place-items:center;">
+              <i data-lucide="badge-check" class="lucide-lg"></i>
+            </div>
+            <h3 style="font-size:var(--fs-xl);font-weight:700;color:var(--ink);margin:0;">Request sent to ${esc(worker.name)}</h3>
+            <p class="ui-muted" style="max-width:38ch;font-size:var(--fs-sm);margin:0;line-height:1.5;">
+              ${esc(worker.name)} will review it and you'll be notified when they respond.
+            </p>
+            <div style="margin-top:12px;">
+              <button type="button" class="ui-btn ui-btn--accent ui-btn--sm" id="booking-done-btn">Done</button>
+            </div>
+          </div>
+        `;
+        if (typeof window !== 'undefined' && window.refreshIcons) window.refreshIcons();
+        card.querySelector('#booking-done-btn')?.addEventListener('click', () => {
+          closeModal();
+          this.render(container);
+        });
+      }
+
+      Toast.show(`Request sent to ${worker.name}`, 'success');
+      setTimeout(() => {
+        try {
+          if (document.body.contains(modal)) {
+            closeModal();
+            this.render(container);
+          }
+        } catch (_) {}
+      }, 3500);
     };
   },
 

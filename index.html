@@ -12,21 +12,23 @@
 
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./css_enhancements.css">
+  <link rel="stylesheet" href="./ui.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Inter:wght@400..700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 
   <!-- Lucide Icons -->
-  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.min.js"></script>
 
-  <script src="./config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="./config.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
   <div id="app" class="app-container"></div>
 
   <script type="module">
     import { App } from './app.js';
+    import { autoRefreshIcons } from './icons.js';
     import { SupabaseService } from './supabaseClient.js';
     import { AuthService } from './authService.js';
     import { StorageService } from './storage.js';
@@ -99,6 +101,7 @@
       } catch (e) {}
 
       try {
+        autoRefreshIcons(document.body);
         App.init();
         window.refreshIcons();
       } catch (err) {

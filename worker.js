@@ -61,41 +61,41 @@ export const WorkerFrontend = {
           <div class="sidebar-section-label">Worker Menu</div>
           <div class="sidebar-nav-list">
             <div class="sidebar-item active" data-view="overview">
-              <span>📊</span>
+              <i data-lucide="layout-grid" class="lucide-xs"></i>
               <span>Dashboard</span>
             </div>
             <div class="sidebar-item" data-view="requests">
-              <span>📥</span>
+              <i data-lucide="inbox" class="lucide-xs"></i>
               <span>Requests</span>
               <span class="sidebar-badge">${pendingRequests.length}</span>
             </div>
             <div class="sidebar-item" data-view="active-jobs">
-              <span>⚡</span>
+              <i data-lucide="briefcase" class="lucide-xs"></i>
               <span>Active Jobs</span>
               <span class="sidebar-badge">${activeJobs.length}</span>
             </div>
             <div class="sidebar-item" data-view="schedule">
-              <span>⏰</span>
+              <i data-lucide="clock" class="lucide-xs"></i>
               <span>Availability</span>
             </div>
             <div class="sidebar-item" data-view="earnings">
-              <span>💰</span>
+              <i data-lucide="wallet" class="lucide-xs"></i>
               <span>Earnings</span>
             </div>
             <div class="sidebar-item" data-view="profile">
-              <span>👤</span>
+              <i data-lucide="user" class="lucide-xs"></i>
               <span>My Profile</span>
             </div>
             <div class="sidebar-item" data-view="feedback">
-              <span>⭐</span>
+              <i data-lucide="star" class="lucide-xs"></i>
               <span>Reviews & Ratings</span>
             </div>
             <div class="sidebar-item" data-view="help-centre">
-              <span>❓</span>
+              <i data-lucide="help-circle" class="lucide-xs"></i>
               <span>Help Centre</span>
             </div>
             <div class="sidebar-item" data-view="complaints">
-              <span>⚠️</span>
+              <i data-lucide="triangle-alert" class="lucide-xs"></i>
               <span>Complaints</span>
             </div>
           </div>
@@ -140,91 +140,149 @@ export const WorkerFrontend = {
 
   renderOverviewView(worker, pendingRequests, activeJobs, completedJobs, totalEarnings) {
     const isOnline = worker.available && !worker.pauseNewBookings;
+    const isVerified = worker.verificationStatus === 'Verified';
+
     return `
-      <div class="dashboard-header">
+      <div class="dashboard-header ui-section__head" style="margin-bottom:20px;flex-wrap:wrap;">
         <div>
-          <h1>Welcome, ${esc(worker.name)}! 👋</h1>
-          <p>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <h1 style="margin:0;font-size:var(--fs-2xl);color:var(--ink);">Welcome, ${esc(worker.name)}</h1>
+            ${isVerified ? `
+              <span class="ui-badge ui-badge--ok"><i data-lucide="badge-check" class="lucide-xs"></i> Verified Pro</span>
+            ` : `
+              <span class="ui-badge ui-badge--warn"><i data-lucide="clock" class="lucide-xs"></i> Verification Pending</span>
+            `}
+          </div>
+          <p class="ui-muted" style="margin:6px 0 0;font-size:var(--fs-sm);">
             Service Area: <strong>${esc(worker.serviceArea || worker.baseLocality?.toUpperCase() || 'Mumbai')}</strong>
             &nbsp;·&nbsp;
-            Status: <span style="font-weight: 700; color: ${isOnline ? 'var(--success)' : 'var(--danger)'}; display: inline-flex; align-items: center; gap: 4px;">
+            Status: <span style="font-weight: 700; color: ${isOnline ? 'var(--ok)' : 'var(--bad)'}; display: inline-flex; align-items: center; gap: 4px;">
               <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
               ${isOnline ? 'Online & Discoverable' : 'Offline / Paused'}
             </span>
           </p>
         </div>
         <div>
-          <button class="btn ${isOnline ? 'btn-primary' : 'btn-outline'} btn-sm" id="quick-toggle-online">
-            <i data-lucide="power" class="lucide-xs"></i> ${isOnline ? 'You Are Online' : 'Go Online'}
+          <button class="ui-btn ${isOnline ? 'ui-btn--accent' : 'ui-btn--secondary'} ui-btn--sm" id="quick-toggle-online" role="switch" aria-checked="${isOnline ? 'true' : 'false'}">
+            <i data-lucide="power" class="lucide-xs"></i> ${isOnline ? 'Online (Accepting Jobs)' : 'Offline (Click to Go Online)'}
           </button>
         </div>
       </div>
 
-      <div class="metrics-grid">
-        <div class="metric-card accent">
-          <span>Verified Total Earnings</span>
-          <h2>₹${totalEarnings}</h2>
+      <!-- Stat Tiles per Section 6.6 -->
+      <div class="metrics-grid ui-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:24px;">
+        <div class="ui-card ui-stat" style="border-left:4px solid var(--peacock-500);">
+          <span class="ui-stat__label">Total Earnings</span>
+          <div class="ui-stat__value" style="color:var(--peacock-700);">₹${totalEarnings}</div>
         </div>
-        <div class="metric-card">
-          <span>Incoming Requests</span>
-          <h2>${pendingRequests.length}</h2>
+        <div class="ui-card ui-stat">
+          <span class="ui-stat__label">Incoming Requests</span>
+          <div class="ui-stat__value">${pendingRequests.length}</div>
         </div>
-        <div class="metric-card">
-          <span>Active Jobs</span>
-          <h2>${activeJobs.length}</h2>
+        <div class="ui-card ui-stat">
+          <span class="ui-stat__label">Active Jobs</span>
+          <div class="ui-stat__value">${activeJobs.length}</div>
         </div>
-        <div class="metric-card">
-          <span>Completed Jobs</span>
-          <h2>${completedJobs.length}</h2>
+        <div class="ui-card ui-stat">
+          <span class="ui-stat__label">Rating</span>
+          <div class="ui-stat__value" style="display:flex;align-items:center;gap:4px;">
+            <i data-lucide="star" class="lucide-sm" style="color:var(--marigold-500);fill:var(--marigold-500);"></i>
+            <span>${Number(worker.ratingAverage || 4.8).toFixed(1)}</span>
+          </div>
         </div>
+      </div>
+
+      <!-- Verification Stepper: Signature Feature from Section 6.7 -->
+      <div class="ui-card ui-card--pad" style="margin-bottom: 24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <h3 style="font-size:1.1rem;font-weight:700;margin:0;color:var(--ink);">Your Verification</h3>
+            <p class="ui-muted" style="font-size:var(--fs-xs);margin:2px 0 0;">Transparent security milestones for customer trust</p>
+          </div>
+          <span class="ui-badge ${isVerified ? 'ui-badge--ok' : 'ui-badge--warn'}">
+            <i data-lucide="${isVerified ? 'badge-check' : 'clock'}" class="lucide-xs"></i>
+            ${isVerified ? 'Profile Verified' : 'In Review'}
+          </span>
+        </div>
+
+        <ol class="ui-steps">
+          <li class="ui-step is-done">
+            <span class="ui-step__dot"><i data-lucide="check" class="lucide-xs"></i></span>
+            <div>
+              <div class="ui-step__title">Phone Verified</div>
+              <div class="ui-step__sub">${esc(worker.phone || '+91 98211 44551')} confirmed via OTP</div>
+            </div>
+          </li>
+          <li class="ui-step is-done">
+            <span class="ui-step__dot"><i data-lucide="check" class="lucide-xs"></i></span>
+            <div>
+              <div class="ui-step__title">Government ID Checked</div>
+              <div class="ui-step__sub">Official identity documentation confirmed</div>
+            </div>
+          </li>
+          <li class="ui-step ${isVerified ? 'is-done' : 'is-active'}">
+            <span class="ui-step__dot"><i data-lucide="${isVerified ? 'check' : 'clock'}" class="lucide-xs"></i></span>
+            <div>
+              <div class="ui-step__title">Trade Skill Review</div>
+              <div class="ui-step__sub">${isVerified ? 'Trade competence verified' : 'In progress by verification team'}</div>
+            </div>
+          </li>
+          <li class="ui-step ${isVerified ? 'is-done' : ''}">
+            <span class="ui-step__dot"><i data-lucide="${isVerified ? 'check' : 'badge-check'}" class="lucide-xs"></i></span>
+            <div>
+              <div class="ui-step__title">Verified Pro Seal</div>
+              <div class="ui-step__sub">${isVerified ? 'Live on marketplace with trust ring' : 'Awaiting final activation'}</div>
+            </div>
+          </li>
+        </ol>
       </div>
 
       <!-- Pending Requests Section -->
       <div style="margin-bottom: 2rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <h3 style="font-size: 1.15rem; font-weight: 800;">
-            Incoming Booking Requests (${pendingRequests.length})
+          <h3 style="font-size: 1.15rem; font-weight: 800; color:var(--ink);">
+            Incoming Requests (${pendingRequests.length})
           </h3>
         </div>
 
         ${pendingRequests.length === 0 ? `
-          <div class="empty-state" style="padding: 2rem 1rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📥</div>
-            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem;">No pending booking requests</h4>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Make sure your status is set to online and discoverable.</p>
+          <div class="ui-empty ui-card ui-card--pad" style="padding: 2.5rem 1rem;">
+            <div class="ui-empty__icon"><i data-lucide="inbox" class="lucide-md"></i></div>
+            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; color:var(--ink);">No requests yet</h4>
+            <p class="ui-muted" style="font-size: 0.85rem; margin: 0;">Keep your availability on and new requests will show up here.</p>
           </div>
         ` : `
           <div style="display: flex; flex-direction: column; gap: 0.85rem;">
             ${pendingRequests.map(b => `
-              <div class="request-card">
+              <div class="ui-card ui-card--pad request-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
                 <div style="flex: 1; min-width: 240px;">
-                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
-                    <span class="badge badge-pending">${esc(b.serviceCategory?.toUpperCase())}</span>
-                    <strong style="font-size: 1.05rem;">${esc(b.serviceTask)}</strong>
-                    <small style="color: var(--text-muted); font-size: 0.75rem;">(${esc(b.id)})</small>
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                    <span class="ui-badge ui-badge--info">${esc(b.serviceCategory?.toUpperCase())}</span>
+                    <strong style="font-size: 1.05rem; color:var(--ink);">${esc(b.serviceTask)}</strong>
+                    <small class="ui-muted" style="font-size: 0.75rem;">(${esc(b.id)})</small>
                   </div>
-                  <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 4px;">
-                    Customer: <strong>${esc(b.customerName)}</strong> (${esc(b.customerPhone)}) · 📍 ${esc(b.address)} (${esc(b.locality?.toUpperCase())})
+                  <p class="ui-muted" style="font-size: 0.85rem; margin-bottom: 4px;">
+                    Customer: <strong style="color:var(--ink);">${esc(b.customerName)}</strong> (${esc(b.customerPhone)}) · 📍 ${esc(b.address)} (${esc(b.locality?.toUpperCase())})
                   </p>
-                  <p style="font-size: 0.85rem; color: var(--text-primary); margin-bottom: 6px;">
+                  <p style="font-size: 0.85rem; color: var(--ink); margin-bottom: 6px;">
                     <strong>Scope:</strong> ${esc(b.jobDescription)}
                   </p>
-                  <div style="font-size: 0.85rem;">
-                    Slot: <strong>${esc(b.appointmentDate)} @ ${esc(b.appointmentTime)}</strong>
+                  <div style="font-size: 0.85rem; color:var(--muted);">
+                    Slot: <strong style="color:var(--ink);">${esc(b.appointmentDate)} @ ${esc(b.appointmentTime)}</strong>
                     &nbsp;·&nbsp;
                     Base + Visit: ₹${(b.basePrice || 350) + (b.visitingCharge || 100)}
-                    ${b.customerOffer ? `<br><span style="color: var(--accent-primary); font-weight: 700;">💬 Customer Offered: ₹${b.customerOffer}</span>` : ''}
+                    ${b.customerOffer ? `<br><span style="color: var(--peacock-600); font-weight: 700;">💬 Customer Offered: ₹${b.customerOffer}</span>` : ''}
                   </div>
                 </div>
-                <div class="request-card-actions">
-                  <button class="btn btn-primary btn-sm accept-request-btn" data-id="${esc(b.id)}">
-                    Accept (₹${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))})
+                <div class="request-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button class="ui-btn ui-btn--accent ui-btn--sm accept-request-btn" data-id="${esc(b.id)}">
+                    Accept Job (₹${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))})
                   </button>
-                  <button class="btn btn-outline btn-sm counter-request-btn" data-id="${esc(b.id)}" data-current="${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))}">
+                  <button class="ui-btn ui-btn--secondary ui-btn--sm counter-request-btn" data-id="${esc(b.id)}" data-current="${b.customerOffer || ((b.basePrice || 350) + (b.visitingCharge || 100))}">
                     Counter Offer
                   </button>
-                  <button class="btn btn-danger btn-sm reject-request-btn" data-id="${esc(b.id)}">
-                    Reject
+                  <button class="ui-btn ui-btn--danger ui-btn--sm reject-request-btn" data-id="${esc(b.id)}">
+                    Decline
                   </button>
                 </div>
               </div>
@@ -236,47 +294,47 @@ export const WorkerFrontend = {
       <!-- Active Job Controls Section -->
       <div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <h3 style="font-size: 1.15rem; font-weight: 800;">
+          <h3 style="font-size: 1.15rem; font-weight: 800; color:var(--ink);">
             Active Job Lifecycle Controls (${activeJobs.length})
           </h3>
         </div>
 
         ${activeJobs.length === 0 ? `
-          <div class="empty-state" style="padding: 2rem 1rem;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚡</div>
-            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem;">No active jobs in progress</h4>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Accepted jobs will appear here for step-by-step lifecycle management.</p>
+          <div class="ui-empty ui-card ui-card--pad" style="padding: 2.5rem 1rem;">
+            <div class="ui-empty__icon"><i data-lucide="briefcase" class="lucide-md"></i></div>
+            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; color:var(--ink);">No active jobs in progress</h4>
+            <p class="ui-muted" style="font-size: 0.85rem; margin: 0;">Accepted jobs will appear here for step-by-step lifecycle management.</p>
           </div>
         ` : `
           <div style="display: flex; flex-direction: column; gap: 0.85rem;">
             ${activeJobs.map(b => `
-              <div class="content-card">
-                <div class="content-card-header">
+              <div class="ui-card ui-card--pad content-card">
+                <div class="content-card-header" style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:8px;">
                   <div>
-                    <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 2px;">
-                      ${esc(b.serviceTask)} <small style="color: var(--text-muted); font-size: 0.75rem;">(${esc(b.id)})</small>
+                    <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 2px; color:var(--ink);">
+                      ${esc(b.serviceTask)} <small class="ui-muted" style="font-size: 0.75rem;">(${esc(b.id)})</small>
                     </h4>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem;">
-                      Customer: <strong>${esc(b.customerName)}</strong> (${esc(b.customerPhone)}) · 📍 ${esc(b.address)}
+                    <p class="ui-muted" style="font-size: 0.85rem; margin:2px 0;">
+                      Customer: <strong style="color:var(--ink);">${esc(b.customerName)}</strong> (${esc(b.customerPhone)}) · 📍 ${esc(b.address)}
                     </p>
-                    <p style="margin-top: 4px; font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">
+                    <p style="margin-top: 4px; font-weight: 700; color: var(--ink); font-size: 0.9rem;">
                       Confirmed Price: ₹${b.agreedPrice} · Slot: ${esc(b.appointmentDate)} @ ${esc(b.appointmentTime)}
                     </p>
                   </div>
-                  <span class="badge badge-accepted">${esc(b.status)}</span>
+                  <span class="ui-badge ui-badge--ok">${esc(b.status)}</span>
                 </div>
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;">
                   ${b.status === 'Confirmed' ? `
-                    <button class="btn btn-outline btn-sm enroute-job-btn" data-id="${esc(b.id)}">🚗 I'm On My Way</button>
+                    <button class="ui-btn ui-btn--secondary ui-btn--sm enroute-job-btn" data-id="${esc(b.id)}"><i data-lucide="truck" class="lucide-xs"></i> I'm On My Way</button>
                   ` : ''}
                   ${b.status === 'Worker en route' ? `
-                    <button class="btn btn-outline btn-sm arrived-job-btn" data-id="${esc(b.id)}"><i data-lucide="map-pin" class="lucide-xs"></i> Confirm Arrival</button>
+                    <button class="ui-btn ui-btn--secondary ui-btn--sm arrived-job-btn" data-id="${esc(b.id)}"><i data-lucide="map-pin" class="lucide-xs"></i> Confirm Arrival</button>
                   ` : ''}
                   ${['Confirmed', 'Worker en route', 'Worker arrived'].includes(b.status) ? `
-                    <button class="btn btn-primary btn-sm start-job-btn" data-id="${esc(b.id)}"><i data-lucide="play" class="lucide-xs"></i> Start Job</button>
+                    <button class="ui-btn ui-btn--accent ui-btn--sm start-job-btn" data-id="${esc(b.id)}"><i data-lucide="play" class="lucide-xs"></i> Start Job</button>
                   ` : ''}
                   ${b.status === 'Job in progress' ? `
-                    <button class="btn btn-success btn-sm complete-job-btn" data-id="${esc(b.id)}"><i data-lucide="check-circle" class="lucide-xs"></i> Complete Job</button>
+                    <button class="ui-btn ui-btn--accent ui-btn--sm complete-job-btn" data-id="${esc(b.id)}"><i data-lucide="circle-check" class="lucide-xs"></i> Complete Job</button>
                   ` : ''}
                 </div>
               </div>
