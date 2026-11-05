@@ -78,7 +78,28 @@
             oauthError = err;
           }
           if (oauthError && !oauthTargetRole) {
-            Toast.show('Sign-in failed: ' + (oauthError.message || 'please try again'), 'error');
+            // Never strand the user on the landing page after a Google
+            // attempt: fall back to the chosen role's demo session so
+            // customer/worker pages stay reachable even if exchange fails.
+            let fallbackRole = null;
+            try {
+              const p = localStorage.getItem('localkaam_pending_auth_role');
+              if (p === 'worker' || p === 'customer') fallbackRole = p;
+            } catch (e) {}
+            if (fallbackRole) {
+              try {
+                AuthService.loginGuest(fallbackRole);
+                StorageService.setCurrentRole(fallbackRole);
+                oauthTargetRole = fallbackRole;
+                try { localStorage.removeItem('localkaam_pending_auth_role'); } catch (e) {}
+                Toast.show(`Google sign-in could not complete — entered ${fallbackRole} demo mode so you can continue.`, 'warning');
+                console.warn('[Auth] OAuth failed, fell back to guest', fallbackRole, oauthError.message || oauthError);
+              } catch (e) {
+                Toast.show('Sign-in failed: ' + (oauthError.message || 'please try again'), 'error');
+              }
+            } else {
+              Toast.show('Sign-in failed: ' + (oauthError.message || 'please try again'), 'error');
+            }
           }
           if (window.history && window.history.replaceState) {
             window.history.replaceState(null, '', window.location.pathname + (oauthTargetRole ? '#' + oauthTargetRole : ''));
