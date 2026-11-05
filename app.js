@@ -6,6 +6,7 @@ import { Toast } from './toast.js';
 import { AuthModal } from './authModal.js';
 import { AuthService } from './authService.js';
 import { esc } from './utils.js';
+import { buildTaskIndex, searchTasks, catImage, icon } from './ui.js';
 
 export const App = {
   init() {
