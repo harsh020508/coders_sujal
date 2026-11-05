@@ -268,6 +268,38 @@ class AuthServiceManager {
   }
 
   // ========================================================================
+  loginGuest(role = 'customer') {
+    const isWorker = role === 'worker';
+    const guestUser = {
+      id: isWorker ? 'guest_worker_01' : 'guest_customer_01',
+      email: isWorker ? 'rajesh.kumar@localkaam.demo' : 'aarav.mehta@localkaam.demo',
+      user_metadata: {
+        full_name: isWorker ? 'Rajesh Kumar (Worker)' : 'Aarav Mehta (Customer)',
+        role: role,
+        phone: '+91 98765 43210',
+        locality: 'andheri'
+      }
+    };
+    this.currentUser = guestUser;
+    this.currentSession = {
+      access_token: 'demo_guest_token_' + Date.now(),
+      expires_at: Math.floor(Date.now() / 1000) + 86400 * 30,
+      user: guestUser
+    };
+    this.currentProfile = {
+      id: guestUser.id,
+      email: guestUser.email,
+      role: role,
+      full_name: guestUser.user_metadata.full_name,
+      phone: guestUser.user_metadata.phone,
+      locality: 'andheri',
+      avatar_url: ''
+    };
+    this.saveCachedProfileDisplay(this.currentProfile);
+    this.notifyListeners('SIGNED_IN', this.currentSession);
+    return { user: guestUser, profile: this.currentProfile };
+  }
+
   setRole(role) {
     const validRole = role === 'worker' ? 'worker' : 'customer';
     if (!this.currentProfile) {

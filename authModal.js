@@ -114,12 +114,26 @@ export const AuthModal = {
             Create ${isWorker ? 'Worker' : 'Customer'} Account
           </button>
         </form>
+        <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px dashed var(--border-color); text-align: center;">
+          <button type="button" class="btn btn-outline btn-full btn-sm" id="btn-quick-guest" style="font-weight: 600; padding: 0.6rem;">
+            ⚡ Continue as Guest ${isWorker ? 'Worker' : 'Customer'}
+          </button>
+        </div>
       </div>
     `;
 
     document.body.appendChild(modal);
 
     const closeModal = () => modal.remove();
+    modal.querySelector('#btn-quick-guest')?.addEventListener('click', () => {
+      AuthService.loginGuest(isWorker ? 'worker' : 'customer');
+      closeModal();
+      Toast.show(`Continuing as ${isWorker ? 'Worker' : 'Customer'}!`, 'info');
+      if (onAuthenticated) {
+        onAuthenticated(AuthService.getUser(), AuthService.getProfile());
+      }
+    });
+
     modal.querySelector('#close-auth-modal').onclick = closeModal;
 
     const errorDiv = modal.querySelector('#auth-error-display');

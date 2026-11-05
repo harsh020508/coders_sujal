@@ -419,7 +419,7 @@ export const App = {
             </span>
           </div>
           <div class="nav-actions">
-            ${isAuthed ? '<button class="btn btn-outline btn-sm" id="logout-btn" title="Sign Out">🚪 Sign Out</button>' : ''}
+            ${isAuthed ? '<button class="btn btn-outline btn-sm" id="logout-btn" title="Sign Out">🚪 Sign Out</button>' : '<button class="btn btn-primary btn-sm" id="nav-signin-btn" style="font-size:0.8rem;padding:4px 10px;">🔑 Sign In</button>'}
             <button class="btn btn-outline btn-sm" id="switch-role-btn">⇄ Switch</button>
             <button class="theme-toggle" id="theme-toggle-btn">${theme === 'dark' ? '☀️' : '🌙'}</button>
             <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Demo Data" style="font-size:0.75rem;">🔄</button>
@@ -484,6 +484,16 @@ export const App = {
 
   attachLandingEvents(root) {
     this._attachMobileNav(root);
+    const signinBtn = root.querySelector('#nav-signin-btn');
+    if (signinBtn) {
+      signinBtn.addEventListener('click', () => {
+        const curRole = StorageService.getCurrentRole();
+        AuthModal.show(curRole === 'worker' ? 'worker' : 'customer', () => {
+          this.render();
+        });
+      });
+    }
+
 
     root.querySelector('#nav-home-logo')?.addEventListener('click', () => {
       this.navigateToRole('landing');
@@ -510,18 +520,14 @@ export const App = {
 
     root.querySelectorAll('.category-card').forEach(card => {
       card.addEventListener('click', () => {
-        if (AuthService.isAuthenticated()) {
-          AuthService.setRole('customer');
-          this.navigateToRole('customer');
-          CustomerFrontend.currentCategory = card.getAttribute('data-category');
-          this.render();
+        StorageService.setCurrentRole('customer');
+        if (!AuthService.isAuthenticated()) {
+          AuthService.loginGuest('customer');
         } else {
-          AuthModal.show('customer', () => {
-            this.navigateToRole('customer');
-            CustomerFrontend.currentCategory = card.getAttribute('data-category');
-            this.render();
-          });
+          AuthService.setRole('customer');
         }
+        CustomerFrontend.currentCategory = card.getAttribute('data-category');
+        this.navigateToRole('customer');
       });
       card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') card.click(); });
     });
@@ -537,24 +543,22 @@ export const App = {
       this.navigateToRole('landing');
     });
     root.querySelector('#select-customer-role')?.addEventListener('click', () => {
-      if (AuthService.isAuthenticated()) {
-        AuthService.setRole('customer');
-        this.navigateToRole('customer');
+      StorageService.setCurrentRole('customer');
+      if (!AuthService.isAuthenticated()) {
+        AuthService.loginGuest('customer');
       } else {
-        AuthModal.show('customer', () => {
-          this.navigateToRole('customer');
-        });
+        AuthService.setRole('customer');
       }
+      this.navigateToRole('customer');
     });
     root.querySelector('#select-worker-role')?.addEventListener('click', () => {
-      if (AuthService.isAuthenticated()) {
-        AuthService.setRole('worker');
-        this.navigateToRole('worker');
+      StorageService.setCurrentRole('worker');
+      if (!AuthService.isAuthenticated()) {
+        AuthService.loginGuest('worker');
       } else {
-        AuthModal.show('worker', () => {
-          this.navigateToRole('worker');
-        });
+        AuthService.setRole('worker');
       }
+      this.navigateToRole('worker');
     });
 
     const themeBtn = root.querySelector('#theme-toggle-btn');

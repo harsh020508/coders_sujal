@@ -30,8 +30,11 @@
 
     window.addEventListener('DOMContentLoaded', async () => {
       try {
-        const hash = window.location.hash;
-        if (hash && (hash.includes('access_token') || hash.includes('error'))) {
+        const hash = window.location.hash || '';
+        const search = window.location.search || '';
+        const isOAuth = hash.includes('access_token') || hash.includes('error') ||
+                        search.includes('code=') || search.includes('error=');
+        if (isOAuth) {
           const appDiv = document.getElementById('app');
           if (appDiv) {
             appDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;"><div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div><p style="font-size:1.1rem;font-weight:600;color:var(--text-primary);">Completing Secure Sign-In...</p></div>';
@@ -39,14 +42,18 @@
           try {
             const client = await SupabaseService.getClient();
             if (client) {
-              // Wait briefly for Supabase to complete PKCE token exchange
-              await new Promise(resolve => setTimeout(resolve, 500));
-              const { data, error } = await client.auth.getSession();
-              if (error) {
-                // Only clear state if there's an actual auth error from Supabase
-                console.error('OAuth session error:', error.message);
-                Toast.show('Sign-in error: ' + (error.message || 'Unknown error'), 'error');
-              } else if (data && data.session) {
+              let session = null;
+              // Poll up to 3.2s for Supabase PKCE / URL hash exchange
+              for (let i = 0; i < 8; i++) {
+                const { data } = await client.auth.getSession();
+                if (data && data.session) {
+                  session = data.session;
+                  break;
+                }
+                await new Promise(r => setTimeout(r, 400));
+              }
+
+              if (session && session.user) {
                 let targetRole = 'customer';
                 try {
                   const pending = localStorage.getItem('localkaam_pending_auth_role');
@@ -56,23 +63,22 @@
                   }
                 } catch (e) {}
 
-                AuthService.currentSession = data.session;
-                AuthService.currentUser = data.session.user;
+                AuthService.currentSession = session;
+                AuthService.currentUser = session.user;
 
-                await AuthService.syncUserProfile(data.session.user);
+                await AuthService.syncUserProfile(session.user);
                 AuthService.setRole(targetRole);
                 StorageService.setCurrentRole(targetRole);
 
-                Toast.show('Signed in as ' + (data.session.user.email || 'User') + '!', 'success');
+                Toast.show('Signed in as ' + (session.user.email || 'User') + '!', 'success');
               }
-              // If !data.session and no error — PKCE exchange still pending, onAuthStateChange will handle it
             }
           } catch (err) {
             console.error('OAuth callback processing error:', err);
             Toast.show('Authentication error occurred.', 'error');
           }
           if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            window.history.replaceState(null, '', window.location.pathname);
           }
         }
       } catch (e) {}
