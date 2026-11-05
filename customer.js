@@ -6,6 +6,8 @@ import { Toast } from './toast.js';
 import { AuthService } from './authService.js';
 import { esc } from './utils.js';
 import { initScrollReveal } from './transitions.js';
+import { i18n } from './i18n.js';
+import { avatar, rating, statusBadge, emptyState, trapFocus } from './ui.js';
 
 // Helper to get all feedback tags
 const FEEDBACK_TAGS = [
@@ -479,7 +481,7 @@ export const CustomerFrontend = {
     container.querySelectorAll('.view-worker-profile-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const workerId = btn.getAttribute('data-id');
-        this.showWorkerDetailsModal(workerId, container);
+        this.showWorkerProfileModal(workerId, container);
       });
     });
 
@@ -787,6 +789,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    i18n.translateDOM(modal);
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#close-ticket-btn').onclick = () => modal.remove();
 
@@ -1343,6 +1346,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    i18n.translateDOM(modal);
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelectorAll('.book-worker-from-compare').forEach(btn => {
       btn.onclick = () => {
@@ -1401,6 +1405,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    i18n.translateDOM(modal);
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#close-btn').onclick = () => modal.remove();
   },
@@ -1477,6 +1482,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    i18n.translateDOM(modal);
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#close-inv').onclick = () => modal.remove();
   },
@@ -1542,6 +1548,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    i18n.translateDOM(modal);
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#cancel-rev-btn').onclick = () => modal.remove();
 

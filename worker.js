@@ -5,6 +5,7 @@ import { WorkerFeedback, WorkerEarnings } from './worker_new_features.js';
 import { Toast } from './toast.js';
 import { AuthService } from './authService.js';
 import { esc } from './utils.js';
+import { i18n, t } from './i18n.js';
 
 export const WorkerFrontend = {
   currentView: 'overview',
@@ -150,6 +151,8 @@ export const WorkerFrontend = {
       case 'support':
       case 'help-centre':
         return this.renderHelpCentreView(worker);
+      case 'complaints':
+        return this.renderComplaintsView();
       case 'profile':
         return this.renderProfileView(worker);
       default:
@@ -1436,91 +1439,12 @@ export const WorkerFrontend = {
       case 'help-centre':
         this.attachHelpCentreEvents(container, worker);
         break;
+      case 'complaints':
+        this.attachComplaintEvents(container, worker);
+        break;
       default:
         break;
     }
-  },
-
-  attachActionEvents(container) {
-    container.querySelectorAll('.accept-request-btn').forEach(btn => {
-      btn.onclick = () => {
-        const bookingId = btn.getAttribute('data-id');
-        let bookings = StorageService.getBookings();
-        bookings = bookings.map(b => b.id === bookingId ? BookingService.acceptBooking(b, true) : b);
-        StorageService.saveBookings(bookings);
-        Toast.show(`Booking ${bookingId} confirmed!`, 'success');
-        this.render(container);
-      };
-    });
-
-    container.querySelectorAll('.reject-request-btn').forEach(btn => {
-      btn.onclick = () => {
-        const bookingId = btn.getAttribute('data-id');
-        let bookings = StorageService.getBookings();
-        bookings = bookings.map(b => b.id === bookingId ? BookingService.rejectBooking(b) : b);
-        StorageService.saveBookings(bookings);
-        Toast.show(`Booking ${bookingId} rejected.`, 'info');
-        this.render(container);
-      };
-    });
-
-    container.querySelectorAll('.counter-request-btn').forEach(btn => {
-      btn.onclick = () => {
-        const bookingId = btn.getAttribute('data-id');
-        const amount = prompt('Enter counter offer amount (₹):');
-        if (!amount) return;
-        const note = prompt('Add optional note for customer (e.g. "Parts cost extra"):') || 'Counter-offer';
-        let bookings = StorageService.getBookings();
-        bookings = bookings.map(b => b.id === bookingId ? BookingService.workerCounterOffer(b, amount, note) : b);
-        StorageService.saveBookings(bookings);
-        Toast.show(`Counter offer of ₹${amount} sent to customer!`, 'success');
-        this.render(container);
-      };
-    });
-
-    container.querySelectorAll('.enroute-job-btn').forEach(btn => {
-      btn.onclick = () => {
-        const bookingId = btn.getAttribute('data-id');
-        let bookings = StorageService.getBookings();
-        bookings = bookings.map(b => b.id === bookingId ? BookingService.setEnRoute(b) : b);
-        StorageService.saveBookings(bookings);
-        Toast.show('Status updated: Worker en route.', 'info');
-        this.render(container);
-      };
-    });
-
-    container.querySelectorAll('.arrived-job-btn').forEach(btn => {
-      btn.onclick = () => {
-        const bookingId = btn.getAttribute('data-id');
-        let bookings = StorageService.getBookings();
-        bookings = bookings.map(b => b.id === bookingId ? BookingService.setArrived(b) : b);
-        StorageService.saveBookings(bookings);
-        Toast.show('Status updated: Worker arrived at location.', 'info');
-        this.render(container);
-      };
-    });
-
-    container.querySelectorAll('.start-job-btn').forEach(btn => {
-      btn.onclick = () => {
-        const bookingId = btn.getAttribute('data-id');
-        let bookings = StorageService.getBookings();
-        bookings = bookings.map(b => b.id === bookingId ? BookingService.startJob(b) : b);
-        StorageService.saveBookings(bookings);
-        Toast.show(`Job ${bookingId} started!`, 'success');
-        this.render(container);
-      };
-    });
-
-    container.querySelectorAll('.complete-job-btn').forEach(btn => {
-      btn.onclick = () => {
-        const bookingId = btn.getAttribute('data-id');
-        let bookings = StorageService.getBookings();
-        bookings = bookings.map(b => b.id === bookingId ? BookingService.completeJob(b) : b);
-        StorageService.saveBookings(bookings);
-        Toast.show(`Job ${bookingId} completed successfully!`, 'success');
-        this.render(container);
-      };
-    });
   },
 
   attachEarningsEvents(container, worker) {
@@ -1684,6 +1608,157 @@ export const WorkerFrontend = {
         ticketForm.reset();
       };
     }
+  },
+
+  attachComplaintEvents(container, worker) {
+    // Complaint filter
+    const filterSelect = container.querySelector('#complaint-filter');
+    if (filterSelect) {
+      filterSelect.addEventListener('change', () => {
+        this.filterComplaints(filterSelect.value, container);
+      });
+    }
+
+    // New complaint form
+    const complaintForm = container.querySelector('#new-complaint-form');
+    if (complaintForm) {
+      complaintForm.onsubmit = (e) => {
+        e.preventDefault();
+        const category = container.querySelector('#complaint-category').value;
+        const bookingId = container.querySelector('#complaint-booking-id').value;
+        const details = container.querySelector('#complaint-details').value;
+
+        if (!bookingId.trim() || !details.trim()) {
+          Toast.show('Please fill in all required fields', 'error');
+          return;
+        }
+
+        const complaint = {
+          id: `CMP-${Date.now()}`,
+          bookingId: bookingId,
+          workerId: worker.id,
+          customerId: null,
+          customerName: worker.name,
+          category: category,
+          issue: category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          details: details,
+          status: 'Open',
+          createdAt: new Date().toISOString()
+        };
+
+        const complaints = StorageService.getComplaints();
+        complaints.push(complaint);
+        StorageService.saveComplaints(complaints);
+        Toast.show('Complaint submitted!', 'success');
+        complaintForm.reset();
+        this.filterComplaints('all', container);
+      };
+    }
+  },
+
+  filterComplaints(filter, container) {
+    const complaints = StorageService.getComplaints();
+    const listDiv = container.querySelector('#complaints-list');
+    if (!listDiv) return;
+
+    let filtered = complaints;
+    if (filter !== 'all') {
+      filtered = complaints.filter(c => c.status.toLowerCase() === filter);
+    }
+
+    listDiv.innerHTML = filtered.length === 0 ? `
+      <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">No complaints found.</p>
+    ` : `
+      <div style="display: flex; flex-direction: column; gap: 1rem; max-height: 500px; overflow-y: auto;">
+        ${filtered.map(c => `
+          <div key="${c.id}" style="background: var(--bg-primary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+              <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem;">${esc(c.issue)}</h4>
+              <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">${esc(c.details || 'No details provided')}</p>
+              <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 0.25rem;">${new Date(c.createdAt).toLocaleDateString()} • Status: <span class="badge" style="background: ${this.getStatusColor(c.status)};">${esc(c.status)}</span></p>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">
+              ${c.workerResponse ? `<strong>Worker Response:</strong> ${esc(c.workerResponse)}<br>` : ''}
+              ${c.resolution_notes ? `<strong>Resolution:</strong> ${esc(c.resolution_notes)}<br>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  },
+
+  renderComplaintsView() {
+    const complaints = StorageService.getComplaints();
+    return `
+      <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 2rem; max-width: 800px; margin: 0 auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+          <h2 style="font-size: 1.5rem; font-weight: 700;">My Complaints</h2>
+          <select id="complaint-filter" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+            <option value="all">All Complaints</option>
+            <option value="open">Open</option>
+            <option value="in-progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+          </select>
+        </div>
+
+        <div id="complaints-list">
+          ${complaints.length === 0 ? `
+            <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">No complaints yet.</p>
+          ` : `
+            <div style="display: flex; flex-direction: column; gap: 1rem; max-height: 500px; overflow-y: auto;">
+              ${complaints.map(c => `
+                <div key="${c.id}" style="background: var(--bg-primary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
+                  <div style="flex: 1; min-width: 200px;">
+                    <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem;">${esc(c.issue)}</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.25rem;">${esc(c.details || 'No details provided')}</p>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 0.25rem;">${new Date(c.createdAt).toLocaleDateString()} • Status: <span class="badge" style="background: ${this.getStatusColor(c.status)};">${esc(c.status)}</span></p>
+                  </div>
+                  <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                    ${c.workerResponse ? `<strong>Worker Response:</strong> ${esc(c.workerResponse)}<br>` : ''}
+                    ${c.resolution_notes ? `<strong>Resolution:</strong> ${esc(c.resolution_notes)}<br>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+
+        <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
+          <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Submit New Complaint</h3>
+          <form id="new-complaint-form" style="display: flex; flex-direction: column; gap: 1rem; max-width: 500px;">
+            <input type="hidden" id="complaint-booking-id">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+              <div>
+                <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Category</label>
+                <select id="complaint-category" class="form-select">
+                  <option value="did_not_arrive">Worker did not arrive</option>
+                  <option value="arrived_late">Worker arrived late</option>
+                  <option value="poor_quality">Poor-quality work</option>
+                  <option value="incomplete_service">Incomplete service</option>
+                  <option value="unexpected_charges">Unexpected or excessive charges</option>
+                  <option value="unprofessional">Unprofessional behaviour</option>
+                  <option value="payment_issue">Payment-related issue</option>
+                  <option value="misconduct_safety">Misconduct or safety concern</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Booking ID</label>
+                <input type="text" id="complaint-booking-id" class="form-control" placeholder="e.g. BKG-12345" required>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Complaint Details</label>
+              <textarea id="complaint-details" class="form-control" rows="3" placeholder="Describe the incident..."></textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+              <button type="button" class="btn btn-outline" onclick="this.form.reset()">Cancel</button>
+              <button type="submit" class="btn btn-primary">Submit Complaint</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
   },
 
   attachActionEvents(container) {
@@ -2632,6 +2707,97 @@ export const WorkerFrontend = {
 
     renderModalStep();
     document.body.appendChild(modal);
+  },
+
+  attachOverviewEvents(container, worker) {
+    // Chart toggle: Revenue vs Jobs
+    const toggleEarnings = container.querySelector('#toggle-chart-earnings');
+    const toggleJobs = container.querySelector('#toggle-chart-jobs');
+
+    if (toggleEarnings && toggleJobs) {
+      toggleEarnings.onclick = () => {
+        this.chartMode = 'earnings';
+        toggleEarnings.classList.add('active');
+        toggleJobs.classList.remove('active');
+        const chartBox = container.querySelector('#useful-trend-svg')?.parentElement;
+        if (chartBox) {
+          chartBox.innerHTML = this.renderUsefulChartSVG('earnings');
+        }
+      };
+
+      toggleJobs.onclick = () => {
+        this.chartMode = 'jobs';
+        toggleJobs.classList.add('active');
+        toggleEarnings.classList.remove('active');
+        const chartBox = container.querySelector('#useful-trend-svg')?.parentElement;
+        if (chartBox) {
+          chartBox.innerHTML = this.renderUsefulChartSVG('jobs');
+        }
+      };
+    }
+
+    const seeAllReq = container.querySelector('#quick-see-all-requests');
+    if (seeAllReq) {
+      seeAllReq.onclick = () => {
+        this.currentView = 'requests';
+        this.render(container);
+      };
+    }
+
+    const seeAllJobs = container.querySelector('#quick-see-all-jobs');
+    if (seeAllJobs) {
+      seeAllJobs.onclick = () => {
+        this.currentView = 'active-jobs';
+        this.render(container);
+      };
+    }
+
+    const nextJobBtn = container.querySelector('#quick-next-job-btn');
+    if (nextJobBtn) {
+      nextJobBtn.onclick = () => {
+        this.currentView = 'active-jobs';
+        this.render(container);
+      };
+    }
+  },
+
+  renderHelpCentreView(worker) {
+    return `
+      <div class="dash-wrapper">
+        <div class="dash-top-bar">
+          <div>
+            <h1 style="font-size: 1.75rem; font-weight: 800; margin: 0;">Worker Support &amp; Emergency Helpline</h1>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px;">Direct phone helpline and ticket support for billing or job disputes.</p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem;">
+          <div class="dash-card">
+            <h3>Emergency Helpline (24/7)</h3>
+            <div style="padding: 1.25rem; background: var(--bg-secondary); border-radius: 12px; margin: 1rem 0;">
+              <div style="font-size: 1.45rem; font-weight: 800; color: #ea580c;">📞 1800-419-KAAM</div>
+              <p style="font-size: 0.82rem; color: var(--text-muted); margin: 4px 0 0;">Free helpline in Hindi, Marathi &amp; English</p>
+            </div>
+            <a href="tel:18004195226" class="btn btn-primary btn-sm" style="text-decoration: none; text-align: center; display: inline-block;">Call Helpline</a>
+          </div>
+
+          <div class="dash-card">
+            <h3>Submit Support Ticket</h3>
+            <form id="worker-support-ticket-form" style="display: flex; flex-direction: column; gap: 0.85rem;">
+              <div>
+                <label class="form-label">Subject</label>
+                <input type="text" id="supp-subject" class="form-control" placeholder="e.g. Payment inquiry or rescheduling" required>
+              </div>
+              <div>
+                <label class="form-label">Description</label>
+                <textarea id="supp-desc" class="form-control" rows="3" placeholder="Describe the inquiry..." required></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">Submit Ticket</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
   }
 };
 
