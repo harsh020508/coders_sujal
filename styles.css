@@ -1824,3 +1824,464 @@ select, input, textarea { font-family: inherit; }
     width: 100% !important;
   }
 }
+
+/* ============================================================
+   REAL-TIME ORDER STATUS NOTIFICATION POPUPS & NOTIFICATION CENTER
+   ============================================================ */
+
+/* Top-Right Notification Container */
+#order-notification-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 10000;
+  width: min(410px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+
+@media (max-width: 639px) {
+  #order-notification-container {
+    top: 14px;
+    left: 14px;
+    right: 14px;
+    width: auto;
+    max-width: 480px;
+  }
+}
+
+/* Polished Toast Popup Item */
+.order-notification-toast {
+  background: var(--bg-card, #ffffff);
+  color: var(--text-primary);
+  border-radius: var(--radius-cards, 14px);
+  box-shadow: 0 12px 32px -4px rgba(26, 51, 0, 0.16), 0 4px 12px -2px rgba(26, 51, 0, 0.08);
+  border: 1.5px solid var(--border-color);
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  pointer-events: all;
+  cursor: pointer;
+  animation: orderNotifSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.order-notification-toast:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px -4px rgba(26, 51, 0, 0.22);
+}
+
+.order-notification-toast.dismissing {
+  animation: orderNotifSlideOut 0.28s ease forwards;
+}
+
+/* Left Accent Indicator Bar */
+.order-notification-toast .toast-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+}
+
+/* Icon Box */
+.order-notification-toast .toast-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Content */
+.order-notification-toast .toast-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-notification-toast .toast-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.order-notification-toast .toast-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.order-notification-toast .toast-time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.order-notification-toast .toast-message {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.order-notification-toast .toast-footer-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.order-notification-toast .toast-booking-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+/* Close Button */
+.order-notification-toast .toast-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 4px;
+  flex-shrink: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.order-notification-toast .toast-close-btn:hover {
+  color: var(--text-primary);
+  transform: scale(1.15);
+}
+
+/* Progress Bar */
+.order-notification-toast .toast-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  opacity: 0.85;
+}
+
+/* Slide in/out Keyframes */
+@keyframes orderNotifSlideIn {
+  from {
+    transform: translateX(115%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes orderNotifSlideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(115%);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 639px) {
+  @keyframes orderNotifSlideIn {
+    from {
+      transform: translateY(-40px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes orderNotifSlideOut {
+    from {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateY(-40px);
+      opacity: 0;
+    }
+  }
+}
+
+/* ============================================================
+   NOTIFICATION CENTER (BELL ICON & DROPDOWN)
+   ============================================================ */
+
+.notification-bell-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.notification-bell-btn {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.notification-bell-btn:hover {
+  background: var(--bg-secondary);
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+.notification-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  border-radius: 9999px;
+  text-align: center;
+  padding: 0 4px;
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.notification-badge.hidden {
+  display: none !important;
+}
+
+/* Notification Dropdown Panel */
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-cards, 14px);
+  box-shadow: 0 20px 48px rgba(26, 51, 0, 0.16), 0 8px 16px rgba(26, 51, 0, 0.08);
+  display: none;
+  flex-direction: column;
+  z-index: 1000;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.notification-dropdown.open {
+  display: flex;
+  animation: notifDropdownFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes notifDropdownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.notif-dropdown-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-secondary);
+}
+
+.notif-unread-count-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.notif-mark-all-btn {
+  background: none;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.notif-mark-all-btn:hover {
+  background: rgba(26, 51, 0, 0.06);
+  text-decoration: underline;
+}
+
+.notif-dropdown-list {
+  max-height: 380px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Individual Notification Item */
+.notif-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.notif-item:last-child {
+  border-bottom: none;
+}
+
+.notif-item:hover {
+  background: var(--bg-secondary);
+}
+
+.notif-item.unread {
+  background: rgba(255, 233, 92, 0.12);
+}
+
+.notif-item.unread:hover {
+  background: rgba(255, 233, 92, 0.2);
+}
+
+.notif-item-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.notif-item-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notif-item-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.notif-item-time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.notif-item-message {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.notif-item-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.notif-booking-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.notif-unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  flex-shrink: 0;
+}
+
+/* Empty State */
+.notif-empty-state {
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.notif-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.notif-empty-state h5 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.notif-empty-state p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  max-width: 260px;
+}

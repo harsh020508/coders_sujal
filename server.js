@@ -28,6 +28,21 @@ db.exec(`
     value TEXT NOT NULL,
     updated_at INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    booking_id TEXT NOT NULL,
+    notification_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    is_read INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    UNIQUE(booking_id, notification_type)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+  CREATE INDEX IF NOT EXISTS idx_notifications_booking_id ON notifications(booking_id);
 `);
 
 const stmtGet = db.prepare('SELECT value FROM store WHERE key = ?');
@@ -35,6 +50,29 @@ const stmtSet = db.prepare(`
   INSERT INTO store (key, value, updated_at) 
   VALUES (?, ?, ?) 
   ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+`);
+
+// Prepared statements for persistent notifications
+export const stmtInsertNotification = db.prepare(`
+  INSERT INTO notifications (id, user_id, booking_id, notification_type, title, message, is_read, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+  ON CONFLICT(booking_id, notification_type) DO NOTHING
+`);
+
+export const stmtGetNotificationsByUser = db.prepare(`
+  SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC
+`);
+
+export const stmtMarkNotificationRead = db.prepare(`
+  UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?
+`);
+
+export const stmtMarkAllNotificationsRead = db.prepare(`
+  UPDATE notifications SET is_read = 1 WHERE user_id = ?
+`);
+
+export const stmtClearNotifications = db.prepare(`
+  DELETE FROM notifications
 `);
 
 export function getStore(key, fallback) {
@@ -70,20 +108,128 @@ if (!stmtGet.get('localkaam_complaints')) {
 }
 
 // Server-Sent Events (SSE) subscribers
-const sseClients = new Set();
+// Each client record: { res, user, userId }
+export const sseClients = new Set();
 
 export function broadcastEvent(type, payload, excludeClient = null) {
   const data = JSON.stringify({ type, ...payload, timestamp: Date.now() });
   const message = `event: sync\ndata: ${data}\n\n`;
 
   for (const client of sseClients) {
-    if (client !== excludeClient && !client.writableEnded) {
+    const res = client.res || client;
+    if (res !== excludeClient && client !== excludeClient && !res.writableEnded) {
       try {
-        client.write(message);
+        res.write(message);
       } catch (err) {
         sseClients.delete(client);
       }
     }
+  }
+}
+
+/**
+ * Dispatches private notification event strictly to the authenticated customer.
+ * Prevents broadcasting private notifications to unrelated customers or workers.
+ */
+export function sendNotificationToCustomer(customerId, notification) {
+  if (!customerId || !notification) return;
+  const data = JSON.stringify({ type: 'NOTIFICATION', notification, timestamp: Date.now() });
+  const message = `event: notification\ndata: ${data}\n\n`;
+
+  for (const client of sseClients) {
+    if (client.userId === customerId) {
+      const res = client.res || client;
+      if (!res.writableEnded) {
+        try {
+          res.write(message);
+        } catch (err) {
+          sseClients.delete(client);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Handles genuine booking status transitions and creates persistent notifications.
+ * Implements strict database duplicate prevention via UNIQUE(booking_id, notification_type).
+ */
+export function handleBookingStatusNotification(booking, prevStatus, newStatus) {
+  if (!booking || !newStatus || prevStatus === newStatus) return null;
+
+  const customerId = booking.customerId || booking.customer_id;
+  if (!customerId) return null;
+
+  let eventType = null;
+  let title = '';
+  let message = '';
+
+  const isPrevPending = ['Pending confirmation', 'Pending'].includes(prevStatus);
+  const isNewAccepted = ['Confirmed', 'Accepted'].includes(newStatus);
+
+  const isPrevNotArrived = !['Worker arrived', 'Arrived'].includes(prevStatus);
+  const isNewArrived = ['Worker arrived', 'Arrived'].includes(newStatus);
+
+  const isPrevNotCompleted = !['Job completed', 'Completed'].includes(prevStatus);
+  const isNewCompleted = ['Job completed', 'Completed'].includes(newStatus);
+
+  // EVENT 1: ORDER ACCEPTED
+  if (isPrevPending && isNewAccepted) {
+    eventType = 'ORDER_ACCEPTED';
+    title = 'Order Accepted!';
+    message = 'Good news! Your service provider has accepted your order and will be arriving shortly.';
+  }
+  // EVENT 2: WORKER ARRIVED
+  else if (isPrevNotArrived && isNewArrived) {
+    eventType = 'WORKER_ARRIVED';
+    title = 'Your Worker Has Arrived!';
+    message = 'Your service provider has reached your location and is ready to start the service.';
+  }
+  // EVENT 3: ORDER COMPLETED
+  else if (isPrevNotCompleted && isNewCompleted) {
+    eventType = 'ORDER_COMPLETED';
+    title = 'Order Completed Successfully!';
+    message = 'Your service has been completed. Thank you for choosing LocalKaam!';
+  }
+
+  if (!eventType) return null;
+
+  const notifId = `notif_${booking.id}_${eventType}`;
+  const now = Date.now();
+
+  try {
+    const result = stmtInsertNotification.run(
+      notifId,
+      customerId,
+      booking.id,
+      eventType,
+      title,
+      message,
+      now
+    );
+
+    // If changes === 0, duplicate was rejected by UNIQUE constraint
+    if (result.changes === 0) {
+      return null;
+    }
+
+    const notification = {
+      id: notifId,
+      userId: customerId,
+      bookingId: booking.id,
+      notificationType: eventType,
+      title,
+      message,
+      isRead: false,
+      createdAt: new Date(now).toISOString()
+    };
+
+    // Deliver to authenticated customer connection
+    sendNotificationToCustomer(customerId, notification);
+    return notification;
+  } catch (err) {
+    console.error('[Notification] Error inserting notification:', err);
+    return null;
   }
 }
 
@@ -290,6 +436,15 @@ export const server = http.createServer(async (req, res) => {
 
   // Server-Sent Events (Real-time updates)
   if (pathname === '/api/events' && req.method === 'GET') {
+    const token = url.searchParams.get('token') || (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : null);
+    let authenticatedUser = null;
+    if (token) {
+      try {
+        const { user } = await verifyToken(token);
+        authenticatedUser = user;
+      } catch (e) {}
+    }
+
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
@@ -297,12 +452,71 @@ export const server = http.createServer(async (req, res) => {
       'Access-Control-Allow-Origin': '*'
     });
     res.write(':keep-alive\n\n');
-    sseClients.add(res);
+
+    const client = {
+      res,
+      user: authenticatedUser,
+      userId: authenticatedUser ? authenticatedUser.id : null
+    };
+    sseClients.add(client);
 
     req.on('close', () => {
-      sseClients.delete(res);
+      sseClients.delete(client);
     });
     return;
+  }
+
+  // Notifications API (Protected)
+  if (pathname === '/api/notifications' && req.method === 'GET') {
+    const user = await requireAuth(req, res);
+    if (!user) return;
+
+    try {
+      const rows = stmtGetNotificationsByUser.all(user.id);
+      const formatted = rows.map(r => ({
+        id: r.id,
+        userId: r.user_id,
+        bookingId: r.booking_id,
+        notificationType: r.notification_type,
+        title: r.title,
+        message: r.message,
+        isRead: Boolean(r.is_read),
+        createdAt: new Date(r.created_at).toISOString()
+      }));
+      return sendJson(res, 200, formatted);
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
+  // Mark all notifications as read
+  if (pathname === '/api/notifications/mark-all-read' && req.method === 'POST') {
+    const user = await requireAuth(req, res);
+    if (!user) return;
+
+    try {
+      const result = stmtMarkAllNotificationsRead.run(user.id);
+      return sendJson(res, 200, { success: true, count: result.changes });
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
+  // Mark single notification as read: /api/notifications/:id/read
+  if (pathname.startsWith('/api/notifications/') && pathname.endsWith('/read') && (req.method === 'PATCH' || req.method === 'PUT' || req.method === 'POST')) {
+    const user = await requireAuth(req, res);
+    if (!user) return;
+
+    const notifId = pathname.slice('/api/notifications/'.length, -('/read'.length));
+    try {
+      const result = stmtMarkNotificationRead.run(notifId, user.id);
+      if (result.changes === 0) {
+        return sendJson(res, 404, { error: 'Notification not found or access denied' });
+      }
+      return sendJson(res, 200, { success: true, id: notifId, isRead: true });
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
   }
 
   // Bookings API (Protected)
@@ -398,9 +612,18 @@ export const server = http.createServer(async (req, res) => {
         updatedBooking.customerId = existing.customerId || user.id;
         updatedBooking.customer_id = existing.customer_id || user.id;
 
+        const prevStatus = existing.status;
+        const newStatus = updatedBooking.status;
+
         bookings[idx] = { ...existing, ...updatedBooking };
         setStore('localkaam_bookings', bookings);
         broadcastEvent('BOOKINGS_UPDATED', { key: 'localkaam_bookings', value: bookings });
+
+        // Trigger real-time persistent notification on genuine status transitions
+        if (newStatus && prevStatus !== newStatus) {
+          handleBookingStatusNotification(bookings[idx], prevStatus, newStatus);
+        }
+
         return sendJson(res, 200, bookings[idx]);
       } else {
         if (user.role !== 'admin') {
@@ -575,6 +798,7 @@ export const server = http.createServer(async (req, res) => {
     setStore('localkaam_bookings', INITIAL_BOOKINGS);
     setStore('localkaam_reviews', INITIAL_REVIEWS);
     setStore('localkaam_complaints', INITIAL_COMPLAINTS);
+    try { stmtClearNotifications.run(); } catch(e) {}
     broadcastEvent('RESET', {
       workers: INITIAL_WORKERS,
       bookings: INITIAL_BOOKINGS,
@@ -622,12 +846,15 @@ export const server = http.createServer(async (req, res) => {
 // Periodic SSE heartbeat (every 15s)
 const sseInterval = setInterval(() => {
   for (const client of sseClients) {
-    if (!client.writableEnded) {
+    const res = client.res || client;
+    if (!res.writableEnded) {
       try {
-        client.write(':keepalive\n\n');
+        res.write(':keepalive\n\n');
       } catch (e) {
         sseClients.delete(client);
       }
+    } else {
+      sseClients.delete(client);
     }
   }
 }, 15000);

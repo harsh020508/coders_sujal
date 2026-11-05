@@ -5,6 +5,7 @@ import { WorkerFrontend } from './worker.js';
 import { Toast } from './toast.js';
 import { AuthModal } from './authModal.js';
 import { AuthService } from './authService.js';
+import { NotificationService } from './notificationService.js';
 import { esc } from './utils.js';
 import { buildTaskIndex, searchTasks, catImage, icon } from './ui.js';
 import { initScrollReveal, fadeSlide } from './transitions.js';
@@ -38,8 +39,12 @@ export const App = {
 
     // Initialize storage sync in background
     StorageService.init(() => {
+      NotificationService.init();
       this.render();
     });
+
+    // Initialize notification service
+    NotificationService.init();
 
     // Listen to live data changes across tabs/devices
     StorageService.onChange(() => {
@@ -54,6 +59,7 @@ export const App = {
         window.history.pushState({ role }, '', `#${role}`);
       }
     } catch (e) {}
+    NotificationService.setupUserSubscription();
     this.render();
   },
 
@@ -551,6 +557,15 @@ export const App = {
             </span>
           </div>
           <div class="nav-actions">
+            ${activeRole === 'customer' ? `
+              <div class="notification-bell-wrapper" id="notification-bell-wrapper">
+                <button class="notification-bell-btn" id="notification-bell-btn" aria-label="Notifications" title="Notifications">
+                  <i data-lucide="bell" class="lucide-sm"></i>
+                  <span class="notification-badge hidden" id="notification-unread-badge">0</span>
+                </button>
+                <div class="notification-dropdown" id="notification-dropdown"></div>
+              </div>
+            ` : ''}
             <button class="btn btn-outline btn-sm" id="switch-role-btn" title="Switch Role Mode">
               <i data-lucide="arrow-left-right" class="lucide-xs"></i> Switch
             </button>
@@ -737,6 +752,15 @@ export const App = {
     root.querySelector('#switch-role-btn')?.addEventListener('click', () => {
       this.navigateToRole('role-select');
     });
+
+    const bellBtn = root.querySelector('#notification-bell-btn');
+    if (bellBtn) {
+      bellBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        NotificationService.toggleDropdown();
+      });
+      NotificationService.updateBadge();
+    }
     root.querySelector('#shell-logout-btn')?.addEventListener('click', async () => {
       await AuthService.signOut();
       this.navigateToRole('landing');

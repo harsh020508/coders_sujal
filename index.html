@@ -33,6 +33,9 @@
     import { AuthService } from './authService.js';
     import { StorageService } from './storage.js';
     import { Toast } from './toast.js';
+    import { NotificationService } from './notificationService.js';
+
+    window.NotificationService = NotificationService;
 
     // Global helper to refresh Lucide icons whenever DOM updates
     window.refreshIcons = () => {
