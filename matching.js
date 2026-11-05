@@ -31,7 +31,8 @@ export const MatchingService = {
     const distanceFactor = distance * 4;
     const ratingVal = worker.ratingCount > 0 ? worker.ratingAverage : 4.0;
     const ratingFactor = (5 - ratingVal) * 10;
-    const verifiedFactor = worker.verificationStatus === 'Verified' ? 0 : 5;
+    // Updated verification check - only verified workers get positive score
+    const verifiedFactor = worker.verificationStatus === 'Verified' ? 0 : 10; // Penalize unverified
 
     return {
       score: distanceFactor + ratingFactor + verifiedFactor,

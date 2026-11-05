@@ -81,6 +81,11 @@ export const StorageService = {
         console.log('[Storage] Hydrated from Supabase PostgreSQL');
       } catch (e) {
         console.warn('[Storage] Supabase sync deferred/timed out, using cached state:', e.message);
+        try {
+          if (typeof window !== 'undefined' && window.Toast) {
+            window.Toast.show('Showing sample data', 'info');
+          }
+        } catch (_) {}
       }
 
       this.initRealtime();

@@ -12,21 +12,23 @@
 
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./css_enhancements.css">
+  <link rel="stylesheet" href="./ui.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Inter:wght@400..700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 
   <!-- Lucide Icons -->
-  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.min.js"></script>
 
-  <script src="./config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="./config.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
   <div id="app" class="app-container"></div>
 
   <script type="module">
     import { App } from './app.js';
+    import { autoRefreshIcons } from './icons.js';
     import { SupabaseService } from './supabaseClient.js';
     import { AuthService } from './authService.js';
     import { StorageService } from './storage.js';
@@ -46,62 +48,46 @@
       }
     };
 
-    window.addEventListener('DOMContentLoaded', async () => {
+    async function boot() {
       try {
         const hash = window.location.hash || '';
         const search = window.location.search || '';
         const isOAuth = hash.includes('access_token') || hash.includes('error') ||
                         search.includes('code=') || search.includes('error=');
         if (isOAuth) {
+          let oauthTargetRole = null;
+          let oauthError = null;
           const appDiv = document.getElementById('app');
           if (appDiv) {
             appDiv.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;"><div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div><p style="font-size:1.1rem;font-weight:600;color:var(--text-primary);">Completing Secure Sign-In...</p></div>';
           }
+          // Explicit PKCE exchange + role resolution. getSession() alone
+          // never produces a session for ?code= callbacks, which previously
+          // dropped the user back on the landing page.
           try {
-            const client = await SupabaseService.getClient();
-            if (client) {
-              let session = null;
-              // Poll up to 3.2s for Supabase PKCE / URL hash exchange
-              for (let i = 0; i < 8; i++) {
-                const { data } = await client.auth.getSession();
-                if (data && data.session) {
-                  session = data.session;
-                  break;
-                }
-                await new Promise(r => setTimeout(r, 400));
-              }
-
-              if (session && session.user) {
-                let targetRole = 'customer';
-                try {
-                  const pending = localStorage.getItem('localkaam_pending_auth_role');
-                  if (pending && ['customer', 'worker'].includes(pending)) {
-                    targetRole = pending;
-                    localStorage.removeItem('localkaam_pending_auth_role');
-                  }
-                } catch (e) {}
-
-                AuthService.currentSession = session;
-                AuthService.currentUser = session.user;
-
-                await AuthService.syncUserProfile(session.user);
-                AuthService.setRole(targetRole);
-                StorageService.setCurrentRole(targetRole);
-
-                Toast.show('Signed in as ' + (session.user.email || 'User') + '!', 'success');
-              }
+            const result = await AuthService.handleOAuthCallback();
+            if (result && result.session) {
+              oauthTargetRole = result.targetRole || 'customer';
+              StorageService.setCurrentRole(oauthTargetRole);
+              Toast.show('Signed in as ' + (result.session.user?.email || 'User') + '!', 'success');
+            } else {
+              oauthError = result && result.error ? result.error : new Error('Sign-in could not be completed. Please try again.');
             }
           } catch (err) {
             console.error('OAuth callback processing error:', err);
-            Toast.show('Authentication error occurred.', 'error');
+            oauthError = err;
+          }
+          if (oauthError && !oauthTargetRole) {
+            Toast.show('Sign-in failed: ' + (oauthError.message || 'please try again'), 'error');
           }
           if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, '', window.location.pathname);
+            window.history.replaceState(null, '', window.location.pathname + (oauthTargetRole ? '#' + oauthTargetRole : ''));
           }
         }
       } catch (e) {}
 
       try {
+        autoRefreshIcons(document.body);
         App.init();
         window.refreshIcons();
       } catch (err) {
@@ -111,7 +97,13 @@
           appDiv.innerHTML = '<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Please refresh the page to load the marketplace.</p><button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1a3300; color: white; border: none; border-radius: 8px; cursor: pointer;">Refresh App</button></div>';
         }
       }
-    });
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', boot);
+    } else {
+      boot();
+    }
   </script>
 </body>
 </html>

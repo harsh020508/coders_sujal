@@ -1,5 +1,6 @@
 import { AuthService } from './authService.js';
 import { Toast } from './toast.js';
+import { trapFocus, icon, esc } from './ui.js';
 
 export const AuthModal = {
   show(defaultRole = 'customer', onAuthenticated) {
@@ -18,9 +19,17 @@ export const AuthModal = {
     let showPassword = false;
     let isLoading = false;
     let errorMessage = '';
+    let releaseFocus = null;
+
+    const closeModal = () => {
+      try { releaseFocus?.(); } catch (e) {}
+      modal.remove();
+    };
 
     const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
+    modal.className = 'ui-overlay modal-overlay';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
     modal.id = 'auth-modal';
 
     const render = () => {
@@ -28,7 +37,7 @@ export const AuthModal = {
       const isSignUp = currentMode === 'signup';
 
       modal.innerHTML = `
-        <div class="modal-card" style="max-width: 440px; padding: clamp(24px, 4vw, 36px);">
+        <div class="ui-modal modal-card" style="max-width: 440px; padding: clamp(20px, 4vw, 32px);">
           <button class="modal-close" id="close-auth-modal" aria-label="Close authentication modal">
             <i data-lucide="x" class="lucide-sm"></i>
           </button>
@@ -166,19 +175,19 @@ export const AuthModal = {
         isLoading = newIsLoading !== undefined ? newIsLoading : isLoading;
         errorMessage = newError !== undefined ? newError : '';
         render();
-      });
+      }, closeModal);
     };
 
     render();
     document.body.appendChild(modal);
+    releaseFocus = trapFocus(modal, closeModal);
     if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') {
       window.refreshIcons();
     }
   },
 
-  bindEvents(modal, currentRole, currentMode, showPassword, isLoading, onAuthenticated, updateState) {
+  bindEvents(modal, currentRole, currentMode, showPassword, isLoading, onAuthenticated, updateState, closeModal) {
     // Close modal
-    const closeModal = () => modal.remove();
     modal.querySelector('#close-auth-modal')?.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeModal();

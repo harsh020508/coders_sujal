@@ -37,9 +37,26 @@ export const DataMapper = {
   },
 
   dbToWorker(row) {
+    const rawSpecs = typeof row.specialities === 'object' && row.specialities !== null ? row.specialities : (row.specialities ? JSON.parse(row.specialities) : {});
+    // DB rows may store only category + hourly_rate (specialities left empty).
+    // Rebuild a searchable speciality so Discover filters and the
+    // Services & Pricing view never render empty.
+    const specialities = (rawSpecs && Object.keys(rawSpecs).length)
+      ? rawSpecs
+      : {
+          [row.category || 'general']: {
+            tasks: (Array.isArray(row.skills) && row.skills.length ? row.skills : ['General Repair']),
+            pricingMethod: 'hourly',
+            startingPrice: Number(row.hourly_rate) || 300,
+            visitingCharge: 100,
+            estDuration: '1-2 hours',
+            experience: Number(row.experience) || 1
+          }
+        };
     return {
       id: row.id,
       userId: row.user_id,
+      user_id: row.user_id,
       name: row.name,
       category: row.category,
       skills: Array.isArray(row.skills) ? row.skills : (row.skills ? JSON.parse(row.skills) : []),
@@ -59,7 +76,7 @@ export const DataMapper = {
       avatar: row.avatar || '',
       phone: row.phone || '',
       bio: row.bio || '',
-      specialities: typeof row.specialities === 'object' && row.specialities !== null ? row.specialities : (row.specialities ? JSON.parse(row.specialities) : {}),
+      specialities,
       languages: Array.isArray(row.languages) ? row.languages : (row.languages ? JSON.parse(row.languages) : ['Hindi', 'English']),
       pastExperience: row.past_experience || '',
       certifications: row.certifications || ''
@@ -340,6 +357,8 @@ export const SupabaseDataService = {
       return { data: null, error: e };
     }
   },
+
+
 
   // BOOKINGS
   async fetchBookings() {

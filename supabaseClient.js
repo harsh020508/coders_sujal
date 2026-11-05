@@ -113,7 +113,8 @@ class SupabaseManager {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
-          detectSessionInUrl: true
+          detectSessionInUrl: true,
+          flowType: 'pkce'
         },
         realtime: {
           params: {

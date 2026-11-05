@@ -15,6 +15,8 @@ let broadcastChannel = null;
 try {
   if (typeof BroadcastChannel !== 'undefined') {
     broadcastChannel = new BroadcastChannel('localkaam_notif_channel');
+    // Node's BroadcastChannel holds the event loop open (tests would never exit)
+    if (broadcastChannel.unref) broadcastChannel.unref();
   }
 } catch (e) {}
 
