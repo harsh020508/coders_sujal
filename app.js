@@ -7,6 +7,7 @@ import { AuthModal } from './authModal.js';
 import { AuthService } from './authService.js';
 import { esc } from './utils.js';
 import { buildTaskIndex, searchTasks, catImage, icon } from './ui.js';
+import { initScrollReveal, fadeSlide } from './transitions.js';
 
 export const App = {
   init() {
@@ -110,6 +111,11 @@ export const App = {
     // Refresh Lucide vector icons
     if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') {
       window.refreshIcons();
+    }
+    if (typeof window !== "undefined") {
+      try {
+        initScrollReveal(root, ".ui-cat,.ui-card,.ui-worker,.category-card,.feature-card,.step-card,.usp-card,.pricing-card");
+      } catch (e) {}
     }
   },
 

@@ -54,12 +54,11 @@ export const Toast = {
 
     const closeBtn = toast.querySelector?.('button');
     const removeToast = () => {
-      if (toast.style) {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-6px)';
-        toast.style.transition = 'opacity 180ms ease, transform 180ms ease';
-      }
-      setTimeout(() => { try { toast.remove?.(); } catch(e) {} }, 200);
+      if (typeof window === 'undefined') { try { toast.remove?.(); } catch(e) {} return; }
+      toast.classList?.add?.('ui-toast--exiting');
+      const done = () => { try { toast.remove?.(); } catch(e) {} };
+      toast.addEventListener?.('animationend', done, { once: true });
+      setTimeout(done, 400); // safety fallback
     };
 
     closeBtn?.addEventListener?.('click', removeToast);

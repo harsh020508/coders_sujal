@@ -5,6 +5,7 @@ import { CATEGORIES, LOCALITIES, COMPLAINT_CATEGORIES, SUPPORT_CATEGORIES } from
 import { Toast } from './toast.js';
 import { AuthService } from './authService.js';
 import { esc } from './utils.js';
+import { initScrollReveal } from './transitions.js';
 
 // Helper to get all feedback tags
 const FEEDBACK_TAGS = [
@@ -80,6 +81,11 @@ export const CustomerFrontend = {
 
     this.attachEvents(container);
     if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+    if (typeof window !== "undefined") {
+      try {
+        initScrollReveal(container, ".ui-worker,.ui-card,.sidebar-item");
+      } catch (e) {}
+    }
   },
 
   sortWorkers(workers) {
