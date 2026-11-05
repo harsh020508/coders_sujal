@@ -106,22 +106,6 @@ export const WorkerFrontend = {
               <i data-lucide="wallet" class="lucide-xs"></i>
               <span>Earnings</span>
             </div>
-            <div class="sidebar-item ${view === 'profile' ? 'active dash-active' : ''}" data-view="profile">
-              <i data-lucide="user" class="lucide-xs"></i>
-              <span>My Profile</span>
-            </div>
-            <div class="sidebar-item ${view === 'feedback' ? 'active dash-active' : ''}" data-view="feedback">
-              <i data-lucide="star" class="lucide-xs"></i>
-              <span>Reviews & Ratings</span>
-            </div>
-            <div class="sidebar-item ${view === 'help-centre' ? 'active dash-active' : ''}" data-view="help-centre">
-              <i data-lucide="help-circle" class="lucide-xs"></i>
-              <span>Help Centre</span>
-            </div>
-            <div class="sidebar-item ${view === 'complaints' ? 'active dash-active' : ''}" data-view="complaints">
-              <i data-lucide="triangle-alert" class="lucide-xs"></i>
-              <span>Complaints</span>
-            </div>
           </div>
         </aside>
 

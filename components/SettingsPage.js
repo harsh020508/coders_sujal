@@ -8,6 +8,7 @@ import { ProfileDropdown } from './ProfileDropdown.js';
 import { AuthService } from '../authService.js';
 import { SupabaseService } from '../supabaseClient.js';
 import { StorageService } from '../storage.js';
+import { WorkerFeedback } from '../worker_new_features.js';
 import { Toast } from '../toast.js';
 import { LOCALITIES } from '../data.js';
 import { icon, avatarMarkup } from './icons.js';
@@ -322,6 +323,7 @@ export const SettingsPage = {
       case 'appearance': return this.renderAppearancePage();
       case 'notifications': return this.renderNotificationsPage();
       case 'profile': return this.renderProfilePage();
+      case 'reviews': return this.renderReviewsPage();
       case 'security-login': return this.renderSecurityPage();
       case 'account': return this.renderAccountPage();
       case 'privacy': return this.renderPrivacyPage();
@@ -329,6 +331,7 @@ export const SettingsPage = {
       case 'language': return this.renderLanguagePage();
       case 'keyboard-shortcuts': return this.renderShortcutsPage();
       case 'help-support': return this.renderHelpPage();
+      case 'complaints': return this.renderComplaintsPage();
       case 'about': return this.renderAboutPage();
       default: return this.renderGeneralPage();
     }
@@ -340,6 +343,7 @@ export const SettingsPage = {
       case 'appearance': this.bindAppearance(); break;
       case 'notifications': this.bindNotifications(); break;
       case 'profile': this.bindProfile(); break;
+      case 'reviews': this.bindReviews(); break;
       case 'security-login': this.bindSecurity(); break;
       case 'account': this.bindAccount(); break;
       case 'privacy': this.bindPrivacy(); break;
@@ -347,9 +351,310 @@ export const SettingsPage = {
       case 'language': this.bindLanguage(); break;
       case 'keyboard-shortcuts': this.bindShortcuts(); break;
       case 'help-support': this.bindHelp(); break;
+      case 'complaints': this.bindComplaints(); break;
       case 'about': this.bindAbout(); break;
       default: break;
     }
+  },
+
+  // ------------------------------------------------------------------------
+  // Worker context helpers (Reviews / Complaints / Professional profile live
+  // in Settings only — they were removed from the worker sidebar).
+  // ------------------------------------------------------------------------
+
+  isWorkerContext() {
+    try {
+      const role = StorageService.getCurrentRole && StorageService.getCurrentRole();
+      if (role === 'worker') return true;
+    } catch (e) {}
+    return AuthService.getProfile()?.role === 'worker';
+  },
+
+  getCurrentWorker() {
+    const workers = StorageService.getWorkers() || [];
+    const authProfile = AuthService.getProfile();
+    let currentWorkerId = null;
+    try { currentWorkerId = StorageService.getSelectedWorkerId(); } catch (e) {}
+    if (authProfile && authProfile.role === 'worker') {
+      const authId = String(authProfile.id || '');
+      const partial = authId ? authId.substring(0, 8) : '';
+      const myWorker = workers.find((w) =>
+        (w.user_id && String(w.user_id) === authId) ||
+        (w.userId && String(w.userId) === authId) ||
+        (partial && w.id === `w_${partial}`) ||
+        (authProfile.phone && w.phone && w.phone === authProfile.phone && AuthService.isGuest())
+      );
+      if (myWorker) currentWorkerId = myWorker.id;
+    }
+    return workers.find((w) => w.id === currentWorkerId) || workers[0] || null;
+  },
+
+  renderReviewsPage() {
+    const worker = this.getCurrentWorker();
+    if (!worker) {
+      return `${this.panel('Reviews & Ratings', 'Customer feedback for your professional profile.', `<div class="settings-empty-state">${icon('star', 20)}<div><strong>No worker profile selected.</strong><p>Complete worker onboarding to collect reviews.</p></div></div>`)}`;
+    }
+    return `
+      ${this.panel('Reviews & Ratings', `Feedback for ${esc(worker.name)}. Respond from here — it stays in Settings only.`, `
+        <div id="settings-reviews-body">${WorkerFeedback.renderFeedbackSection(worker)}</div>
+      `)}
+    `;
+  },
+
+  bindReviews() {
+    const worker = this.getCurrentWorker();
+    if (!worker) return;
+    document.querySelectorAll('.respond-review-btn').forEach((btn) => {
+      btn.onclick = () => {
+        const reviewId = btn.getAttribute('data-review-id');
+        WorkerFeedback.respondToReview(reviewId, worker.id);
+      };
+    });
+  },
+
+  renderComplaintsPage() {
+    const worker = this.isWorkerContext() ? this.getCurrentWorker() : null;
+    const complaints = StorageService.getComplaints() || [];
+    return `
+      ${this.panel('Complaints', 'View and file complaints about bookings. This lives in Settings only.', `
+        <div class="settings-row">
+          <div class="settings-row-copy">
+            <span class="settings-row-title">Filter</span>
+            <p class="settings-row-description">Narrow the list by status.</p>
+          </div>
+          <select class="settings-select" id="s-complaint-filter" aria-label="Filter complaints">
+            <option value="all">All Complaints</option>
+            <option value="open">Open</option>
+            <option value="in-progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+          </select>
+        </div>
+        <div id="s-complaints-list" style="margin-top: 12px;">
+          ${complaints.length === 0 ? `<p style="color: var(--text-secondary); text-align: center; padding: 1.5rem;">No complaints yet.</p>` : `
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              ${complaints.map((c) => `
+                <div style="background: var(--bg-primary); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                  <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 4px;">${esc(c.issue || c.category || 'Complaint')}</h4>
+                  <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 4px;">${esc(c.details || 'No details provided')}</p>
+                  <p style="color: var(--text-secondary); font-size: 0.8rem; margin: 0;">${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : ''} · Status: <span class="badge">${esc(c.status || 'Open')}</span></p>
+                  ${c.workerResponse ? `<p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;"><strong>Response:</strong> ${esc(c.workerResponse)}</p>` : ''}
+                  ${c.resolution_notes ? `<p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;"><strong>Resolution:</strong> ${esc(c.resolution_notes)}</p>` : ''}
+                </div>
+              `).join('')}
+            </div>`}
+        </div>
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 12px;">Submit New Complaint</h3>
+          <form id="s-complaint-form" style="display: flex; flex-direction: column; gap: 12px; max-width: 560px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Category</label>
+                <select id="s-complaint-category" class="settings-select">
+                  <option value="did_not_arrive">Worker did not arrive</option>
+                  <option value="arrived_late">Worker arrived late</option>
+                  <option value="poor_quality">Poor-quality work</option>
+                  <option value="incomplete_service">Incomplete service</option>
+                  <option value="unexpected_charges">Unexpected or excessive charges</option>
+                  <option value="unprofessional">Unprofessional behaviour</option>
+                  <option value="payment_issue">Payment-related issue</option>
+                  <option value="misconduct_safety">Misconduct or safety concern</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Booking ID</label>
+                <input type="text" id="s-complaint-booking-id" class="form-control" placeholder="e.g. BK-10492" required>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">Complaint Details</label>
+              <textarea id="s-complaint-details" class="form-control" rows="3" placeholder="Describe the incident..."></textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+              <button type="button" class="btn btn-outline btn-sm" id="s-complaint-cancel">Cancel</button>
+              <button type="submit" class="btn btn-primary btn-sm">Submit Complaint</button>
+            </div>
+          </form>
+        </div>
+      `)}
+    `;
+  },
+
+  bindComplaints() {
+    const worker = this.isWorkerContext() ? this.getCurrentWorker() : null;
+    const filterSelect = document.getElementById('s-complaint-filter');
+    filterSelect?.addEventListener('change', () => {
+      const filter = filterSelect.value;
+      const listDiv = document.getElementById('s-complaints-list');
+      if (!listDiv) return;
+      const complaints = StorageService.getComplaints() || [];
+      const filtered = filter === 'all' ? complaints : complaints.filter((c) => String(c.status || '').toLowerCase() === filter);
+      listDiv.innerHTML = filtered.length === 0
+        ? `<p style="color: var(--text-secondary); text-align: center; padding: 1.5rem;">No complaints found.</p>`
+        : `
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            ${filtered.map((c) => `
+              <div style="background: var(--bg-primary); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 4px;">${esc(c.issue || c.category || 'Complaint')}</h4>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 4px;">${esc(c.details || 'No details provided')}</p>
+                <p style="color: var(--text-secondary); font-size: 0.8rem; margin: 0;">${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : ''} · Status: <span class="badge">${esc(c.status || 'Open')}</span></p>
+                ${c.workerResponse ? `<p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;"><strong>Response:</strong> ${esc(c.workerResponse)}</p>` : ''}
+                ${c.resolution_notes ? `<p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px;"><strong>Resolution:</strong> ${esc(c.resolution_notes)}</p>` : ''}
+              </div>
+            `).join('')}
+          </div>`;
+    });
+
+    document.getElementById('s-complaint-cancel')?.addEventListener('click', () => {
+      document.getElementById('s-complaint-form')?.reset();
+    });
+
+    const form = document.getElementById('s-complaint-form');
+    form?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const category = document.getElementById('s-complaint-category')?.value || 'other';
+      const bookingId = (document.getElementById('s-complaint-booking-id')?.value || '').trim();
+      const details = (document.getElementById('s-complaint-details')?.value || '').trim();
+      if (!bookingId || !details) {
+        Toast.show('Please fill in all required fields', 'error');
+        return;
+      }
+      const complaint = {
+        id: `CMP-${Date.now()}`,
+        bookingId,
+        workerId: worker ? worker.id : null,
+        customerId: null,
+        customerName: worker ? worker.name : (AuthService.getProfile()?.full_name || 'Customer'),
+        category,
+        issue: category.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+        details,
+        status: 'Open',
+        createdAt: new Date().toISOString()
+      };
+      const complaints = StorageService.getComplaints() || [];
+      complaints.unshift(complaint);
+      StorageService.saveComplaints(complaints);
+      this.renderSection('complaints', { focus: false, scroll: false });
+      Toast.show('Complaint submitted.', 'success');
+    });
+  },
+
+  renderWorkerProfessionalPanel() {
+    if (!this.isWorkerContext()) return '';
+    const worker = this.getCurrentWorker();
+    if (!worker) return '';
+    return `
+      ${this.panel('Professional profile', 'How customers see you as a worker. Edit here — this replaces the old sidebar “My Profile”.', `
+        <form id="worker-full-profile-form" class="settings-form profile-form" novalidate>
+          <div class="settings-grid-2">
+            ${this.field({ id: 'wp-name', label: 'Full Name', value: worker.name || '', placeholder: 'e.g. Rajesh Kumar', required: true })}
+            ${this.field({ id: 'wp-phone', label: 'Phone Number', value: worker.phone || '+91 98211 44551', type: 'tel', required: true })}
+          </div>
+          <div class="settings-field">
+            <label for="wp-bio">Professional Bio</label>
+            <textarea class="settings-textarea" id="wp-bio" rows="3" required>${esc(worker.bio || '')}</textarea>
+          </div>
+          <div class="settings-grid-2">
+            ${this.field({ id: 'wp-experience', label: 'Past Experience', value: worker.pastExperience || '', placeholder: 'e.g. 4 years with residential repairs' })}
+            ${this.field({ id: 'wp-certifications', label: 'Certifications / ITI License', value: worker.certifications || '', placeholder: 'e.g. ITI Certified Electrician' })}
+          </div>
+          <div class="settings-grid-2">
+            <div class="settings-field">
+              <label for="wp-locality">Base Locality</label>
+              <select class="settings-select" id="wp-locality">
+                ${LOCALITIES.map((l) => `<option value="${esc(l.id)}" ${l.id === worker.baseLocality ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}
+              </select>
+            </div>
+            ${this.field({ id: 'wp-area', label: 'Service Area', value: worker.serviceArea || '', required: true })}
+          </div>
+          <div class="settings-field">
+            <label for="wp-radius">Service Radius (km)</label>
+            <input type="number" class="form-control" id="wp-radius" value="${worker.serviceRadius || 10}" min="1" max="50" required>
+          </div>
+          <div class="settings-form-actions">
+            <button type="submit" class="btn btn-primary btn-sm">Save Professional Profile</button>
+          </div>
+        </form>
+      `)}
+    `;
+  },
+
+  bindWorkerProfessionalPanel() {
+    const form = document.getElementById('worker-full-profile-form');
+    if (!form) return;
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const worker = this.getCurrentWorker();
+      if (!worker) { Toast.show('No worker profile selected.', 'error'); return; }
+      const workers = StorageService.getWorkers();
+      const target = workers.find((item) => item.id === worker.id);
+      if (!target) { Toast.show('No worker profile selected.', 'error'); return; }
+      target.name = document.getElementById('wp-name')?.value.trim() || target.name;
+      target.phone = document.getElementById('wp-phone')?.value.trim() || target.phone;
+      target.bio = document.getElementById('wp-bio')?.value.trim() || target.bio;
+      target.pastExperience = document.getElementById('wp-experience')?.value.trim() || target.pastExperience;
+      target.certifications = document.getElementById('wp-certifications')?.value.trim() || target.certifications;
+      target.baseLocality = document.getElementById('wp-locality')?.value || target.baseLocality;
+      target.serviceArea = document.getElementById('wp-area')?.value.trim() || target.serviceArea;
+      target.serviceRadius = parseFloat(document.getElementById('wp-radius')?.value) || 10;
+      StorageService.saveWorkers(workers);
+      window.dispatchEvent(new CustomEvent('locakaam:profile-updated'));
+      ProfileDropdown.refresh();
+      this.renderSection('profile', { focus: false, scroll: false });
+      Toast.show('Profile updated successfully!', 'success');
+    });
+  },
+
+  renderWorkerSupportPanel() {
+    if (!this.isWorkerContext()) return '';
+    return `
+      ${this.panel('Worker support', 'Helpline and tickets for billing or job disputes. This replaces the old sidebar “Help Centre”.', `
+        <div class="settings-row">
+          <div class="settings-row-copy">
+            <span class="settings-row-title">Emergency Helpline (24/7)</span>
+            <p class="settings-row-description">Free helpline in Hindi, Marathi & English.</p>
+          </div>
+          <a class="btn btn-outline btn-sm" href="tel:18004195226" style="text-decoration: none;">📞 1800-419-KAAM</a>
+        </div>
+        <form id="worker-support-ticket-form" class="settings-form profile-form" novalidate>
+          <div class="settings-field">
+            <label for="supp-subject">Subject</label>
+            <input type="text" id="supp-subject" class="form-control" placeholder="e.g. Payment inquiry or rescheduling" required>
+          </div>
+          <div class="settings-field">
+            <label for="supp-desc">Description</label>
+            <textarea id="supp-desc" class="form-control" rows="3" placeholder="Describe the inquiry..." required></textarea>
+          </div>
+          <div class="settings-form-actions">
+            <button type="submit" class="btn btn-primary btn-sm">Submit Ticket</button>
+          </div>
+        </form>
+      `)}
+    `;
+  },
+
+  bindWorkerSupportPanel() {
+    const form = document.getElementById('worker-support-ticket-form');
+    if (!form) return;
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const worker = this.getCurrentWorker();
+      const subject = document.getElementById('supp-subject')?.value.trim() || '';
+      const desc = document.getElementById('supp-desc')?.value.trim() || '';
+      if (!subject || !desc) { Toast.show('Please fill in all required fields', 'error'); return; }
+      const tickets = StorageService.getSupportTickets() || [];
+      tickets.push({
+        id: `TKT-${Date.now()}`,
+        workerId: worker ? worker.id : null,
+        subject,
+        description: desc,
+        status: 'Open',
+        createdAt: new Date().toISOString()
+      });
+      StorageService.saveSupportTickets(tickets);
+      form.reset();
+      Toast.show('Support ticket submitted!', 'success');
+    });
   },
 
   // ------------------------------------------------------------------------
@@ -858,6 +1163,8 @@ export const SettingsPage = {
         </form>
       </section>
 
+      ${this.renderWorkerProfessionalPanel()}
+
       <p class="settings-footnote">Display name, phone and locality sync to your Supabase profile when a Supabase session is active. Your username, bio and photo are kept on this device.</p>
     `;
   },
@@ -1032,6 +1339,8 @@ export const SettingsPage = {
       ProfileDropdown.refresh();
       this.renderSection('profile', { focus: false, scroll: false });
     });
+
+    this.bindWorkerProfessionalPanel();
   },
 
   // ------------------------------------------------------------------------
@@ -1745,10 +2054,13 @@ export const SettingsPage = {
           <button type="button" class="btn btn-outline btn-sm" id="help-diagnostics">Copy</button>
         </div>
       `)}
+
+      ${this.renderWorkerSupportPanel()}
     `;
   },
 
   bindHelp() {
+    this.bindWorkerSupportPanel();
     document.getElementById('help-diagnostics')?.addEventListener('click', async () => {
       const diagnostic = [
         `LocalKaam ${APP_VERSION}`,

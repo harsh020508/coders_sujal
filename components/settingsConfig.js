@@ -40,6 +40,13 @@ export const SETTINGS_CATEGORIES = [
         keywords: 'avatar photo picture display name username email bio phone locality profile'
       },
       {
+        id: 'reviews',
+        icon: 'star',
+        label: 'Reviews & Ratings',
+        description: 'Customer feedback, ratings and your replies.',
+        keywords: 'reviews ratings feedback stars respond customer replies'
+      },
+      {
         id: 'security-login',
         icon: 'shield',
         label: 'Security & Login',
@@ -99,6 +106,13 @@ export const SETTINGS_CATEGORIES = [
         label: 'Help & Support',
         description: 'Answers, documentation and ways to reach the team.',
         keywords: 'faq contact support documentation report bug help centre center email'
+      },
+      {
+        id: 'complaints',
+        icon: 'alert',
+        label: 'Complaints',
+        description: 'View and file complaints about bookings.',
+        keywords: 'complaints disputes issues report resolution status'
       },
       {
         id: 'about',
