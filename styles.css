@@ -4325,3 +4325,73 @@ body.density-compact .settings-page-body { gap: 12px; }
   }
   .quick-action-card:hover { transform: none; }
 }
+
+/* ============================================================
+   Mobile Viewport Refinements (AI Image, Actions & Cards)
+   ============================================================ */
+@media (max-width: 640px) {
+  .photo-preview-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  .photo-dropzone-actions {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+  .photo-dropzone-actions > * {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+  .photo-trigger-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .photo-trigger-row > button,
+  .photo-trigger-row > label {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+  .diagnosis-actions-wrap {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .diagnosis-actions-wrap > button {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 100% !important;
+    justify-content: center !important;
+  }
+  .quick-action-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .quick-action-card button {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 40px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .ui-worker__foot {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .ui-worker__foot > div {
+    display: flex !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  .ui-worker__foot > div > button {
+    flex: 1 1 50% !important;
+    text-align: center !important;
+    justify-content: center !important;
+    min-height: 42px !important;
+  }
+  .table-container {
+    -webkit-overflow-scrolling: touch;
+  }
+}

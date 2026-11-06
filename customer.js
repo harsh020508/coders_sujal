@@ -161,7 +161,7 @@ export const CustomerFrontend = {
       </div>
 
       <!-- Quick Action Cards: AI Photo Diagnosis & Live Interactive Map -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.75rem;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 1rem; margin-bottom: 1.75rem;">
         <div class="quick-action-card">
           <div>
             <div style="display: flex; align-items: center; gap: 0.4rem; font-weight: 800; font-size: 1.05rem; color: var(--text-primary); margin-bottom: 0.2rem;">
@@ -1413,11 +1413,11 @@ export const CustomerFrontend = {
           <div style="display: flex; gap: 0.85rem; align-items: center; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 16px;">
             <img src="${esc(prefillOptions.photoUrl)}" alt="Problem preview" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; border: 1.5px solid #3b82f6; flex-shrink: 0;" />
             <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 2px;">
+              <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 2px; flex-wrap: wrap;">
                 <span class="badge" style="background: #2563eb; color: white; font-size: 0.7rem;">📸 AI Diagnosis Attached</span>
                 ${prefillOptions.aiDiagnosis?.urgency === 'emergency' ? '<span class="badge" style="background: #dc2626; color: white; font-size: 0.7rem;">🚨 Emergency</span>' : ''}
               </div>
-              <div style="font-weight: 700; font-size: 0.88rem; color: #1e40af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div style="font-weight: 700; font-size: 0.88rem; color: #1e40af; word-break: break-word;">
                 ${esc(prefillOptions.aiDiagnosis?.issue || prefillOptions.jobDescription || 'Household Issue')}
               </div>
               ${prefillOptions.aiDiagnosis ? `
@@ -1501,9 +1501,9 @@ export const CustomerFrontend = {
             </div>
           </div>
 
-          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px;">
-            <button type="button" class="ui-btn ui-btn--secondary ui-btn--sm" id="close-btn">Cancel</button>
-            <button type="submit" class="ui-btn ui-btn--accent ui-btn--sm" id="submit-booking-btn">Send request</button>
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; flex-wrap: wrap;">
+            <button type="button" class="ui-btn ui-btn--secondary ui-btn--sm" id="close-btn" style="flex: 1 1 100px; min-height: 40px; justify-content: center;">Cancel</button>
+            <button type="submit" class="ui-btn ui-btn--accent ui-btn--sm" id="submit-booking-btn" style="flex: 2 1 140px; min-height: 40px; justify-content: center;">Send request</button>
           </div>
         </form>
       </div>

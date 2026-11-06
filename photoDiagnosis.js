@@ -21,42 +21,42 @@ export const PhotoDiagnosis = {
    */
   render(container) {
     container.innerHTML = `
-      <div class="photo-diagnosis-page" style="max-width: 800px; margin: 0 auto; padding-bottom: 2rem;">
+      <div class="photo-diagnosis-page" style="max-width: 800px; margin: 0 auto; padding: 0 clamp(12px, 3.5vw, 24px) 2rem; box-sizing: border-box;">
         
         <!-- Header Banner -->
         <div class="dashboard-header" style="margin-bottom: 1.5rem;">
           <div>
-            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap;">
               <span style="font-size: 1.6rem;">📸</span>
-              <h1 style="margin: 0; font-size: 1.6rem;">AI Photo Problem Diagnosis</h1>
+              <h1 style="margin: 0; font-size: clamp(1.25rem, 4.5vw, 1.6rem); word-break: break-word;">AI Photo Problem Diagnosis</h1>
               <span class="badge" style="background: var(--accent-light); color: var(--accent-primary); font-size: 0.75rem; font-weight: 700;">
                 Gemini Vision + Indian Pricing
               </span>
             </div>
-            <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">
+            <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem; line-height: 1.5;">
               Snap a picture of a leaking tap, burnt switchboard, damp wall, or broken lock. Our AI model identifies the issue, suggests the right professional, and provides a verified Mumbai market estimate.
             </p>
           </div>
         </div>
 
         <!-- Main Diagnosis Card -->
-        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-cards); padding: 1.5rem; box-shadow: var(--shadow-subtle);">
+        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-cards); padding: clamp(1rem, 3.5vw, 1.5rem); box-shadow: var(--shadow-subtle); box-sizing: border-box;">
           
           <!-- Upload Area (when no image selected) -->
           <div id="photo-upload-dropzone" style="${this.compressedDataUrl ? 'display: none;' : 'display: block;'}">
-            <div style="border: 2px dashed var(--border-color); border-radius: 12px; padding: 2.5rem 1.5rem; text-align: center; background: var(--bg-primary); cursor: pointer; transition: all 0.2s ease;" id="dropzone-box">
+            <div style="border: 2px dashed var(--border-color); border-radius: 12px; padding: clamp(1.5rem, 4vw, 2.5rem) clamp(0.75rem, 3vw, 1.5rem); text-align: center; background: var(--bg-primary); cursor: pointer; transition: all 0.2s ease;" id="dropzone-box">
               <div style="font-size: 3rem; margin-bottom: 0.75rem; animation: floatSoft 4s ease-in-out infinite;">📷</div>
               <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem;">Take a Photo or Upload Image</h3>
               <p style="color: var(--text-secondary); font-size: 0.88rem; max-width: 440px; margin: 0 auto 1.25rem auto;">
                 On mobile, this opens your camera directly. Accepts JPEG, PNG, or WebP up to 5 MB.
               </p>
               
-              <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
-                <label class="btn btn-primary" style="cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;">
+              <div class="photo-dropzone-actions" style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+                <label class="btn btn-primary" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 44px; padding: 0.65rem 1rem;">
                   <span>📱</span> Take Photo / Choose File
                   <input type="file" id="photo-file-input" accept="image/*" capture="environment" style="display: none;">
                 </label>
-                <button class="btn btn-outline" id="btn-load-sample-photo" type="button" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                <button class="btn btn-outline" id="btn-load-sample-photo" type="button" style="display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 44px; padding: 0.65rem 1rem;">
                   <span>🧪</span> Try Demo Photo (Leaking Tap)
                 </button>
               </div>
@@ -65,12 +65,12 @@ export const PhotoDiagnosis = {
 
           <!-- Preview & Note Input Area (when image is loaded) -->
           <div id="photo-preview-area" style="${this.compressedDataUrl ? 'display: block;' : 'display: none;'}">
-            <div style="display: grid; grid-template-columns: 280px 1fr; gap: 1.25rem; align-items: start; margin-bottom: 1.25rem;" class="photo-preview-grid">
+            <div class="photo-preview-grid" style="gap: 1.25rem; align-items: start; margin-bottom: 1.25rem;">
               
               <!-- Image Preview Box -->
-              <div style="position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--border-color); background: #000; box-shadow: var(--shadow-subtle);">
-                <img id="photo-preview-img" src="${this.compressedDataUrl || ''}" alt="Problem Preview" style="width: 100%; height: 220px; object-fit: cover; display: block;" />
-                <button id="btn-remove-photo" class="btn btn-danger btn-sm" style="position: absolute; top: 8px; right: 8px; font-size: 0.75rem; padding: 3px 8px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.4);" title="Remove photo">
+              <div style="position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--border-color); background: #000; box-shadow: var(--shadow-subtle); width: 100%; max-width: 100%;">
+                <img id="photo-preview-img" src="${this.compressedDataUrl || ''}" alt="Problem Preview" style="width: 100%; height: auto; max-height: 240px; object-fit: cover; display: block;" />
+                <button id="btn-remove-photo" class="btn btn-danger btn-sm" style="position: absolute; top: 8px; right: 8px; font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.4); min-height: 32px;" title="Remove photo">
                   ✕ Remove
                 </button>
                 <div style="position: absolute; bottom: 6px; left: 8px; background: rgba(0,0,0,0.7); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px;" id="photo-size-badge">
@@ -79,16 +79,16 @@ export const PhotoDiagnosis = {
               </div>
 
               <!-- Note Input & Trigger Button -->
-              <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+              <div style="display: flex; flex-direction: column; gap: 0.85rem; width: 100%; min-width: 0;">
                 <div>
                   <label style="font-size: 0.88rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">
                     Additional Notes (Optional):
                   </label>
-                  <textarea id="photo-note-input" class="form-control" rows="3" placeholder="Describe symptoms: e.g. dripping under the sink for 2 days, clicking noise, burning smell, or water valve stuck..." style="width: 100%; font-size: 0.88rem; resize: vertical;"></textarea>
+                  <textarea id="photo-note-input" class="form-control" rows="3" placeholder="Describe symptoms: e.g. dripping under the sink for 2 days, clicking noise, burning smell, or water valve stuck..." style="width: 100%; font-size: 0.88rem; resize: vertical; box-sizing: border-box;"></textarea>
                 </div>
 
-                <div style="display: flex; gap: 0.75rem; align-items: center;">
-                  <button class="btn btn-primary" id="btn-diagnose-photo" style="flex: 1; padding: 0.65rem 1rem; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;" ${this.isLoading ? 'disabled' : ''}>
+                <div class="photo-trigger-row" style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                  <button class="btn btn-primary" id="btn-diagnose-photo" style="flex: 1 1 200px; min-height: 44px; padding: 0.65rem 1rem; font-size: clamp(0.85rem, 2.5vw, 0.95rem); display: flex; align-items: center; justify-content: center; gap: 0.5rem;" ${this.isLoading ? 'disabled' : ''}>
                     ${this.isLoading ? `
                       <span class="spinner" style="width: 16px; height: 16px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; display: inline-block; animation: spin 0.8s linear infinite;"></span>
                       <span>Analyzing with Vision AI...</span>
@@ -150,11 +150,11 @@ export const PhotoDiagnosis = {
     const catObj = CATEGORIES.find(c => c.id === diag.service_category) || { name: diag.service_category, icon: '🛠️' };
 
     return `
-      <div style="border: 2px solid var(--accent-primary); border-radius: 12px; padding: 1.5rem; background: var(--bg-primary); box-shadow: var(--shadow-subtle);">
+      <div class="diagnosis-result-card" style="border: 2px solid var(--accent-primary); border-radius: 12px; padding: clamp(1rem, 3.5vw, 1.5rem); background: var(--bg-primary); box-shadow: var(--shadow-subtle); box-sizing: border-box;">
         
         <!-- Header with Urgency and Category -->
-        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem;">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
             <span class="badge" style="background: ${urgencyBadge.bg}; color: ${urgencyBadge.color}; font-weight: 700; font-size: 0.82rem; padding: 4px 10px; border-radius: 6px; ${urgencyBadge.pulse ? 'animation: pulseRing 1.5s infinite;' : ''}">
               ${urgencyBadge.label}
             </span>
@@ -165,9 +165,9 @@ export const PhotoDiagnosis = {
           </div>
 
           <!-- Editable Detected Service Category -->
-          <div style="display: flex; align-items: center; gap: 0.4rem;">
+          <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
             <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">Service Needed:</label>
-            <select id="edit-detected-category" class="form-select" style="font-size: 0.85rem; padding: 0.35rem 0.65rem; font-weight: 700; color: var(--accent-primary);">
+            <select id="edit-detected-category" class="form-select" style="font-size: 0.85rem; padding: 0.35rem 0.65rem; font-weight: 700; color: var(--accent-primary); max-width: 100%;">
               <option value="plumber" ${diag.service_category === 'plumber' ? 'selected' : ''}>🔧 Plumber</option>
               <option value="electrician" ${diag.service_category === 'electrician' ? 'selected' : ''}>⚡ Electrician</option>
               <option value="carpenter" ${diag.service_category === 'carpenter' ? 'selected' : ''}>🪚 Carpenter</option>
@@ -191,7 +191,7 @@ export const PhotoDiagnosis = {
 
         <!-- Issue Title -->
         <div style="margin-bottom: 1.25rem;">
-          <h2 style="font-size: 1.25rem; font-weight: 800; margin: 0 0 0.35rem 0; color: var(--text-primary);">
+          <h2 style="font-size: clamp(1.1rem, 3.5vw, 1.25rem); font-weight: 800; margin: 0 0 0.35rem 0; color: var(--text-primary); word-break: break-word;">
             ${esc(diag.issue)}
           </h2>
           ${!diag.problem_found && diag.follow_up_question ? `
@@ -202,14 +202,14 @@ export const PhotoDiagnosis = {
         </div>
 
         <!-- Metrics Grid: Price Range & Duration -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
           
           <!-- Price Estimate Box -->
           <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
             <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 0.25rem;">
               Estimated Labor Cost
             </div>
-            <div style="font-size: 1.75rem; font-weight: 800; color: #15803d; line-height: 1.2;">
+            <div style="font-size: clamp(1.4rem, 4vw, 1.75rem); font-weight: 800; color: #15803d; line-height: 1.2;">
               ₹${diag.price_min} – ₹${diag.price_max}
             </div>
             <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.25rem;">
@@ -222,7 +222,7 @@ export const PhotoDiagnosis = {
             <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 0.25rem;">
               Estimated Job Time
             </div>
-            <div style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary); line-height: 1.2;">
+            <div style="font-size: clamp(1.4rem, 4vw, 1.75rem); font-weight: 800; color: var(--text-primary); line-height: 1.2;">
               ~${diag.estimated_duration_minutes || 45} mins
             </div>
             <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.25rem;">
@@ -249,15 +249,15 @@ export const PhotoDiagnosis = {
         ` : ''}
 
         <!-- Next Step Action Buttons -->
-        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; pt-3; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+        <div class="diagnosis-actions-wrap" style="display: flex; flex-wrap: wrap; gap: 0.75rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
           
           <!-- CTA 1: Find on Map -->
-          <button class="btn btn-outline" id="btn-find-service-map" style="flex: 1; min-width: 200px; display: flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.65rem 1rem;">
+          <button class="btn btn-outline" id="btn-find-service-map" style="flex: 1 1 200px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.75rem 1rem;">
             <span>🗺️</span> Find ${esc(catObj.name)} on Live Map
           </button>
 
           <!-- CTA 2: Book Service Now with Pre-fill -->
-          <button class="btn btn-primary" id="btn-book-with-diagnosis" style="flex: 1.3; min-width: 240px; display: flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.65rem 1rem; font-weight: 700;">
+          <button class="btn btn-primary" id="btn-book-with-diagnosis" style="flex: 1.2 1 240px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.75rem 1rem; font-weight: 700;">
             <span>⚡</span> Book Now with AI Estimate (₹${diag.price_min})
           </button>
 

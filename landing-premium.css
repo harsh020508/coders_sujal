@@ -173,13 +173,39 @@
 @media (max-width: 720px) {
   .lk-services-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .lk-service-card {
+    padding: 10px 12px;
     gap: 10px;
+    border-radius: 10px;
+  }
+  .lk-service-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+  }
+  .lk-service-body h3 {
+    font-size: 0.82rem;
+    margin-bottom: 2px;
+  }
+  .lk-service-body p {
+    font-size: 0.72rem;
+    -webkit-line-clamp: 1;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .lk-service-arrow {
+    display: none;
   }
 }
 
-@media (max-width: 460px) {
+@media (max-width: 330px) {
   .lk-services-grid {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
 }
 

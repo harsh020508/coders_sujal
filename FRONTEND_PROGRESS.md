@@ -27,6 +27,7 @@
 | **11** | `feat(pwa): add metadata manifest and offline shell` | **Complete** | `manifest.json`, `index.html` | Web App Manifest with SVG maskable icons; `<noscript>` guidance fallback; safe non-sensitive caching boundaries. |
 | **12** | `test(frontend): add responsive and journey regression coverage` | **Complete** | `tests/*.test.js` | 8 test suites, 73 total assertions passing with 0 failures; viewport testing from 360px up to 1440px. |
 | **13** | `perf(frontend): eliminate first-load delay & lock 120Hz smoothness` | **Complete** | `scroll.js`, `reveal.js`, `feedback.js`, `motion.css`, `customerMap.js`, `index.html` | Preloader removed; Lenis scroll-jacking eliminated in favor of native 120Hz/144Hz compositor scrolling; 60px blur ambient blobs disabled; Leaflet deferred strictly on-demand. |
+| **14** | `fix(mobile): optimize AI photo diagnosis, quick action cards, and worker cards for mobile viewports` | **Complete** | `photoDiagnosis.js`, `styles.css`, `landing-premium.css`, `customer.js`, `tests/responsive-mobile.test.js` | Fluid mobile layout across 360px-420px viewports; removed inline 280px grid override; full-width touch actions (>=44px); 2-column compact services grid; 9 test suites / 77 passing assertions. |
 
 ---
 
@@ -100,6 +101,11 @@ npm test
    - Locality type-ahead matching, offline worker exclusion, distance filtering.
 8. **`tests/landing.test.js`**: 3 passed
    - Landmark verification, service category mapping, dark theme toggle icon presence.
+9. **`tests/responsive-mobile.test.js`**: 4 passed
+   - AI photo diagnosis grid fluid breakdown on mobile (<640px) without fixed inline widths.
+   - Quick action cards vertical stack and full-width touch targets on small screens.
+   - Worker cards action buttons equal distribution and price alignment on mobile (<480px).
+   - Services grid compact 2-column mobile structure preserved down to 330px in `landing-premium.css`.
 
 ---
 
