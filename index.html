@@ -38,9 +38,13 @@
   </script>
   <title>LocalKaam — Hyperlocal Blue-Collar Services Marketplace</title>
 
-  <!-- Favicon SVG -->
+  <!-- Favicon & PWA Manifest -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23ffe95c'/%3E%3Ctext x='16' y='21' font-size='14' font-weight='900' font-family='sans-serif' text-anchor='middle' fill='%231a3300'%3ELK%3C/text%3E%3C/svg%3E" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='36' fill='%23ffe95c'/%3E%3Ctext x='96' y='126' font-size='84' font-weight='900' font-family='sans-serif' text-anchor='middle' fill='%231a3300'%3ELK%3C/text%3E%3C/svg%3E">
 
+  <!-- Core Design System Tokens & Stylesheets -->
+  <link rel="stylesheet" href="./tokens.css">
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./css_enhancements.css">
   <link rel="stylesheet" href="./ui.css">
@@ -63,6 +67,14 @@
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
 <body>
+  <noscript>
+    <div style="padding: 24px; max-width: 600px; margin: 40px auto; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 12px; font-family: Inter, sans-serif; color: #1a3300; text-align: center;">
+      <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 8px;">JavaScript is Required for LocalKaam</h2>
+      <p style="font-size: 0.95rem; line-height: 1.6; color: #44483d; margin: 0;">
+        LocalKaam is an interactive hyperlocal services marketplace connecting Mumbai households with verified local specialists. Please enable JavaScript in your browser to browse professionals, schedule jobs, and track services live.
+      </p>
+    </div>
+  </noscript>
   <div id="app" class="app-container"></div>
 
   <script type="module">

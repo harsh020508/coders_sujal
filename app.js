@@ -492,6 +492,7 @@ export const App = {
     const theme = Settings.getResolvedTheme();
     return `
       <div class="app-container">
+        <a class="lk-skip-link" href="#role-selection-wrapper">Skip to role choices</a>
         ${this._mobileNavHTML(theme)}
 
         <header class="navbar">
@@ -509,7 +510,7 @@ export const App = {
           </div>
         </header>
 
-        <div class="role-selection-wrapper">
+        <div class="role-selection-wrapper" id="role-selection-wrapper">
           <h1 style="font-size:clamp(1.75rem,4vw,2.5rem);font-weight:800;margin-bottom:12px;font-family:'Bricolage Grotesque',sans-serif;text-align:center;">
             How would you like to use LocalKaam?
           </h1>
@@ -519,7 +520,7 @@ export const App = {
 
           <div class="role-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; max-width: 820px; margin: 0 auto;">
             <!-- Customer Card -->
-            <div class="role-card" id="select-customer-role" role="button" tabindex="0">
+            <div class="role-card" id="select-customer-role" role="button" tabindex="0" aria-label="Continue as Customer">
               <div class="role-icon" style="display:flex;align-items:center;justify-content:center;">
                 <i data-lucide="home" class="lucide-lg" style="color:var(--accent-primary);"></i>
               </div>
@@ -530,13 +531,13 @@ export const App = {
                 <li style="display:flex;align-items:center;gap:6px;"><i data-lucide="check" class="lucide-xs" style="color:#10b981;"></i> Direct price offers &amp; counter-offers</li>
                 <li style="display:flex;align-items:center;gap:6px;"><i data-lucide="check" class="lucide-xs" style="color:#10b981;"></i> Instant digital invoice receipts</li>
               </ul>
-              <button class="btn btn-primary btn-full" style="padding:14px;justify-content:center;">
+              <span class="btn btn-primary btn-full" style="padding:14px;justify-content:center;pointer-events:none;">
                 Continue as Customer <i data-lucide="arrow-right" class="lucide-sm"></i>
-              </button>
+              </span>
             </div>
 
             <!-- Worker Card -->
-            <div class="role-card" id="select-worker-role" role="button" tabindex="0">
+            <div class="role-card" id="select-worker-role" role="button" tabindex="0" aria-label="Continue as Service Professional">
               <div class="role-icon" style="display:flex;align-items:center;justify-content:center;">
                 <i data-lucide="hammer" class="lucide-lg" style="color:var(--accent-primary);"></i>
               </div>
@@ -547,9 +548,9 @@ export const App = {
                 <li style="display:flex;align-items:center;gap:6px;"><i data-lucide="check" class="lucide-xs" style="color:#10b981;"></i> Instant online / offline availability switch</li>
                 <li style="display:flex;align-items:center;gap:6px;"><i data-lucide="check" class="lucide-xs" style="color:#10b981;"></i> Complete job lifecycle tracker</li>
               </ul>
-              <button class="btn btn-primary btn-full" style="padding:14px;justify-content:center;">
+              <span class="btn btn-primary btn-full" style="padding:14px;justify-content:center;pointer-events:none;">
                 Continue as Worker <i data-lucide="arrow-right" class="lucide-sm"></i>
-              </button>
+              </span>
             </div>
           </div>
 
@@ -571,6 +572,16 @@ export const App = {
 
     return `
       <div class="app-container">
+        <a class="lk-skip-link" href="#app-view-container">Skip to main content</a>
+        ${AuthService.isGuest() ? `
+          <div class="demo-mode-banner" role="status" aria-live="polite">
+            <span class="demo-mode-badge"><i data-lucide="info" class="lucide-xs"></i> Demo Mode</span>
+            <span>You are exploring with simulated sandbox data. Actions and updates will not persist to a live database.</span>
+            <button class="btn btn-sm btn-outline" id="demo-banner-signin-btn" style="background:#fff;color:#1a3300;border:1px solid #1a3300;padding:2px 10px;font-size:0.75rem;cursor:pointer;">
+              Sign in with real account
+            </button>
+          </div>
+        ` : ''}
         <!-- Mobile Nav Overlay for dashboard -->
         <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
         <div class="mobile-nav-drawer" id="mobile-nav-drawer">
@@ -759,13 +770,15 @@ export const App = {
   attachRoleSelectionEvents(root) {
     this._attachMobileNav(root);
 
-    root.querySelector('#nav-back-home')?.addEventListener('click', () => {
-      this.navigateToRole('landing');
+    const goLanding = () => this.navigateToRole('landing');
+    root.querySelector('#nav-back-home')?.addEventListener('click', goLanding);
+    root.querySelector('#nav-back-home')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goLanding(); }
     });
     root.querySelector('#back-to-home-link')?.addEventListener('click', () => {
       this.navigateToRole('landing');
     });
-    root.querySelector('#select-customer-role')?.addEventListener('click', () => {
+    const chooseCustomer = () => {
       const isAuthed = AuthService.isAuthenticated() && !AuthService.isGuest();
       if (isAuthed) {
         this.navigateToRole('customer');
@@ -774,8 +787,14 @@ export const App = {
           this.navigateToRole('customer');
         });
       }
+    };
+    const custCard = root.querySelector('#select-customer-role');
+    custCard?.addEventListener('click', chooseCustomer);
+    custCard?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseCustomer(); }
     });
-    root.querySelector('#select-worker-role')?.addEventListener('click', () => {
+
+    const chooseWorker = () => {
       const isAuthed = AuthService.isAuthenticated() && !AuthService.isGuest();
       if (isAuthed) {
         this.navigateToRole('worker');
@@ -785,6 +804,11 @@ export const App = {
           this.navigateToRole('worker');
         });
       }
+    };
+    const workerCard = root.querySelector('#select-worker-role');
+    workerCard?.addEventListener('click', chooseWorker);
+    workerCard?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseWorker(); }
     });
 
     

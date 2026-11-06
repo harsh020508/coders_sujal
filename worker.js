@@ -2226,7 +2226,7 @@ export const WorkerFrontend = {
     modal.className = 'modal-overlay';
     modal.innerHTML = `
       <div class="modal-card" style="max-width: 480px;">
-        <button class="modal-close" id="close-payout-modal">×</button>
+        <button class="modal-close" id="close-payout-modal" aria-label="Close dialog">×</button>
         <h2 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 0.25rem;">Request Instant Payout</h2>
         <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.25rem;">
           Instant settlement to your bank account or UPI with <strong>0% platform commission</strong>.
@@ -2272,7 +2272,7 @@ export const WorkerFrontend = {
     modal.className = 'modal-overlay';
     modal.innerHTML = `
       <div class="modal-card" style="max-width: 440px;">
-        <button class="modal-close" id="close-receipt-modal">×</button>
+        <button class="modal-close" id="close-receipt-modal" aria-label="Close dialog">×</button>
         <div style="text-align: center; margin-bottom: 1rem;">
           <div style="font-size: 2.2rem; margin-bottom: 4px;">🧾</div>
           <h2 style="font-size: 1.25rem; font-weight: 800; margin: 0;">Verified Payment Receipt</h2>
@@ -2335,7 +2335,7 @@ export const WorkerFrontend = {
 
     overlay.innerHTML = `
       <div style="background:var(--bg-card);border-radius:16px;padding:2rem;max-width:440px;width:100%;box-sizing:border-box;box-shadow:0 20px 60px rgba(0,0,0,0.25);position:relative;overflow:hidden;">
-        <button id="otp-modal-close" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-muted);">✕</button>
+        <button id="otp-modal-close" aria-label="Close dialog" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-muted);">✕</button>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;">
           <div style="width:48px;height:48px;border-radius:12px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">🔐</div>
           <div>
@@ -2479,7 +2479,7 @@ export const WorkerFrontend = {
     modal.className = 'modal-overlay';
     modal.innerHTML = `
       <div class="modal-card" style="max-width: 480px;">
-        <button class="modal-close" id="close-review-modal">×</button>
+        <button class="modal-close" id="close-review-modal" aria-label="Close dialog">×</button>
         <h2 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 0.25rem;">Respond to Customer Review</h2>
         <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
           Customer rated: <strong>${review.overallRating} ⭐</strong> — "${esc(review.comment || 'Great service')}"
@@ -2676,7 +2676,7 @@ export const WorkerFrontend = {
     modal.style.zIndex = '1200';
     modal.innerHTML = `
       <div class="modal-card" style="max-width: 600px;">
-        <button class="modal-close" id="close-doc-preview-modal">×</button>
+        <button class="modal-close" id="close-doc-preview-modal" aria-label="Close dialog">×</button>
         <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
           <div style="font-size: 2rem;">🛡️</div>
           <div>
@@ -2752,7 +2752,7 @@ export const WorkerFrontend = {
 
       modal.innerHTML = `
         <div class="modal-card" style="max-width: 820px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 2rem; position: relative;">
-          <button class="modal-close" id="close-setup-modal" title="Close Window">×</button>
+          <button class="modal-close" id="close-setup-modal" title="Close Window" aria-label="Close dialog">×</button>
 
           <!-- Modal Header -->
           <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">

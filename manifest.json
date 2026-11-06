@@ -1,0 +1,26 @@
+{
+  "name": "LocalKaam — Hyperlocal Home Services Marketplace",
+  "short_name": "LocalKaam",
+  "description": "Discover verified neighbourhood professionals for cleaning, repairs, electrical, plumbing and home maintenance across Mumbai with transparent rates and 0% commission.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fcfaf5",
+  "theme_color": "#1a3300",
+  "orientation": "portrait",
+  "categories": ["lifestyle", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='36' fill='%23ffe95c'/%3E%3Ctext x='96' y='126' font-size='84' font-weight='900' font-family='sans-serif' text-anchor='middle' fill='%231a3300'%3ELK%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%23ffe95c'/%3E%3Ctext x='256' y='336' font-size='224' font-weight='900' font-family='sans-serif' text-anchor='middle' fill='%231a3300'%3ELK%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
