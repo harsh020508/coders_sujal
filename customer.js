@@ -909,7 +909,7 @@ export const CustomerFrontend = {
           });
           const data = await res.json();
           if (res.ok && data.success) {
-            Toast.show('New OTP sent to your registered phone ✅', 'success');
+            Toast.show('New OTP generated in your app ✅', 'success');
             btn.textContent = '✅ OTP Sent';
           } else if (res.status === 429) {
             Toast.show(`Please wait ${data.retryAfterSeconds || 60}s before resending.`, 'info');
@@ -1920,7 +1920,9 @@ export const CustomerFrontend = {
    * Shown to customers for Confirmed/Accepted/Worker en route bookings.
    */
   renderOtpStatusPanel(booking) {
-    const statuses = ['Confirmed', 'Accepted', 'Worker en route'];
+    // OTP is issued when the customer books (Uber/Ola-style), so show it
+    // from 'Pending confirmation' onwards, not just after acceptance.
+    const statuses = ['Pending confirmation', 'Pending', 'Confirmed', 'Accepted', 'Worker en route'];
     if (!statuses.includes(booking.status)) return '';
     return `
       <div class="otp-status-panel" data-otp-booking-id="${esc(booking.id)}"
@@ -1968,19 +1970,14 @@ export const CustomerFrontend = {
         if (!res.ok) { statusEl.textContent = ''; continue; }
         const data = await res.json();
         if (!data.exists) {
-          statusEl.innerHTML = '<span style="color:#f59e0b;">⏳ OTP will be generated once worker arrives or accepts.</span>';
+          statusEl.innerHTML = '<span style="color:#f59e0b;">⏳ Your arrival OTP will appear here once the booking is saved.</span>';
         } else if (data.isConsumed) {
           statusEl.innerHTML = '<span style="color:#16a34a;font-weight:700;">✅ Arrival verified — technician has checked in!</span>';
         } else if (data.isExpired) {
-          statusEl.innerHTML = '<span style="color:#dc2626;">⚠️ OTP expired. Click Resend OTP to receive a new code.</span>';
+          statusEl.innerHTML = '<span style="color:#dc2626;">⚠️ OTP expired. Click Resend OTP to get a new code in your app.</span>';
         } else {
           const expiry = new Date(data.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          const label = {
-            sent: 'OTP sent to your registered phone via SMS.',
-            dev_console: 'OTP generated (SMS not configured — code shown below).',
-            failed: 'SMS delivery failed. Use Resend OTP.',
-            pending: 'Sending OTP...'
-          }[data.deliveryStatus] || 'OTP generated.';
+          const label = 'Share this code verbally when the professional reaches your home.';
           const otpHtml = data.otp
             ? `<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="color:#4b5563;font-weight:600;">Your arrival code:</span><strong style="font-family:'JetBrains Mono',monospace;font-size:1.2rem;letter-spacing:0.12em;color:#1a3300;background:#ffe95c;padding:2px 10px;border-radius:8px;">${esc(data.otp)}</strong><span style="color:#4b5563;">Share it verbally with the technician.</span></div>`
             : '';

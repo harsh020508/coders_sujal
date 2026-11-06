@@ -5,7 +5,6 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { INITIAL_WORKERS, INITIAL_BOOKINGS, INITIAL_REVIEWS, INITIAL_COMPLAINTS } from './data.js';
-import { sendArrivalOtpSms, isSmsConfigured } from './smsService.js';
 import { getPriceTablePromptSummary } from './pricingTable.js';
 
 // Load environment variables from .env if present (relative to this file,
@@ -140,10 +139,42 @@ export const stmtUpdateOtpDelivery = db.prepare(`
 
 export const stmtClearOtps = db.prepare(`DELETE FROM booking_otps`);
 
-// Non-production only: remember the plaintext OTP in memory so the
-// *customer* dashboard can display it (production relies on SMS).
-// Never persisted, never returned to the worker.
+// Uber/Ola-style: the OTP is shown in the customer's app (not sent by
+// SMS/phone). The plaintext is kept in memory only so the *customer*
+// dashboard can keep displaying the code until it's used. Only the
+// hash is persisted, and the plaintext is never returned to the worker.
 const devOtpPlaintext = new Map();
+
+// Valid until the appointment is done (end of appointment day + buffer),
+// at least 24h — not a 30-minute window, since the OTP is created when
+// the customer books and the worker may arrive hours later.
+function otpExpiryFor(booking, now) {
+  const d = booking?.appointmentDate ? new Date(`${booking.appointmentDate}T23:59:59`) : null;
+  const appt = d && !isNaN(d) ? d.getTime() + 12 * 3600e3 : now + 24 * 3600e3;
+  return Math.max(appt, now + 24 * 3600e3);
+}
+
+// Create/replace the arrival OTP for a booking. Returns the plaintext
+// code (caller must only show it to the booking customer, in-app).
+function issueArrivalOtp(booking) {
+  const bookingId = booking.id;
+  const otpPlain  = String(crypto.randomInt(100000, 999999));
+  devOtpPlaintext.set(bookingId, otpPlain);
+  const otpHash   = crypto.createHash('sha256').update(otpPlain).digest('hex');
+  const now       = Date.now();
+  const expiresAt = otpExpiryFor(booking, now);
+  const otpId     = `otp_${bookingId}_${now}`;
+  const customerId = booking.customerId || booking.customer_id || 'guest_customer_01';
+  const workerId   = booking.workerId || booking.worker_id || 'w1';
+
+  stmtUpsertOtp.run(otpId, bookingId, customerId, workerId, otpHash, expiresAt, 'in_app', now, now);
+  syncOtpToSupabase('upsert', {
+    id: otpId, booking_id: bookingId, customer_id: customerId, worker_id: workerId,
+    otp_hash: otpHash, expires_at: expiresAt, attempts: 0, max_attempts: 5,
+    delivery_status: 'in_app', created_at: now, updated_at: now
+  }).catch(() => {});
+  return { otp: otpPlain, expiresAt, otpId };
+}
 
 export function getStore(key, fallback) {
   try {
@@ -821,7 +852,11 @@ export const server = http.createServer(async (req, res) => {
         }
         setStore('localkaam_bookings', bookings);
         broadcastEvent('BOOKINGS_UPDATED', { key: 'localkaam_bookings', value: bookings });
-        return sendJson(res, 201, newBooking);
+        // Uber/Ola-style: the customer gets their arrival OTP in-app the
+        // moment they book. They share it verbally when the worker reaches
+        // home; the worker enters it to verify arrival. No SMS/phone OTP.
+        const { otp, expiresAt } = issueArrivalOtp(newBooking);
+        return sendJson(res, 201, { ...newBooking, arrivalOtp: otp, otpExpiresAt: new Date(expiresAt).toISOString() });
       } catch (err) {
         return sendJson(res, 400, { error: err.message });
       }
@@ -1273,9 +1308,10 @@ Rules:
 
   /**
    * POST /api/bookings/:id/generate-arrival-otp
-   * Called automatically when the worker accepts a booking.
-   * Generates a cryptographically secure 6-digit OTP, stores its SHA-256 hash,
-   * and sends it to the customer's registered phone via SMS.
+   * The OTP is normally created when the customer books
+   * (POST /api/bookings) and shown in their app — no SMS/phone OTP.
+   * This endpoint is kept for legacy bookings made before that: it
+   * creates the OTP if none exists yet, otherwise it's a no-op.
    *
    * Auth: worker who owns the booking  OR  admin.
    */
@@ -1301,76 +1337,25 @@ Rules:
       return sendJson(res, 400, { error: `OTP can only be generated for accepted bookings. Current status: ${booking.status}` });
     }
 
-    // Check resend cooldown (60 seconds) using existing OTP record
+    // Idempotent: OTP already issued at booking time — don't replace it.
     const existingOtp = stmtGetOtpByBooking.get(bookingId);
-    if (existingOtp) {
-      const secondsSinceLast = (Date.now() - existingOtp.updated_at) / 1000;
-      if (secondsSinceLast < 60) {
-        return sendJson(res, 429, {
-          error: 'Resend cooldown active',
-          retryAfterSeconds: Math.ceil(60 - secondsSinceLast)
-        });
-      }
+    if (existingOtp && !existingOtp.consumed_at && Date.now() <= existingOtp.expires_at) {
+      return sendJson(res, 200, {
+        success: true,
+        bookingId,
+        delivery: 'in_app',
+        expiresAt: new Date(existingOtp.expires_at).toISOString(),
+        message: 'Arrival OTP is already shown in the customer app. They will share it when you reach home.'
+      });
     }
 
-    // Generate cryptographically secure 6-digit OTP
-    const otpPlain = String(crypto.randomInt(100000, 999999));
-    devOtpPlaintext.set(bookingId, otpPlain);
-
-    // Hash the OTP — only the hash is ever stored
-    const otpHash = crypto.createHash('sha256').update(otpPlain).digest('hex');
-
-    const now       = Date.now();
-    const expiresAt = now + 30 * 60 * 1000; // 30 minutes
-    const otpId     = `otp_${bookingId}_${now}`;
-
-    stmtUpsertOtp.run(
-      otpId, bookingId,
-      booking.customerId || booking.customer_id || 'guest_customer_01',
-      booking.workerId   || booking.worker_id || 'w1',
-      otpHash,
-      expiresAt,
-      'pending',
-      now, now
-    );
-    syncOtpToSupabase('upsert', {
-      id: otpId,
-      booking_id: bookingId,
-      customer_id: booking.customerId || booking.customer_id || 'guest_customer_01',
-      worker_id: booking.workerId || booking.worker_id || 'w1',
-      otp_hash: otpHash,
-      expires_at: expiresAt,
-      attempts: 0,
-      max_attempts: 5,
-      delivery_status: 'pending',
-      created_at: now,
-      updated_at: now
-    }).catch(() => {});
-
-    // Send SMS to customer's phone
-    const customerPhone = booking.customerPhone || booking.customer_phone || '';
-    let smsResult = { success: false, error: 'SMS_NOT_CONFIGURED' };
-
-    if (customerPhone && isSmsConfigured()) {
-      smsResult = await sendArrivalOtpSms(customerPhone, otpPlain, bookingId);
-      const deliveryStatus = smsResult.success ? 'sent' : 'failed';
-      stmtUpdateOtpDelivery.run(deliveryStatus, Date.now(), bookingId);
-    } else if (!isSmsConfigured()) {
-      // Dev/demo mode: log OTP to server console only (never to client response)
-      console.log(`[DEV OTP] Booking ${bookingId}: OTP is ${otpPlain} (SMS not configured)`);
-      stmtUpdateOtpDelivery.run('dev_console', Date.now(), bookingId);
-    }
-
-    // Always return success to worker, even if SMS failed (customer sees OTP in dashboard)
+    const { expiresAt } = issueArrivalOtp(booking);
     return sendJson(res, 200, {
       success: true,
       bookingId,
-      smsDelivered: smsResult.success,
-      smsConfigure: isSmsConfigured(),
+      delivery: 'in_app',
       expiresAt: new Date(expiresAt).toISOString(),
-      message: smsResult.success
-        ? 'OTP sent to customer via SMS'
-        : (isSmsConfigured() ? 'OTP generated but SMS delivery failed — customer can view in dashboard' : 'OTP generated (SMS not configured — dev mode)')
+      message: 'Arrival OTP is shown in the customer app. They will share it when you reach home.'
     });
   }
 
@@ -1497,52 +1482,27 @@ Rules:
       }
     }
 
-    const acceptedStatuses = ['Confirmed', 'Accepted', 'Worker en route'];
-    if (!acceptedStatuses.includes(booking.status)) {
+    const activeStatuses = ['Pending confirmation', 'Pending', 'Confirmed', 'Accepted', 'Worker en route'];
+    if (!activeStatuses.includes(booking.status)) {
       return sendJson(res, 400, { error: 'OTP resend is only available for active bookings.' });
     }
 
-    // Issue fresh OTP (invalidates old one via upsert)
-    const otpPlain  = String(crypto.randomInt(100000, 999999));
-    devOtpPlaintext.set(bookingId, otpPlain);
-    const otpHash   = crypto.createHash('sha256').update(otpPlain).digest('hex');
-    const now       = Date.now();
-    const expiresAt = now + 30 * 60 * 1000;
-    const otpId     = `otp_${bookingId}_${now}`;
-
-    stmtUpsertOtp.run(
-      otpId, bookingId,
-      booking.customerId || booking.customer_id,
-      booking.workerId   || booking.worker_id,
-      otpHash,
-      expiresAt,
-      'pending',
-      now, now
-    );
-
-    const customerPhone = booking.customerPhone || booking.customer_phone || '';
-    let smsResult = { success: false };
-
-    if (customerPhone && isSmsConfigured()) {
-      smsResult = await sendArrivalOtpSms(customerPhone, otpPlain, bookingId);
-      stmtUpdateOtpDelivery.run(smsResult.success ? 'sent' : 'failed', Date.now(), bookingId);
-    } else {
-      console.log(`[DEV OTP] Resend for booking ${bookingId}: OTP is ${otpPlain}`);
-      stmtUpdateOtpDelivery.run('dev_console', Date.now(), bookingId);
-    }
-
+    // Issue fresh OTP in-app (invalidates old one via upsert). No SMS.
+    const { expiresAt } = issueArrivalOtp(booking);
     return sendJson(res, 200, {
       success: true,
       bookingId,
-      smsDelivered: smsResult.success,
+      delivery: 'in_app',
       expiresAt: new Date(expiresAt).toISOString(),
-      message: smsResult.success ? 'New OTP sent to your registered phone number.' : 'New OTP generated (SMS not configured).'
+      message: 'New arrival OTP generated in your app.'
     });
   }
 
   /**
    * GET /api/bookings/:id/otp-status
-   * Returns OTP metadata (NO hash, NO plaintext) for the customer dashboard display.
+   * Returns OTP metadata for the customer dashboard. The plaintext code
+   * is included only for the booking customer/admin (in-app delivery);
+   * the hash is NEVER returned, and workers never see the code.
    * Auth: booking customer or booking worker or admin.
    */
   const otpStatusMatch = pathname.match(/^\/api\/bookings\/([^/]+)\/otp-status$/);
@@ -1569,11 +1529,12 @@ Rules:
     const nowDate = Date.now();
     const isExpired = nowDate > otpRecord.expires_at;
     const isConsumed = Boolean(otpRecord.consumed_at);
-    // Non-production only: reveal the code to the booking *customer*
-    // so the demo flow can complete without SMS. Never expose to workers.
-    const showDevOtp = process.env.NODE_ENV !== 'production' && !isExpired && !isConsumed
+    // The code is delivered in-app: reveal it to the booking *customer*
+    // (and admin) so they can share it when the worker reaches home.
+    // Never expose it to the worker — they must type what customer says.
+    const showOtp = !isExpired && !isConsumed
       && (isBookingCustomer(booking, user) || user.role === 'admin');
-    const devOtp = showDevOtp ? (devOtpPlaintext.get(bookingId) || null) : null;
+    const devOtp = showOtp ? (devOtpPlaintext.get(bookingId) || null) : null;
     return sendJson(res, 200, {
       exists: true,
       bookingId,

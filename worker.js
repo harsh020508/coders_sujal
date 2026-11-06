@@ -2054,7 +2054,8 @@ export const WorkerFrontend = {
           Toast.show('This job is waiting for the customer to accept your counter-offer.', 'warning');
         } else {
           Toast.show(`Booking accepted! Moved to Active Projects.`, 'success');
-          // Auto-generate arrival OTP for the accepted booking
+          // OTP was already issued when the customer booked; this is a
+          // no-op check that it exists (never sent by SMS).
           this.generateArrivalOtp(bookingId, container);
         }
         StorageService.saveBookings(bookings);
@@ -2316,12 +2317,7 @@ export const WorkerFrontend = {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
       if (res.ok) {
-        const data = await res.json();
-        if (data.smsDelivered) {
-          Toast.show('Arrival OTP sent to customer via SMS ✅', 'success');
-        } else {
-          Toast.show('Arrival OTP generated. Customer can view it in their dashboard.', 'info');
-        }
+        Toast.show('Customer OTP is ready in their app — ask for it when you reach home.', 'info');
       } else {
         const err = await res.json().catch(() => ({}));
         console.warn('[OTP] Generate failed:', err.error);
@@ -2354,7 +2350,7 @@ export const WorkerFrontend = {
           </div>
         </div>
         <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.5;">
-          Ask your customer for the <strong>6-digit OTP</strong> they received via SMS. Enter it below to confirm your arrival.
+          Ask your customer for the <strong>6-digit OTP</strong> shown in their app. Enter it below to confirm your arrival.
         </p>
         <div id="otp-modal-error" style="display:none;padding:0.65rem 1rem;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;font-size:0.85rem;margin-bottom:1rem;"></div>
         <div style="width:100%;box-sizing:border-box;margin-bottom:1.25rem;">

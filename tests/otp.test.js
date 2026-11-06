@@ -16,8 +16,6 @@ import {
   setStore,
   getStore
 } from '../server.js';
-import { sendArrivalOtpSms, isSmsConfigured } from '../smsService.js';
-
 const TEST_JWT_SECRET = 'localkaam-super-secret-jwt-key-32chars!';
 process.env.SUPABASE_JWT_SECRET = TEST_JWT_SECRET;
 
@@ -528,11 +526,55 @@ test('12. Direct booking status change to "Worker arrived" is blocked without OT
   assert.match(data.error, /cannot transition to "Worker arrived" without valid customer OTP/i);
 });
 
-test('13. SMS Provider abstraction: handles unconfigured credentials gracefully', async () => {
-  assert.equal(isSmsConfigured(), false);
-  const res = await sendArrivalOtpSms('+91 98765 43210', '123456', 'BK_123');
-  assert.equal(res.success, false);
-  assert.equal(res.error, 'SMS_NOT_CONFIGURED');
+test('13. Uber/Ola-style: OTP is issued in-app when the customer books (no SMS)', async () => {
+  const res = await fetch(`${baseUrl}/api/bookings`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${customerToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      id: 'BK_TEST_13',
+      workerId: workerUser.sub,
+      status: 'Pending confirmation',
+      appointmentDate: new Date().toISOString().split('T')[0]
+    })
+  });
+
+  assert.equal(res.status, 201);
+  const data = await res.json();
+  // Customer gets the code in-app at booking time …
+  assert.match(data.arrivalOtp, /^\d{6}$/);
+  assert.ok(data.otpExpiresAt);
+
+  // … stored hash-only, delivered in-app, never by SMS
+  const row = stmtGetOtpByBooking.get('BK_TEST_13');
+  assert.ok(row);
+  assert.equal(row.delivery_status, 'in_app');
+  assert.equal(row.otp_hash.length, 64);
+  assert.notEqual(row.otp_hash, data.arrivalOtp);
+
+  // Customer can re-view the same code in-app via otp-status …
+  const statusRes = await fetch(`${baseUrl}/api/bookings/BK_TEST_13/otp-status`, {
+    headers: { 'Authorization': `Bearer ${customerToken}` }
+  });
+  assert.equal(statusRes.status, 200);
+  const status = await statusRes.json();
+  assert.equal(status.otp, data.arrivalOtp);
+  assert.equal(status.otp_hash, undefined);
+
+  // … and that code verifies arrival when the assigned worker enters it
+  const verifyRes = await fetch(`${baseUrl}/api/bookings/BK_TEST_13/verify-arrival`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${workerToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ otp: data.arrivalOtp })
+  });
+  assert.equal(verifyRes.status, 200);
+  const verified = await verifyRes.json();
+  assert.equal(verified.status, 'Worker arrived');
 });
 
 test('14. Resend cooldown (60 seconds) is enforced', async () => {
