@@ -1,7 +1,5 @@
 import { StorageService } from './storage.js';
 import { CATEGORIES } from './data.js';
-import { CustomerFrontend } from './customer.js';
-import { WorkerFrontend } from './worker.js';
 import { Toast } from './toast.js';
 import { AuthModal } from './authModal.js';
 import { AuthService } from './authService.js';
@@ -10,9 +8,27 @@ import { esc } from './utils.js';
 import { buildTaskIndex, searchTasks, catImage, icon } from './ui.js';
 import { initScrollReveal, fadeSlide } from './transitions.js';
 import { Settings } from './settingsService.js';
-import { SettingsPage } from './components/SettingsPage.js';
 import { ProfileDropdown } from './components/ProfileDropdown.js';
 import { i18n, t } from './i18n.js';
+
+// Role dashboards are large (customer ~110KB, worker ~170KB, settings
+// ~100KB) and were parsed on every first load even for landing-page
+// visitors. Load them on demand instead — landing paints immediately.
+let _customerFrontend = null;
+let _workerFrontend = null;
+let _settingsPage = null;
+async function loadCustomerFrontend() {
+  if (!_customerFrontend) _customerFrontend = (await import('./customer.js')).CustomerFrontend;
+  return _customerFrontend;
+}
+async function loadWorkerFrontend() {
+  if (!_workerFrontend) _workerFrontend = (await import('./worker.js')).WorkerFrontend;
+  return _workerFrontend;
+}
+async function loadSettingsPage() {
+  if (!_settingsPage) _settingsPage = (await import('./components/SettingsPage.js')).SettingsPage;
+  return _settingsPage;
+}
 
 const ROLES = ['landing', 'role-select', 'customer', 'worker', 'settings'];
 
@@ -95,10 +111,12 @@ export const App = {
       ProfileDropdown.close(false);
     }
     if (role === 'worker') {
-      WorkerFrontend.currentView = 'overview';
-      WorkerFrontend.activeView = 'overview';
-      if (options.openSetupModal !== false) {
-        WorkerFrontend.shouldOpenSetupModal = true;
+      // Worker module loads lazily — stash intent, applied after import.
+      this._pendingWorkerSetup = options.openSetupModal !== false;
+      if (_workerFrontend) {
+        _workerFrontend.currentView = 'overview';
+        _workerFrontend.activeView = 'overview';
+        if (options.openSetupModal !== false) _workerFrontend.shouldOpenSetupModal = true;
       }
     }
     StorageService.setCurrentRole(role);
@@ -162,8 +180,8 @@ export const App = {
   focusSettingsSearch() {
     if (StorageService.getCurrentRole() !== 'settings') return;
     try {
-      SettingsPage.sidebarController?.open();
-      SettingsPage.sidebarController?.focusSearch();
+      _settingsPage?.sidebarController?.open();
+      _settingsPage?.sidebarController?.focusSearch();
     } catch (e) {}
   },
 
@@ -336,24 +354,49 @@ export const App = {
         root.innerHTML = this.renderAppShell('customer');
         const viewContainer = root.querySelector('#app-view-container');
         if (viewContainer) {
-          try {
-            CustomerFrontend.render(viewContainer);
-          } catch (custErr) {
-            console.error('Customer frontend render error:', custErr);
-            viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading customer view: ${esc(custErr.message)}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset &amp; Reload</button></div>`;
-          }
+          viewContainer.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-secondary);">Loading…</div>';
+          loadCustomerFrontend().then((CustomerFrontend) => {
+            // Role may have changed while the chunk loaded.
+            if (StorageService.getCurrentRole() !== 'customer' || !viewContainer.isConnected) return;
+            try {
+              if (this._pendingCustomerCategory) {
+                CustomerFrontend.currentCategory = this._pendingCustomerCategory;
+                this._pendingCustomerCategory = null;
+              }
+              CustomerFrontend.render(viewContainer);
+            } catch (custErr) {
+              console.error('Customer frontend render error:', custErr);
+              viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading customer view: ${esc(custErr.message)}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset &amp; Reload</button></div>`;
+            }
+          }).catch((custErr) => {
+            if (StorageService.getCurrentRole() === 'customer') {
+              viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading customer view: ${esc(custErr.message)}</p><button class="btn btn-primary" onclick="window.location.reload();">Reload</button></div>`;
+            }
+          });
         }
         this.attachShellEvents(root);
       } else if (role === 'worker') {
         root.innerHTML = this.renderAppShell('worker');
         const viewContainer = root.querySelector('#app-view-container');
         if (viewContainer) {
-          try {
-            WorkerFrontend.render(viewContainer);
-          } catch (workErr) {
-            console.error('Worker frontend render error:', workErr);
-            viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading worker view: ${esc(workErr.message)}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset &amp; Reload</button></div>`;
-          }
+          viewContainer.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-secondary);">Loading…</div>';
+          loadWorkerFrontend().then((WorkerFrontend) => {
+            if (StorageService.getCurrentRole() !== 'worker' || !viewContainer.isConnected) return;
+            try {
+              WorkerFrontend.currentView = 'overview';
+              WorkerFrontend.activeView = 'overview';
+              if (this._pendingWorkerSetup) WorkerFrontend.shouldOpenSetupModal = true;
+              this._pendingWorkerSetup = false;
+              WorkerFrontend.render(viewContainer);
+            } catch (workErr) {
+              console.error('Worker frontend render error:', workErr);
+              viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading worker view: ${esc(workErr.message)}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset &amp; Reload</button></div>`;
+            }
+          }).catch((workErr) => {
+            if (StorageService.getCurrentRole() === 'worker') {
+              viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading worker view: ${esc(workErr.message)}</p><button class="btn btn-primary" onclick="window.location.reload();">Reload</button></div>`;
+            }
+          });
         }
         this.attachShellEvents(root);
       } else if (role === 'settings') {
@@ -361,16 +404,19 @@ export const App = {
         this.attachShellEvents(root);
         const pending = this._pendingSettingsSection || null;
         this._pendingSettingsSection = null;
-        try {
-          SettingsPage.init(pending);
-        } catch (settingsErr) {
-          console.error('Settings render error:', settingsErr);
-          const viewContainer = root.querySelector('#app-view-container');
-          if (viewContainer) {
-            viewContainer.innerHTML = '<div style="padding:3rem;text-align:center;"><p style="color:var(--text-secondary);">Settings could not be loaded.</p><button class="btn btn-outline" id="settings-retry">Try again</button></div>';
-            viewContainer.querySelector('#settings-retry')?.addEventListener('click', () => window.location.reload());
+        loadSettingsPage().then((SettingsPage) => {
+          if (StorageService.getCurrentRole() !== 'settings') return;
+          try {
+            SettingsPage.init(pending);
+          } catch (settingsErr) {
+            console.error('Settings render error:', settingsErr);
+            const viewContainer = root.querySelector('#app-view-container');
+            if (viewContainer) {
+              viewContainer.innerHTML = '<div style="padding:3rem;text-align:center;"><p style="color:var(--text-secondary);">Settings could not be loaded.</p><button class="btn btn-outline" id="settings-retry">Try again</button></div>';
+              viewContainer.querySelector('#settings-retry')?.addEventListener('click', () => window.location.reload());
+            }
           }
-        }
+        }).catch(() => {});
       } else {
         root.innerHTML = this.renderLandingPage();
         this.attachLandingEvents(root);
@@ -980,11 +1026,12 @@ export const App = {
         const cat = card.getAttribute('data-category');
         const isAuthed = AuthService.isAuthenticated() && !AuthService.isGuest();
         if (isAuthed) {
-          CustomerFrontend.currentCategory = cat;
+          this._pendingCustomerCategory = cat;
+          if (_customerFrontend) _customerFrontend.currentCategory = cat;
           this.navigateToRole('customer');
         } else {
           AuthModal.show('customer', () => {
-            CustomerFrontend.currentCategory = cat;
+            this._pendingCustomerCategory = cat;
             this.navigateToRole('customer');
           });
         }
@@ -1019,7 +1066,7 @@ export const App = {
         this.navigateToRole('worker');
       } else {
         AuthModal.show('worker', () => {
-          WorkerFrontend.shouldOpenSetupModal = true;
+          this._pendingWorkerSetup = true;
           this.navigateToRole('worker');
         });
       }

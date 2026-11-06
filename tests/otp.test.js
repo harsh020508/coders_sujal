@@ -211,7 +211,7 @@ test('4. Invalid OTP rejection increments attempts and leaves booking en route',
   assert.equal(res.status, 400);
   const data = await res.json();
   assert.match(data.error, /incorrect otp/i);
-  assert.equal(data.attemptsRemaining, 4);
+  assert.equal(data.attemptsRemaining, 9); // 10 max attempts
 
   const updatedOtp = stmtGetOtpByBooking.get('BK_TEST_04');
   assert.equal(updatedOtp.attempts, 1);
@@ -257,7 +257,7 @@ test('5. Expired OTP rejection prevents arrival verification', async () => {
   assert.match(data.error, /expired/i);
 });
 
-test('6. Five-attempt limit locks the OTP', async () => {
+test('6. Ten-attempt limit locks the OTP', async () => {
   const booking = {
     id: 'BK_TEST_06',
     customerId: customerUser.sub,
@@ -282,8 +282,8 @@ test('6. Five-attempt limit locks the OTP', async () => {
     now
   );
 
-  // Set attempts to 5
-  for (let i = 0; i < 5; i++) {
+  // Set attempts to the 10-attempt max
+  for (let i = 0; i < 10; i++) {
     stmtIncrementAttempts.run(now, 'BK_TEST_06');
   }
 
@@ -577,7 +577,7 @@ test('13. Uber/Ola-style: OTP is issued in-app when the customer books (no SMS)'
   assert.equal(verified.status, 'Worker arrived');
 });
 
-test('14. Resend cooldown (60 seconds) is enforced', async () => {
+test('14. Resend works immediately (no cooldown for in-app OTPs)', async () => {
   const booking = {
     id: 'BK_TEST_14',
     customerId: customerUser.sub,
@@ -588,7 +588,7 @@ test('14. Resend cooldown (60 seconds) is enforced', async () => {
 
   const plainOtp = '333333';
   const otpHash = crypto.createHash('sha256').update(plainOtp).digest('hex');
-  const now = Date.now(); // Updated right now
+  const now = Date.now(); // Updated right now — old cooldown would block this
 
   stmtUpsertOtp.run(
     'otp_14',
@@ -597,7 +597,7 @@ test('14. Resend cooldown (60 seconds) is enforced', async () => {
     workerUser.sub,
     otpHash,
     now + 1800000,
-    'sent',
+    'in_app',
     now,
     now
   );
@@ -607,8 +607,9 @@ test('14. Resend cooldown (60 seconds) is enforced', async () => {
     headers: { 'Authorization': `Bearer ${customerToken}` }
   });
 
-  assert.equal(res.status, 429);
+  assert.equal(res.status, 200);
   const data = await res.json();
-  assert.match(data.error, /please wait before requesting another otp/i);
-  assert.ok(data.retryAfterSeconds > 0);
+  assert.equal(data.success, true);
+  assert.equal(data.delivery, 'in_app');
+  assert.notEqual(stmtGetOtpByBooking.get('BK_TEST_14').otp_hash, otpHash);
 });

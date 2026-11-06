@@ -38,14 +38,14 @@ export function verifyArrivalOtp(booking, otp) {
   if (!hasCode) return { ok: false, error: 'No OTP generated for this booking yet.' };
   if (booking.arrivalOtpUsed) return { ok: false, error: 'This OTP has already been used.' };
   if (Date.now() > (booking.arrivalOtpExpiresAt || 0)) return { ok: false, error: 'OTP has expired. Please ask the customer for a new code.' };
-  if ((booking.arrivalOtpAttempts || 0) >= 5) return { ok: false, error: 'Maximum OTP attempts exceeded. Please ask the customer for a new code.' };
+  if ((booking.arrivalOtpAttempts || 0) >= 10) return { ok: false, error: 'Maximum OTP attempts exceeded. Please ask the customer for a new code.' };
   const input = String(otp || '').trim();
   const matches = booking.arrivalOtpHash
     ? hashArrivalOtp(input) === booking.arrivalOtpHash
     : input === String(booking.arrivalOtp);
   if (!matches) {
     booking.arrivalOtpAttempts = (booking.arrivalOtpAttempts || 0) + 1;
-    return { ok: false, error: 'Incorrect OTP.', attemptsRemaining: Math.max(0, 5 - booking.arrivalOtpAttempts) };
+    return { ok: false, error: 'Incorrect OTP.', attemptsRemaining: Math.max(0, 10 - booking.arrivalOtpAttempts) };
   }
   booking.arrivalOtpUsed = true;
   return { ok: true };

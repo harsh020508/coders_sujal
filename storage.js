@@ -115,28 +115,27 @@ export const StorageService = {
     if (!safeGet(STORAGE_KEYS.REVIEWS, null)) safeSetLocal(STORAGE_KEYS.REVIEWS, INITIAL_REVIEWS);
     if (!safeGet(STORAGE_KEYS.COMPLAINTS, null)) safeSetLocal(STORAGE_KEYS.COMPLAINTS, INITIAL_COMPLAINTS);
 
-    // Initial sync from Supabase if configured
-    if (SupabaseService.isConfigured()) {
-      try {
-        await Promise.race([
-          this.syncFromSupabase(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Sync timeout')), 4000))
-        ]);
-        console.log('[Storage] Hydrated from Supabase PostgreSQL');
-      } catch (e) {
-        console.warn('[Storage] Supabase sync deferred/timed out, using cached state:', e.message);
-        try {
-          if (typeof window !== 'undefined' && window.Toast) {
-            window.Toast.show('Showing sample data', 'info');
-          }
-        } catch (_) {}
-      }
-
-      this.initRealtime();
-    }
-
+    // Render FIRST from the local cache (instant first paint), then sync
+    // from Supabase in the background. Previously boot waited up to 4s
+    // for the sync before rendering — that's why first load felt slow.
+    // syncFromSupabase() calls notifyChange('sync') when done, and the
+    // app re-renders on that, so fresh data still appears live.
     if (onDataReady) {
       try { onDataReady(); } catch (e) {}
+    }
+
+    if (SupabaseService.isConfigured()) {
+      this.syncFromSupabase()
+        .then((ok) => { if (ok) console.log('[Storage] Hydrated from Supabase PostgreSQL'); })
+        .catch((e) => {
+          console.warn('[Storage] Supabase sync failed, using cached state:', e.message);
+          try {
+            if (typeof window !== 'undefined' && window.Toast) {
+              window.Toast.show('Showing sample data', 'info');
+            }
+          } catch (_) {}
+        });
+      this.initRealtime();
     }
   },
 

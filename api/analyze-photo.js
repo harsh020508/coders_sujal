@@ -11,7 +11,7 @@ function checkRateLimit(ip) {
   const now = Date.now();
   const record = rateLimits.get(ip) || [];
   while (record.length && record[0] < now - 60_000) record.shift();
-  if (record.length >= 5) return false;
+  if (record.length >= 20) return false;
   record.push(now);
   rateLimits.set(ip, record);
   return true;
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
 
   const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
   if (!checkRateLimit(String(ip).split(',')[0].trim())) {
-    res.status(429).json({ error: 'Rate limit exceeded. Max 5 requests per minute.' });
+    res.status(429).json({ error: 'Rate limit exceeded. Max 20 requests per minute.' });
     return;
   }
 

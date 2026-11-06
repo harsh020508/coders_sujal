@@ -111,7 +111,7 @@ export const stmtUpsertOtp = db.prepare(`
   INSERT INTO booking_otps
     (id, booking_id, customer_id, worker_id, otp_hash, expires_at, attempts, max_attempts,
      consumed_at, delivery_status, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, 0, 5, NULL, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, 0, 10, NULL, ?, ?, ?)
   ON CONFLICT(booking_id) DO UPDATE SET
     otp_hash        = excluded.otp_hash,
     expires_at      = excluded.expires_at,
@@ -170,7 +170,7 @@ function issueArrivalOtp(booking) {
   stmtUpsertOtp.run(otpId, bookingId, customerId, workerId, otpHash, expiresAt, 'in_app', now, now);
   syncOtpToSupabase('upsert', {
     id: otpId, booking_id: bookingId, customer_id: customerId, worker_id: workerId,
-    otp_hash: otpHash, expires_at: expiresAt, attempts: 0, max_attempts: 5,
+    otp_hash: otpHash, expires_at: expiresAt, attempts: 0, max_attempts: 10,
     delivery_status: 'in_app', created_at: now, updated_at: now
   }).catch(() => {});
   return { otp: otpPlain, expiresAt, otpId };
@@ -363,12 +363,13 @@ function haversineDistanceKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ---- Rate limiter for photo analysis (5 req/min/IP) ----
+// ---- Rate limiter for photo analysis (20 req/min/IP) ----
+// Was 5/min, which blocked normal demo use (judges snapping many photos).
 const photoRateLimits = new Map();
 function checkPhotoRateLimit(ip) {
   const now = Date.now();
   const windowMs = 60_000;
-  const max = 5;
+  const max = 20;
   let record = photoRateLimits.get(ip);
   if (!record) { record = []; photoRateLimits.set(ip, record); }
   // Remove old timestamps
@@ -989,7 +990,7 @@ export const server = http.createServer(async (req, res) => {
   if (pathname === '/api/analyze-photo' && req.method === 'POST') {
     const clientIp = req.socket.remoteAddress || 'unknown';
     if (!checkPhotoRateLimit(clientIp)) {
-      return sendJson(res, 429, { error: 'Rate limit exceeded. Max 5 requests per minute.' });
+      return sendJson(res, 429, { error: 'Rate limit exceeded. Max 20 requests per minute.' });
     }
 
     try {
@@ -1470,17 +1471,9 @@ Rules:
       return sendJson(res, 403, { error: 'Forbidden: only the booking customer can resend the OTP' });
     }
 
-    // Resend cooldown: 60 seconds between resends
-    const existingOtp = stmtGetOtpByBooking.get(bookingId);
-    if (existingOtp) {
-      const secondsSinceLast = (Date.now() - existingOtp.updated_at) / 1000;
-      if (secondsSinceLast < 60) {
-        return sendJson(res, 429, {
-          error: 'Please wait before requesting another OTP.',
-          retryAfterSeconds: Math.ceil(60 - secondsSinceLast)
-        });
-      }
-    }
+    // No resend cooldown: in-app OTPs cost nothing to reissue (the old
+    // 60s wait was for SMS spam), so customers can get a fresh code
+    // instantly if they mistyped or locked out the previous one.
 
     const activeStatuses = ['Pending confirmation', 'Pending', 'Confirmed', 'Accepted', 'Worker en route'];
     if (!activeStatuses.includes(booking.status)) {
