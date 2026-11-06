@@ -3,8 +3,12 @@
    Brand Identity: Forest Green + Warm Cream + Highlighter Yellow
    ============================================================ */
 
-/* ---- CSS Custom Properties (Design Tokens) ---- */
+/* ---- CSS Custom Properties (Design Tokens) ----
+   Light is the default; dark values live in [data-theme="dark"] below.
+   Accent colours are derived at runtime (settingsService.js) and written as
+   inline custom properties on :root, so they win over both blocks. */
 :root {
+  color-scheme: light;
   /* Brand Primary Colors */
   --color-forest-ink: #1a3300;
   --color-forest-dark: #122400;
@@ -103,6 +107,7 @@
 
 /* ---- Dark Mode ---- */
 [data-theme="dark"] {
+  color-scheme: dark;
   --bg-primary: #0f120e;
   --bg-secondary: #171b15;
   --bg-card: #1e231c;
@@ -128,6 +133,51 @@
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.55), 0 12px 24px rgba(0, 0, 0, 0.4);
+  --shadow-yellow: 0 8px 24px rgba(255, 233, 92, 0.12);
+}
+
+/* Dark mode: forest ink flips to a light tone for text on dark surfaces,
+   but on highlighter-yellow fills the ink must stay dark (#1a3300) or the
+   text disappears. These controls all pair yellow bg + ink text. */
+[data-theme="dark"] .nav-logo,
+[data-theme="dark"] .hero-pill-badge,
+[data-theme="dark"] .category-icon-badge,
+[data-theme="dark"] .role-icon-box,
+[data-theme="dark"] .about-mark,
+[data-theme="dark"] .settings-mobile-mark,
+[data-theme="dark"] .btn-secondary,
+[data-theme="dark"] .sidebar-badge {
+  color: #1a3300;
+  border-color: rgba(26, 51, 0, 0.18);
+}
+[data-theme="dark"] .about-mark,
+[data-theme="dark"] .settings-mobile-mark {
+  color: #1a3300;
+}
+
+/* Dark mode status badges: light-mode pastels glare on dark surfaces and
+   their saturated text fails contrast. */
+[data-theme="dark"] .badge-accepted {
+  background: rgba(168, 229, 229, 0.14);
+  color: #7fd8d8;
+  border-color: rgba(168, 229, 229, 0.32);
+}
+[data-theme="dark"] .badge-in-progress {
+  background: rgba(246, 208, 255, 0.12);
+  color: #e0aaff;
+  border-color: rgba(246, 208, 255, 0.32);
+}
+[data-theme="dark"] .badge-completed {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+[data-theme="dark"] .badge-pending,
+[data-theme="dark"] .badge-rejected,
+[data-theme="dark"] .badge-cancelled {
+  color: var(--text-primary);
 }
 
 /* ---- Reset & Base ---- */
@@ -151,6 +201,15 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.app-container {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body, .app-container { transition: none; }
 }
 
 h1, h2, h3, h4, h5, .font-display {
@@ -2221,6 +2280,21 @@ select, input, textarea { font-family: inherit; }
   color: #059669;
 }
 
+[data-theme="dark"] .notif-unread-count-pill {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+}
+
+/* Dark mode: forest-tinted shadows read as a muddy halo on dark surfaces;
+   use neutral black shadows instead. */
+[data-theme="dark"] .order-notification-toast,
+[data-theme="dark"] .notification-dropdown {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .order-notification-toast:hover {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
 .notif-mark-all-btn {
   background: none;
   border: none;
@@ -2236,6 +2310,10 @@ select, input, textarea { font-family: inherit; }
 .notif-mark-all-btn:hover {
   background: rgba(26, 51, 0, 0.06);
   text-decoration: underline;
+}
+
+[data-theme="dark"] .notif-mark-all-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .notif-dropdown-list {
@@ -3338,6 +3416,14 @@ select, input, textarea { font-family: inherit; }
 
 .accent-swatch input[type="radio"]:checked + .accent-swatch-dot {
   box-shadow: 0 0 0 3px var(--bg-card), 0 0 0 5px var(--accent-primary);
+}
+
+.accent-swatch-dot.is-selected {
+  box-shadow: 0 0 0 3px var(--bg-card), 0 0 0 5px var(--accent-primary);
+}
+
+.accent-swatch-custom .accent-swatch-dot.is-selected {
+  color: var(--accent-contrast, #ffffff);
 }
 
 .accent-swatch input[type="radio"]:focus-visible + .accent-swatch-dot {

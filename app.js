@@ -7,7 +7,13 @@ import { NotificationService } from './notificationService.js';
 import { esc } from './utils.js';
 import { buildTaskIndex, searchTasks, catImage, icon } from './ui.js';
 import { initScrollReveal, fadeSlide } from './transitions.js';
+import { initMotion } from './animations/motion.js';
+import { initScroll } from './animations/scroll.js';
+import { refreshReveals } from './animations/reveal.js';
+import { initPolish, bindFocusTraps } from './animations/feedback.js';
 import { Settings } from './settingsService.js';
+import { landingHTML } from './components/landing/Landing.js';
+import { bindLanding } from './components/landing/bind.js';
 import { ProfileDropdown } from './components/ProfileDropdown.js';
 import { i18n, t } from './i18n.js';
 
@@ -40,6 +46,10 @@ export const App = {
 
   init() {
     Settings.init();
+    initMotion();
+    initScroll();
+    initPolish();
+    bindFocusTraps();
     this._bindGlobalEvents();
 
     // Handle initial URL hash or history state.
@@ -164,9 +174,15 @@ export const App = {
     if (typeof document === 'undefined') return;
     const dark = Settings.getResolvedTheme() === 'dark';
     document.querySelectorAll('#theme-toggle-btn').forEach((button) => {
-      button.textContent = dark ? '☀️ Light' : '🌙 Dark';
+      // Rebuild the icon node instead of textContent, which wiped the
+      // lucide <i> placeholder and left emoji text in the navbar.
+      button.innerHTML = `<i data-lucide="${dark ? 'sun' : 'moon'}" class="lucide-sm"></i>`;
       button.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+      button.title = dark ? 'Switch to light theme' : 'Switch to dark theme';
     });
+    if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') {
+      window.refreshIcons();
+    }
   },
 
   updateProfileBadge() {
@@ -434,6 +450,7 @@ export const App = {
       try {
         initScrollReveal(root, ".ui-cat,.ui-card,.ui-worker,.category-card,.feature-card,.step-card,.usp-card,.pricing-card");
       } catch (e) {}
+      try { refreshReveals(root); } catch (e) {}
     }
   },
 
@@ -471,278 +488,7 @@ export const App = {
 
   renderLandingPage() {
     const theme = Settings.getResolvedTheme();
-    return `
-      <div class="app-container">
-        ${this._mobileNavHTML(theme)}
-
-        <!-- Top Navigation Bar -->
-        <header class="navbar">
-          <div class="nav-brand" id="nav-home-logo" role="button" tabindex="0">
-            <div class="nav-logo">LK</div>
-            <div class="nav-title">LocalKaam</div>
-          </div>
-          <nav class="nav-links">
-            <a class="nav-link" href="#problem">${t('nav_problem', 'The Problem')}</a>
-            <a class="nav-link" href="#services">${t('nav_services', 'Services')}</a>
-            <a class="nav-link" href="#usps">${t('nav_usps', 'Why Us')}</a>
-            <a class="nav-link" href="#comparison">${t('nav_competitors', 'Competitors')}</a>
-            <a class="nav-link" href="#how-it-works">${t('nav_how_it_works', 'How It Works')}</a>
-          </nav>
-          <div class="nav-actions">
-            <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle theme">
-              <i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}" class="lucide-sm"></i>
-            </button>
-            <button class="btn btn-outline btn-sm" id="nav-signin-btn" style="display:inline-flex;align-items:center;gap:5px;">
-              <i data-lucide="user" class="lucide-xs"></i> Sign In
-            </button>
-            <button class="btn btn-primary btn-sm" id="get-started-btn">
-              Get Started <i data-lucide="arrow-right" class="lucide-xs"></i>
-            </button>
-            <button class="nav-hamburger" id="nav-hamburger" aria-label="Open navigation menu">
-              <span></span><span></span><span></span>
-            </button>
-          </div>
-        </header>
-
-        <!-- Hero Section -->
-        <section class="landing-hero">
-          <div class="hero-content">
-            <div style="display:inline-flex;align-items:center;gap:8px;background:var(--color-highlighter-yellow);color:#1a3300;padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:700;margin-bottom:20px;border:1px solid rgba(0,0,0,0.08);letter-spacing:0.02em;">
-              <i data-lucide="sparkles" class="lucide-xs"></i> Verified Local Experts &nbsp;•&nbsp; Hyperlocal Marketplace
-            </div>
-            <h1>
-              Local help.<br>Fair prices.<br><span style="background-color:var(--color-highlighter-yellow);color:#1a3300;padding:2px 10px;border-radius:6px;box-decoration-break:clone;-webkit-box-decoration-break:clone;">Right around</span> the corner.
-            </h1>
-            <p>
-              Traditional aggregators charge 25–40% commissions and squeeze workers. LocalKaam directly matches you with vetted neighborhood plumbers, electricians, carpenters, and technicians — zero platform tax, upfront transparent pricing, and instant booking.
-            </p>
-            <div class="hero-cta">
-              <button class="btn btn-primary btn-lg" id="hero-find-pro-btn">
-                Find Professionals <i data-lucide="arrow-right" class="lucide-sm"></i>
-              </button>
-              <button class="btn btn-outline btn-lg" id="hero-explore-btn">
-                <i data-lucide="compass" class="lucide-sm"></i> Explore Services
-              </button>
-            </div>
-          </div>
-
-          <div class="hero-visual">
-            <div style="background:var(--bg-card);border:1.5px solid var(--border-color);border-radius:var(--radius-cards);padding:18px;box-shadow:var(--shadow-card);margin-bottom:16px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                <div style="display:flex;align-items:center;gap:10px;">
-                  <img src="https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=120" alt="Ramesh Sharma" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--accent-primary);" />
-                  <div>
-                    <div style="font-weight:700;font-size:0.95rem;color:var(--text-primary);display:flex;align-items:center;gap:4px;">
-                      Ramesh Sharma <i data-lucide="badge-check" class="lucide-xs" style="color:#10b981;"></i>
-                    </div>
-                    <div style="font-size:0.75rem;color:var(--text-secondary);">Master Electrician · Andheri West</div>
-                  </div>
-                </div>
-                <span class="badge badge-accepted" style="font-size:11px;display:inline-flex;align-items:center;gap:4px;">
-                  <span class="status-dot online"></span> Online
-                </span>
-              </div>
-              <div style="display:flex;gap:12px;font-size:0.8rem;background:var(--bg-secondary);padding:8px 12px;border-radius:8px;margin-bottom:10px;justify-content:space-between;">
-                <span>📍 <strong>1.8 km</strong> away (~18m)</span>
-                <span>⭐ <strong>4.9</strong> (42 reviews)</span>
-                <span>₹ <strong>350</strong> / hr</span>
-              </div>
-              <div style="font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;">
-                <i data-lucide="check" class="lucide-xs" style="color:#10b981;"></i> 100% direct payment · Zero commission deducted
-              </div>
-            </div>
-
-            <div class="stats-grid">
-              <div class="stat-card">
-                <span style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:block;margin-bottom:4px;">Avg ETA</span>
-                <h3>~25m</h3>
-              </div>
-              <div class="stat-card">
-                <span style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:block;margin-bottom:4px;">Platform Fee</span>
-                <h3>₹0</h3>
-              </div>
-              <div class="stat-card">
-                <span style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:block;margin-bottom:4px;">Commission</span>
-                <h3>0%</h3>
-              </div>
-              <div class="stat-card">
-                <span style="font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:block;margin-bottom:4px;">Categories</span>
-                <h3>10+</h3>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Problem and Solution -->
-        <section class="section-container" id="problem" style="border-top:1px solid var(--border-color);border-bottom:1px solid var(--border-color);">
-          <h2 class="section-title">The Real-World Problem vs. LocalKaam</h2>
-          <p class="section-subtitle">Why urban households and neighborhood blue-collar professionals choose a direct hyperlocal marketplace.</p>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;max-width:1050px;margin:0 auto;">
-            <div style="background:var(--bg-card);border:2px solid #ba1a1a;border-radius:16px;padding:clamp(20px,3vw,32px);box-shadow:var(--shadow-card);">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-                <i data-lucide="x-circle" class="lucide-md" style="color:#ba1a1a;"></i>
-                <h3 style="font-size:clamp(1rem,2vw,1.15rem);font-weight:800;color:#ba1a1a;margin:0;">Traditional Aggregator Pain Points</h3>
-              </div>
-              <ul style="list-style:none;display:flex;flex-direction:column;gap:12px;color:var(--text-secondary);font-size:0.9rem;line-height:1.6;">
-                <li style="display:flex;gap:8px;"><strong style="color:#ba1a1a;">•</strong> <div><strong>Opaque Commissions:</strong> Gig platforms slice 25–40% from workers' hard-earned fees.</div></li>
-                <li style="display:flex;gap:8px;"><strong style="color:#ba1a1a;">•</strong> <div><strong>Inflated Costs:</strong> Customers pay heavy markups and arbitrary surge fees.</div></li>
-                <li style="display:flex;gap:8px;"><strong style="color:#ba1a1a;">•</strong> <div><strong>Impersonal Matching:</strong> Anonymous workers dispatched from miles away with long wait times.</div></li>
-                <li style="display:flex;gap:8px;"><strong style="color:#ba1a1a;">•</strong> <div><strong>Zero Direct Discussion:</strong> Rigid fixed menus with no ability to discuss custom task scopes.</div></li>
-              </ul>
-            </div>
-
-            <div style="background:var(--bg-card);border:2px solid var(--accent-primary);border-radius:16px;padding:clamp(20px,3vw,32px);box-shadow:var(--shadow-card);">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-                <i data-lucide="check-circle-2" class="lucide-md" style="color:#10b981;"></i>
-                <h3 style="font-size:clamp(1rem,2vw,1.15rem);font-weight:800;color:var(--text-primary);margin:0;">The LocalKaam Advantage</h3>
-              </div>
-              <ul style="list-style:none;display:flex;flex-direction:column;gap:12px;color:var(--text-primary);font-size:0.9rem;line-height:1.6;">
-                <li style="display:flex;gap:8px;"><strong style="color:#10b981;">•</strong> <div><strong>100% Direct Payouts:</strong> Pros set their own rates and keep every rupee they earn.</div></li>
-                <li style="display:flex;gap:8px;"><strong style="color:#10b981;">•</strong> <div><strong>Neighborhood Matching:</strong> Matches vetted experts residing in your immediate Mumbai locality.</div></li>
-                <li style="display:flex;gap:8px;"><strong style="color:#10b981;">•</strong> <div><strong>Fair Price Negotiation:</strong> Built-in counter-offer system for customized tasks.</div></li>
-                <li style="display:flex;gap:8px;"><strong style="color:#10b981;">•</strong> <div><strong>Verified Transparency:</strong> Real customer reviews tied exclusively to completed jobs.</div></li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <!-- Service Categories -->
-        <section class="section-container" id="services">
-          <h2 class="section-title">${t('services_title', 'Essential Home Services')}</h2>
-          <p class="section-subtitle">${t('services_subtitle', 'Browse trustworthy blue-collar professionals ready to serve your household immediately or on schedule.')}</p>
-          <div class="categories-grid">
-            ${CATEGORIES.map(c => `
-              <div class="category-card" data-category="${esc(c.id)}" role="button" tabindex="0">
-                <div class="category-image-wrap">
-                  <img src="${esc(c.image || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600')}" alt="${esc(c.name)}" loading="lazy" />
-                  <div class="category-icon-badge">
-                    <i data-lucide="${esc(c.lucideIcon || 'wrench')}" class="lucide-sm"></i>
-                  </div>
-                </div>
-                <div class="category-card-content">
-                  <h3>${esc(c.name)}</h3>
-                  <p>${esc(c.description)}</p>
-                  <div class="category-card-footer">
-                    <span>Book nearby pro</span>
-                    <i data-lucide="arrow-right" class="lucide-xs"></i>
-                  </div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </section>
-
-        <!-- USPs -->
-        <section class="section-container" id="usps" style="border-top:1px solid var(--border-color);border-bottom:1px solid var(--border-color);">
-          <h2 class="section-title">Why Choose LocalKaam?</h2>
-          <p class="section-subtitle">Four core pillars that set our platform apart from conventional gig aggregators.</p>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;max-width:1200px;margin:0 auto;">
-            ${[
-              { icon: 'message-square', title: 'Direct Price Negotiation', desc: 'Clear price proposals and counter-offers between households and professionals with full history tracking.' },
-              { icon: 'map-pin', title: 'Hyperlocal Radius Matching', desc: 'Real-time distance calculations ensuring reliable neighborhood experts arrive within ~25 minutes.' },
-              { icon: 'shield-check', title: 'Verified Trust & Reviews', desc: 'Strict verified badges and reviews tied exclusively to completed appointments for family safety.' },
-              { icon: 'user-check', title: 'Worker Empowerment', desc: 'Self-determined pricing, custom schedules, and direct payouts with zero middlemen cuts.' }
-            ].map(u => `
-              <div style="background:var(--bg-card);padding:clamp(20px,2.5vw,28px);border-radius:14px;border:1.5px solid var(--border-color);box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:12px;">
-                <div style="width:44px;height:44px;border-radius:10px;background:var(--accent-light);color:var(--accent-primary);display:flex;align-items:center;justify-content:center;">
-                  <i data-lucide="${u.icon}" class="lucide-md"></i>
-                </div>
-                <h3 style="font-size:1.05rem;font-weight:700;color:var(--text-primary);margin:0;">${u.title}</h3>
-                <p style="color:var(--text-secondary);font-size:0.875rem;line-height:1.6;margin:0;">${u.desc}</p>
-              </div>
-            `).join('')}
-          </div>
-        </section>
-
-        <!-- Competitor Comparison -->
-        <section class="section-container" id="comparison">
-          <h2 class="section-title">How LocalKaam Compares</h2>
-          <p class="section-subtitle">Transparent comparison with legacy gig platforms and aggregators.</p>
-          <div class="table-container" style="max-width:1050px;margin:0 auto;">
-            <table class="data-table" style="min-width:620px;">
-              <thead>
-                <tr>
-                  <th>Feature</th>
-                  <th style="background:rgba(255,233,92,0.15);color:var(--text-primary);">LocalKaam ✦</th>
-                  <th>Urban Company</th>
-                  <th>Housejoy</th>
-                  <th>Justdial</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>Price Negotiation</strong></td>
-                  <td style="background:rgba(255,233,92,0.06);"><span style="color:#10b981;font-weight:700;">✓ In-app Counter Offers</span></td>
-                  <td>❌ Rigid fixed rates</td><td>❌ Fixed rates</td><td>⚠️ Unstructured haggling</td>
-                </tr>
-                <tr>
-                  <td><strong>Platform Commission</strong></td>
-                  <td style="background:rgba(255,233,92,0.06);"><span style="color:#10b981;font-weight:700;">0% Direct to Pro</span></td>
-                  <td>❌ 20–35% cut</td><td>❌ 25% cut</td><td>Paid lead ads</td>
-                </tr>
-                <tr>
-                  <td><strong>Hyperlocal Matching</strong></td>
-                  <td style="background:rgba(255,233,92,0.06);"><span style="color:#10b981;font-weight:700;">✓ ~25 min ETA</span></td>
-                  <td>⚠️ City-wide pool</td><td>⚠️ City-wide pool</td><td>❌ No ETA guarantees</td>
-                </tr>
-                <tr>
-                  <td><strong>Lifecycle Job Tracking</strong></td>
-                  <td style="background:rgba(255,233,92,0.06);"><span style="color:#10b981;font-weight:700;">✓ Live status milestones</span></td>
-                  <td>✓ App tracking</td><td>⚠️ Basic SMS</td><td>❌ None</td>
-                </tr>
-                <tr>
-                  <td><strong>Direct Communication</strong></td>
-                  <td style="background:rgba(255,233,92,0.06);"><span style="color:#10b981;font-weight:700;">✓ Direct phone &amp; booking</span></td>
-                  <td>❌ Masked calls</td><td>❌ Masked calls</td><td>⚠️ Spam directory</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- How It Works -->
-        <section class="section-container" id="how-it-works" style="border-top:1px solid var(--border-color);border-bottom:1px solid var(--border-color);">
-          <h2 class="section-title">How LocalKaam Works in 3 Steps</h2>
-          <p class="section-subtitle">A seamless, dignified workflow designed for households and neighborhood professionals.</p>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;max-width:1050px;margin:0 auto;">
-            ${[
-              { n: '01', icon: 'search', title: 'Discover Local Pros', desc: 'Select your Mumbai locality and service category. Real-time matching shows verified professionals nearby with ratings and transparent rates.' },
-              { n: '02', icon: 'calendar-check', title: 'Book & Agree on Price', desc: 'Pick your preferred date/time slot, describe the task, and submit standard pricing or propose a direct counter-offer.' },
-              { n: '03', icon: 'award', title: 'Track, Complete & Review', desc: 'Follow real-time status transitions (en route, arrived, in progress, completed), get a digital invoice, and leave verified feedback.' }
-            ].map(s => `
-              <div style="background:var(--bg-card);padding:clamp(20px,3vw,32px);border-radius:14px;border:1.5px solid var(--border-color);box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:12px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                  <span style="font-size:2rem;font-weight:800;color:var(--text-muted);font-family:'Bricolage Grotesque',sans-serif;opacity:0.4;">${s.n}</span>
-                  <div style="width:36px;height:36px;border-radius:8px;background:var(--accent-light);color:var(--accent-primary);display:flex;align-items:center;justify-content:center;">
-                    <i data-lucide="${s.icon}" class="lucide-sm"></i>
-                  </div>
-                </div>
-                <h3 style="font-size:1.05rem;font-weight:700;color:var(--text-primary);margin:0;">${s.title}</h3>
-                <p style="color:var(--text-secondary);font-size:0.875rem;line-height:1.6;margin:0;">${s.desc}</p>
-              </div>
-            `).join('')}
-          </div>
-        </section>
-
-        <!-- Footer -->
-        <footer class="footer">
-          <div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div class="nav-logo" style="width:32px;height:32px;font-size:0.85rem;min-width:32px;">LK</div>
-              <span style="font-weight:800;font-size:1.15rem;color:var(--text-primary);">LocalKaam</span>
-            </div>
-            <p style="margin:0;font-size:0.9rem;color:var(--text-secondary);">© 2026 LocalKaam Inc. Hyperlocal Blue-Collar Services Marketplace. All rights reserved.</p>
-            <div style="display:flex;gap:16px;font-size:0.8rem;color:var(--text-muted);flex-wrap:wrap;justify-content:center;">
-              <span>Mumbai Localities</span>
-              <span>•</span>
-              <span>Transparent 0% Commission</span>
-              <span>•</span>
-              <span>Verified Home Services</span>
-            </div>
-          </div>
-        </footer>
-      </div>
-    `;
+    return landingHTML({ theme, t, CATEGORIES, esc });
   },
 
   renderRoleSelectionPage() {
@@ -945,7 +691,9 @@ export const App = {
     const mobileThemeBtn = root.querySelector('#mobile-theme-toggle-btn');
     if (mobileThemeBtn) {
       mobileThemeBtn.addEventListener('click', () => {
-        const cur = StorageService.getTheme();
+        // Resolve from Settings (source of truth, handles 'system') rather
+        // than the legacy localkaam_theme key.
+        const cur = Settings.getResolvedTheme();
         this.applyTheme(cur === 'dark' ? 'light' : 'dark');
         closeDrawer();
         this.render();
@@ -990,40 +738,8 @@ export const App = {
 
   attachLandingEvents(root) {
     this._attachMobileNav(root);
-
-    root.querySelector('#nav-home-logo')?.addEventListener('click', () => {
-      this.navigateToRole('landing');
-    });
-    
-    root.querySelector('#nav-signin-btn')?.addEventListener('click', () => {
-      AuthModal.show('customer', (user, profile) => {
-        const destRole = profile?.role || 'customer';
-        this.navigateToRole(destRole);
-      });
-    });
-    root.querySelector('#get-started-btn')?.addEventListener('click', () => {
-      this.navigateToRole('role-select');
-    });
-    root.querySelector('#hero-find-pro-btn')?.addEventListener('click', () => {
-      this.navigateToRole('role-select');
-    });
-    root.querySelector('#hero-explore-btn')?.addEventListener('click', () => {
-      const el = root.querySelector('#services');
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
-    });
-
-    
-    const themeBtn = root.querySelector('#theme-toggle-btn');
-    if (themeBtn) {
-      themeBtn.addEventListener('click', () => {
-        this.toggleTheme();
-        this.render();
-      });
-    }
-
-    root.querySelectorAll('.category-card').forEach(card => {
-      const handleClick = () => {
-        const cat = card.getAttribute('data-category');
+    bindLanding(root, {
+      onCategory: (cat) => {
         const isAuthed = AuthService.isAuthenticated() && !AuthService.isGuest();
         if (isAuthed) {
           this._pendingCustomerCategory = cat;
@@ -1035,9 +751,11 @@ export const App = {
             this.navigateToRole('customer');
           });
         }
-      };
-      card.addEventListener('click', handleClick);
-      card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); });
+      },
+      onThemeToggle: () => { this.toggleTheme(); this.render(); },
+      onGetStarted: () => this.navigateToRole('role-select'),
+      onSignin: () => AuthModal.show('customer', (user, profile) => this.navigateToRole(profile?.role || 'customer')),
+      onDemo: () => this.navigateToRole('role-select')
     });
   },
 

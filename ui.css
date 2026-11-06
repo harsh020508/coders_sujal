@@ -1,4 +1,8 @@
-/* ui.css */
+/* ui.css
+   The --peacock-* / --focus tokens below are the accent system for ui-*
+   components. settingsService.js rewrites them (plus --accent-*) inline on
+   :root for whichever colour the user picks, so these are fallback defaults
+   only. Keep values in sync with styles.css dark defaults. */
 :root{
   /* colour */
   --peacock-50:#E7F5F6; --peacock-100:#C9E8EB; --peacock-500:#0E7C86; --peacock-600:#0A6670; --peacock-700:#085059;
@@ -47,6 +51,16 @@
 [data-theme="dark"] .ui-topbar{ background:rgba(20,24,18,.92); }
 [data-theme="dark"] .ui-topbar__inner{ background:transparent; }
 [data-theme="dark"] .ui-cat__icon{ background:rgba(20,24,18,.94); color:#a8d879; }
+[data-theme="dark"] .ui-input::placeholder, [data-theme="dark"] .ui-textarea::placeholder{ color:#9aa593; }
+[data-theme="dark"] .ui-input:hover, [data-theme="dark"] .ui-select:hover, [data-theme="dark"] .ui-textarea:hover{ border-color:#454f40; }
+[data-theme="dark"] .ui-skel{ background:linear-gradient(90deg,var(--surface-2) 0%,rgba(255,255,255,.08) 50%,var(--surface-2) 100%); background-size:200% 100%; }
+/* Light mode .ui-toast is dark ink bg + white text. In dark mode --ink is
+   near-white, which would hide white text on a white card — flip to a dark
+   surface with light text instead. */
+[data-theme="dark"] .ui-toast{ background:var(--surface); color:var(--ink); border:1px solid var(--line); border-left:4px solid var(--line-strong); }
+[data-theme="dark"] .ui-toast--ok{ border-left-color:#34d399; }
+[data-theme="dark"] .ui-toast--bad{ border-left-color:#f87171; }
+[data-theme="dark"] .ui-toast--info{ border-left-color:#7cb3f5; }
 
 /* ---------- base ---------- */
 html{ -webkit-text-size-adjust:100%; scroll-behavior:smooth; }

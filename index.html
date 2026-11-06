@@ -3,8 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-  <meta name="description" content="LocalKaam — Hyperlocal Blue-Collar Services Marketplace in Mumbai. Connect with verified electricians, plumbers, carpenters, and technicians with transparent pricing and direct payouts.">
-  <meta name="theme-color" content="#1a3300">
+  <meta name="description" content="LocalKaam — Hyperlocal help for Mumbai homes. Verified local pros, direct prices, 0% commission.">
+  <meta property="og:title" content="LocalKaam — Good help lives on your street.">
+  <meta property="og:description" content="Verified pros in your locality. Direct prices, 0% commission, ~25 min arrival.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" id="theme-color-meta" content="#fbf9f4">
+  <script>
+    // Apply the saved theme/accent before first paint to avoid a light flash
+    // for returning dark-mode users. settingsService.js owns the full logic
+    // and corrects this once the app boots.
+    (function () {
+      try {
+        var pref = 'light';
+        var raw = localStorage.getItem('localkaam_settings_v2');
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          pref = (parsed && parsed.appearance && parsed.appearance.theme) || pref;
+        } else {
+          var legacy = localStorage.getItem('localkaam_theme');
+          if (legacy === 'dark' || legacy === 'light') pref = legacy;
+        }
+        var resolved = pref;
+        if (pref === 'system') {
+          resolved = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        if (resolved !== 'dark' && resolved !== 'light') resolved = 'light';
+        document.documentElement.setAttribute('data-theme', resolved);
+        document.documentElement.style.colorScheme = resolved;
+        var meta = document.getElementById('theme-color-meta');
+        if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0f120e' : '#fbf9f4');
+      } catch (e) {}
+    })();
+  </script>
   <title>LocalKaam — Hyperlocal Blue-Collar Services Marketplace</title>
 
   <!-- Favicon SVG -->
@@ -13,6 +44,9 @@
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./css_enhancements.css">
   <link rel="stylesheet" href="./ui.css">
+  <link rel="stylesheet" href="./animations/motion.css">
+  <link rel="stylesheet" href="./landing.css">
+  <link rel="stylesheet" href="./landing-premium.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Inter:wght@400..700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
