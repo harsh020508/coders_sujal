@@ -58,6 +58,46 @@ function notifyChange(dataType, data) {
   });
 }
 
+// Live cross-tab sync: the `storage` event fires in *other* tabs when
+// localStorage changes, so customer/worker tabs of the same browser
+// update instantly with no reload (Vercel static has no server to push
+// through). App re-renders on every notifyChange (see app.js).
+let crossTabInitialized = false;
+function initCrossTabSync() {
+  if (crossTabInitialized || typeof window === 'undefined' || !window.addEventListener) return;
+  crossTabInitialized = true;
+  const keyToType = {
+    [STORAGE_KEYS.BOOKINGS]: 'bookings',
+    [STORAGE_KEYS.WORKERS]: 'workers',
+    [STORAGE_KEYS.REVIEWS]: 'reviews',
+    [STORAGE_KEYS.COMPLAINTS]: 'complaints',
+    [STORAGE_KEYS.SUPPORT_TICKETS]: 'support_tickets',
+    [STORAGE_KEYS.NOTIFICATIONS]: 'notifications',
+    [STORAGE_KEYS.CUSTOMER_OTPS]: 'customer_otps'
+  };
+  window.addEventListener('storage', (e) => {
+    const type = keyToType[e.key];
+    if (!type) return;
+    let data = null;
+    try { data = e.newValue ? JSON.parse(e.newValue) : null; } catch (_) { data = e.newValue; }
+    if (data != null) memoryStore[e.key] = data;
+
+    // Toast on incoming booking changes, like the Supabase realtime path.
+    if (type === 'bookings' && Array.isArray(data)) {
+      let prev = [];
+      try { prev = e.oldValue ? JSON.parse(e.oldValue) : []; } catch (_) {}
+      data.forEach(b => {
+        const p = Array.isArray(prev) ? prev.find(x => x.id === b.id) : null;
+        try {
+          if (!p) Toast.show(`New booking received: ${b.id} (${b.serviceTask || ''})`, 'info');
+          else if (p.status !== b.status) Toast.show(`Booking ${b.id} updated to: ${b.status}`, 'success');
+        } catch (_) {}
+      });
+    }
+    notifyChange(type, data);
+  });
+}
+
 export const StorageService = {
   initialized: false,
 
@@ -67,6 +107,7 @@ export const StorageService = {
       return;
     }
     this.initialized = true;
+    initCrossTabSync(); // live updates across tabs, no reload needed
 
     // Ensure fallback local defaults exist
     if (!safeGet(STORAGE_KEYS.WORKERS, null)) safeSetLocal(STORAGE_KEYS.WORKERS, INITIAL_WORKERS);
@@ -310,22 +351,18 @@ export const StorageService = {
     safeSetLocal(STORAGE_KEYS.BOOKINGS, bookings);
     notifyChange('bookings', bookings);
 
-    // Identify which booking(s) were modified
+    // Sync new + status-changed bookings to Supabase so the other side
+    // (another device) updates live via the realtime channel — no reload.
     if (Array.isArray(bookings)) {
       bookings.forEach(b => {
         const prev = prevBookings.find(p => p.id === b.id);
         if (prev && prev.status !== b.status) {
           this._handleStatusTransitionNotification(prev, b);
-          if (SupabaseService.isConfigured()) {
-            SupabaseDataService.upsertBooking(b).catch(err => console.warn('[Storage] Supabase sync error:', err));
-          }
+        }
+        if ((!prev || prev.status !== b.status) && SupabaseService.isConfigured()) {
+          SupabaseDataService.upsertBooking(b).catch(err => console.warn('[Storage] Supabase sync error:', err));
         }
       });
-    }
-
-    if (SupabaseService.isConfigured() && Array.isArray(bookings) && bookings.length > 0) {
-      const target = bookings[0];
-      SupabaseDataService.upsertBooking(target).catch(err => console.warn('[Storage] Supabase sync error:', err));
     }
   },
 
