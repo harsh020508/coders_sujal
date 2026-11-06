@@ -2301,30 +2301,12 @@ export const WorkerFrontend = {
 
   /**
    * generateArrivalOtp — called after worker accepts a booking.
-   * Sends POST /api/bookings/:id/generate-arrival-otp using the authenticated session.
-   * Runs in background without blocking UI.
+   * The OTP was already created in-app when the customer booked, so
+   * there's nothing to send (no SMS, no server call — server.js isn't
+   * running on Vercel). Just remind the worker to ask for the code.
    */
   async generateArrivalOtp(bookingId, container) {
-    try {
-      const { AuthService } = await import('./authService.js');
-      const session = AuthService.getSession();
-      if (!session?.access_token) {
-        console.warn('[OTP] No auth token — skipping OTP generation');
-        return;
-      }
-      const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}/generate-arrival-otp`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      if (res.ok) {
-        Toast.show('Customer OTP is ready in their app — ask for it when you reach home.', 'info');
-      } else {
-        const err = await res.json().catch(() => ({}));
-        console.warn('[OTP] Generate failed:', err.error);
-      }
-    } catch (e) {
-      console.error('[OTP] generateArrivalOtp error:', e);
-    }
+    Toast.show('Customer OTP is ready in their app — ask for it when you reach home.', 'info');
   },
 
   /**
@@ -2409,6 +2391,34 @@ export const WorkerFrontend = {
       errorDiv.style.display = 'none';
 
       try {
+        // In-app OTP (Uber/Ola-style): verify against the code stored on
+        // the booking. Works on Vercel where server.js isn't running —
+        // the old server-only call caused "Network error" there.
+        // Fall back to the server endpoint only for legacy bookings
+        // that have no in-app code.
+        const { StorageService } = await import('./storage.js');
+        const { verifyArrivalOtp } = await import('./bookings.js');
+        let bookings = StorageService.getBookings();
+        const booking = bookings.find(b => b.id === bookingId);
+
+        if (booking?.arrivalOtp) {
+          const result = verifyArrivalOtp(booking, otp);
+          if (!result.ok) {
+            const remaining = result.attemptsRemaining ?? '';
+            showError(result.error + (remaining !== '' ? ` (${remaining} attempt${remaining !== 1 ? 's' : ''} left)` : ''));
+            StorageService.saveBookings(bookings);
+            submitBtn.disabled = false;
+            submitBtn.textContent = '✅ Verify & Confirm Arrival';
+            return;
+          }
+          overlay.remove();
+          Toast.show('OTP verified! Arrival confirmed ✅', 'success');
+          bookings = bookings.map(b => b.id === bookingId ? { ...booking, status: 'Worker arrived' } : b);
+          StorageService.saveBookings(bookings);
+          if (container && container.isConnected) this.render(container);
+          return;
+        }
+
         const { AuthService } = await import('./authService.js');
         const session = AuthService.getSession();
         if (!session?.access_token) {
@@ -2417,7 +2427,6 @@ export const WorkerFrontend = {
           submitBtn.textContent = '✅ Verify & Confirm Arrival';
           return;
         }
-
         const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}/verify-arrival`, {
           method: 'POST',
           headers: {
@@ -2426,25 +2435,20 @@ export const WorkerFrontend = {
           },
           body: JSON.stringify({ otp })
         });
-
-        const data = await res.json();
-
+        const data = await res.json().catch(() => ({}));
         if (res.ok && data.success) {
           overlay.remove();
           Toast.show('OTP verified! Arrival confirmed ✅', 'success');
-          const { StorageService } = await import('./storage.js');
-          let bookings = StorageService.getBookings();
           bookings = bookings.map(b => b.id === bookingId ? { ...b, status: 'Worker arrived' } : b);
           StorageService.saveBookings(bookings);
           if (container && container.isConnected) this.render(container);
         } else {
-          const remaining = data.attemptsRemaining ?? '';
-          showError(data.error + (remaining !== '' ? ` (${remaining} attempt${remaining !== 1 ? 's' : ''} left)` : ''));
+          showError(data.error || 'Verification failed. Please try again.');
           submitBtn.disabled = false;
           submitBtn.textContent = '✅ Verify & Confirm Arrival';
         }
       } catch (err) {
-        showError('Network error. Please try again.');
+        showError('Verification failed. Please try again.');
         submitBtn.disabled = false;
         submitBtn.textContent = '✅ Verify & Confirm Arrival';
       }

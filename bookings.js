@@ -1,3 +1,31 @@
+// Uber/Ola-style arrival OTP, generated in-app when the customer books.
+// The customer sees it in the app and shares it verbally when the worker
+// reaches home; the worker types it in to verify arrival. No SMS/phone.
+export function generateArrivalOtp() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+export function arrivalOtpExpiry(appointmentDate) {
+  const d = appointmentDate ? new Date(`${appointmentDate}T23:59:59`) : null;
+  const appt = d && !isNaN(d) ? d.getTime() + 12 * 3600e3 : Date.now() + 24 * 3600e3;
+  return Math.max(appt, Date.now() + 24 * 3600e3);
+}
+
+// Returns { ok: true } or { ok: false, error, attemptsRemaining? }.
+// On success the booking's OTP is marked used (single-use).
+export function verifyArrivalOtp(booking, otp) {
+  if (!booking?.arrivalOtp) return { ok: false, error: 'No OTP generated for this booking yet.' };
+  if (booking.arrivalOtpUsed) return { ok: false, error: 'This OTP has already been used.' };
+  if (Date.now() > (booking.arrivalOtpExpiresAt || 0)) return { ok: false, error: 'OTP has expired. Please ask the customer for a new code.' };
+  if ((booking.arrivalOtpAttempts || 0) >= 5) return { ok: false, error: 'Maximum OTP attempts exceeded. Please ask the customer for a new code.' };
+  if (String(otp || '').trim() !== String(booking.arrivalOtp)) {
+    booking.arrivalOtpAttempts = (booking.arrivalOtpAttempts || 0) + 1;
+    return { ok: false, error: 'Incorrect OTP.', attemptsRemaining: Math.max(0, 5 - booking.arrivalOtpAttempts) };
+  }
+  booking.arrivalOtpUsed = true;
+  return { ok: true };
+}
+
 export const BookingService = {
   createBooking(worker, customerData, bookingDetails) {
     const selectedServiceKey = bookingDetails.serviceKey || Object.keys(worker.specialities || {})[0] || 'general';
@@ -37,6 +65,11 @@ export const BookingService = {
       customerId: customerData.id || customerData.customerId || null,
       customer_id: customerData.id || customerData.customerId || null,
       status: 'Pending confirmation',
+      // Shown to the customer in-app at booking time (Uber/Ola-style).
+      arrivalOtp: generateArrivalOtp(),
+      arrivalOtpExpiresAt: arrivalOtpExpiry(bookingDetails.appointmentDate || new Date().toISOString().split('T')[0]),
+      arrivalOtpAttempts: 0,
+      arrivalOtpUsed: false,
       reviewId: null,
       complaintId: null,
       createdAt: new Date().toISOString(),

@@ -890,38 +890,23 @@ export const CustomerFrontend = {
       });
     });
     // ── OTP: resend handler (customer dashboard)
+    // In-app only (Uber/Ola-style): generate a fresh code on the booking
+    // itself. No server/SMS call — the old server endpoint isn't running
+    // on Vercel, which caused the earlier "Network error" toast.
     container.querySelectorAll('.resend-arrival-otp-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const bookingId = btn.getAttribute('data-booking-id');
-        const originalText = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = 'Sending…';
-        try {
-          const { AuthService } = await import('./authService.js');
-          const session = AuthService.getSession();
-          if (!session?.access_token) {
-            Toast.show('Please sign in to request a new OTP.', 'error');
-            btn.disabled = false; btn.textContent = originalText; return;
-          }
-          const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}/resend-arrival-otp`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${session.access_token}` }
-          });
-          const data = await res.json();
-          if (res.ok && data.success) {
-            Toast.show('New OTP generated in your app ✅', 'success');
-            btn.textContent = '✅ OTP Sent';
-          } else if (res.status === 429) {
-            Toast.show(`Please wait ${data.retryAfterSeconds || 60}s before resending.`, 'info');
-            btn.disabled = false; btn.textContent = originalText;
-          } else {
-            Toast.show(data.error || 'Failed to resend OTP.', 'error');
-            btn.disabled = false; btn.textContent = originalText;
-          }
-        } catch (e) {
-          Toast.show('Network error. Please try again.', 'error');
-          btn.disabled = false; btn.textContent = originalText;
-        }
+        const { generateArrivalOtp, arrivalOtpExpiry } = await import('./bookings.js');
+        let bookings = StorageService.getBookings();
+        const booking = bookings.find(b => b.id === bookingId);
+        if (!booking) { Toast.show('Booking not found.', 'error'); return; }
+        if (booking.arrivalOtpUsed) { Toast.show('This booking is already verified.', 'info'); return; }
+        bookings = bookings.map(b => b.id === bookingId
+          ? { ...b, arrivalOtp: generateArrivalOtp(), arrivalOtpExpiresAt: arrivalOtpExpiry(b.appointmentDate), arrivalOtpAttempts: 0, arrivalOtpUsed: false }
+          : b);
+        StorageService.saveBookings(bookings);
+        Toast.show('New OTP generated in your app ✅', 'success');
+        this.render(container);
       });
     });
 
@@ -1548,6 +1533,11 @@ export const CustomerFrontend = {
             <p class="ui-muted" style="max-width:38ch;font-size:var(--fs-sm);margin:0;line-height:1.5;">
               ${esc(worker.name)} will review it and you'll be notified when they respond.
             </p>
+            <div style="background:#ffe95c;border-radius:10px;padding:10px 16px;">
+              <div style="font-size:0.75rem;font-weight:700;color:#4b5563;">YOUR ARRIVAL OTP</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:800;letter-spacing:0.12em;color:#1a3300;">${esc(newBooking.arrivalOtp)}</div>
+              <div style="font-size:0.75rem;color:#4b5563;">Share this code verbally when the professional reaches your home.</div>
+            </div>
             <div style="margin-top:12px;">
               <button type="button" class="ui-btn ui-btn--accent ui-btn--sm" id="booking-done-btn">Done</button>
             </div>
@@ -1933,9 +1923,12 @@ export const CustomerFrontend = {
           <p style="font-size: 0.78rem; color: #15803d; margin: 0 0 6px; line-height: 1.4;">
             Share this 6-digit code with the professional <strong>verbally</strong> upon their arrival at your location.
           </p>
-          <div class="otp-panel-status-${esc(booking.id)}" style="font-size: 0.78rem; font-weight: 600; color: #166534; margin-bottom: 6px;">
-            <span style="color: #6b7280; font-weight: normal;">Checking OTP status...</span>
-          </div>
+          ${booking.arrivalOtpUsed
+            ? '<div style="font-size: 0.85rem; font-weight: 700; color: #16a34a;">✅ Arrival verified — technician has checked in!</div>'
+            : booking.arrivalOtp
+              ? `<div style="margin:4px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="color:#4b5563;font-weight:600;font-size:0.82rem;">Your arrival code:</span><strong style="font-family:'JetBrains Mono',monospace;font-size:1.4rem;letter-spacing:0.12em;color:#1a3300;background:#ffe95c;padding:2px 12px;border-radius:8px;">${esc(booking.arrivalOtp)}</strong><span style="color:#4b5563;font-size:0.78rem;">Share it verbally with the technician.</span></div>`
+              : '<div style="font-size: 0.78rem; color: #f59e0b; margin-bottom: 6px;">⏳ No code yet — tap Resend OTP below to generate your arrival code.</div>'}
+          <div class="otp-panel-status-${esc(booking.id)}" style="font-size: 0.78rem; font-weight: 600; color: #166534; margin-bottom: 6px;"></div>
           <button class="btn btn-outline btn-xs resend-arrival-otp-btn"
             data-booking-id="${esc(booking.id)}"
             style="font-size: 0.72rem; padding: 2px 8px; border-color: #16a34a; color: #166534;">
@@ -1950,41 +1943,28 @@ export const CustomerFrontend = {
    * Load OTP status for all booking OTP panels asynchronously after render.
    * Updates status display without exposing sensitive data.
    */
+  // OTP lives on the booking itself (in-app, like Uber/Ola) — no server
+  // round-trip, so this also works on the static Vercel deployment where
+  // server.js is not running. The code itself is rendered in
+  // renderOtpStatusPanel(); here we only add the expiry note.
   async loadOtpStatusForBookings(container) {
     const panels = container.querySelectorAll('[data-otp-booking-id]');
     if (!panels.length) return;
-    let session = null;
-    try {
-      const { AuthService } = await import('./authService.js');
-      session = AuthService.getSession();
-    } catch (e) {}
-
+    let bookings = [];
+    try { bookings = StorageService.getBookings() || []; } catch (e) {}
     for (const panel of panels) {
       const bookingId = panel.getAttribute('data-otp-booking-id');
       const statusEl = panel.querySelector(`.otp-panel-status-${bookingId}`);
       if (!statusEl) continue;
-      try {
-        const headers = session?.access_token
-          ? { 'Authorization': `Bearer ${session.access_token}` } : {};
-        const res = await fetch(`/api/bookings/${encodeURIComponent(bookingId)}/otp-status`, { headers });
-        if (!res.ok) { statusEl.textContent = ''; continue; }
-        const data = await res.json();
-        if (!data.exists) {
-          statusEl.innerHTML = '<span style="color:#f59e0b;">⏳ Your arrival OTP will appear here once the booking is saved.</span>';
-        } else if (data.isConsumed) {
-          statusEl.innerHTML = '<span style="color:#16a34a;font-weight:700;">✅ Arrival verified — technician has checked in!</span>';
-        } else if (data.isExpired) {
-          statusEl.innerHTML = '<span style="color:#dc2626;">⚠️ OTP expired. Click Resend OTP to get a new code in your app.</span>';
-        } else {
-          const expiry = new Date(data.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          const label = 'Share this code verbally when the professional reaches your home.';
-          const otpHtml = data.otp
-            ? `<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="color:#4b5563;font-weight:600;">Your arrival code:</span><strong style="font-family:'JetBrains Mono',monospace;font-size:1.2rem;letter-spacing:0.12em;color:#1a3300;background:#ffe95c;padding:2px 10px;border-radius:8px;">${esc(data.otp)}</strong><span style="color:#4b5563;">Share it verbally with the technician.</span></div>`
-            : '';
-          statusEl.innerHTML = `<span style="color:#166534;">${label} <span style="font-weight:normal;color:#4b5563;">(Valid until ${expiry})</span></span>${otpHtml}`;
-        }
-      } catch (e) {
-        statusEl.textContent = '';
+      const booking = bookings.find(b => b.id === bookingId);
+      if (!booking || booking.arrivalOtpUsed) { statusEl.textContent = ''; continue; }
+      if (!booking.arrivalOtp) {
+        statusEl.innerHTML = '<span style="color:#f59e0b;">⏳ Tap Resend OTP below to generate your arrival code.</span>';
+      } else if (Date.now() > (booking.arrivalOtpExpiresAt || 0)) {
+        statusEl.innerHTML = '<span style="color:#dc2626;">⚠️ OTP expired. Click Resend OTP to get a new code in your app.</span>';
+      } else {
+        const expiry = new Date(booking.arrivalOtpExpiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        statusEl.innerHTML = `<span style="color:#166534;font-weight:normal;">Valid until ${expiry} · share verbally at your door.</span>`;
       }
     }
   },
