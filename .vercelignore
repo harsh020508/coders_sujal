@@ -1,4 +1,9 @@
 server.js
+# Dead code + internal docs: never serve these publicly
+test_marketplace.js
+enhanced_matching.js
+push.js
+*.md
 *.db
 *.db-journal
 *.db-wal

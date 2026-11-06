@@ -1,6 +1,6 @@
 # LocalKaam — Hyperlocal Blue-Collar Services Marketplace
 
-[![Live Demo](https://img.shields.io/badge/Live-Deployment-brightgreen?style=for-the-badge)](https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing)
+[![Live Demo](https://img.shields.io/badge/Live-Deployment-brightgreen?style=for-the-badge)](https://coderssujal.vercel.app/#landing)
 [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
 [![Sync](https://img.shields.io/badge/Realtime-WebSockets-blue?style=for-the-badge)](https://supabase.com/docs/guides/realtime)
 [![UI/UX](https://img.shields.io/badge/Design%20System-v3.0%20Peacock%20%26%20Marigold-0E7C86?style=for-the-badge)](./ui.css)
@@ -11,7 +11,7 @@
 ---
 
 ## 🌐 Live Deployment & Production URL
-- **Production Site:** [https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing](https://coderssujal-rgvepzub3-lucky21.vercel.app/#landing)
+- **Production Site:** [https://coderssujal.vercel.app/#landing](https://coderssujal.vercel.app/#landing)
 - **Supabase Backend:** PostgreSQL with Row Level Security (RLS) & Supabase Realtime Channels.
 
 ---

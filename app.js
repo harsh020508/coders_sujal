@@ -366,7 +366,7 @@ export const App = {
               CustomerFrontend.render(viewContainer);
             } catch (custErr) {
               console.error('Customer frontend render error:', custErr);
-              viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading customer view: ${esc(custErr.message)}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset &amp; Reload</button></div>`;
+              viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading customer view: ${esc(custErr.message)}</p><button class="btn btn-primary" onclick="window.location.reload();">Reload</button></div>`;
             }
           }).catch((custErr) => {
             if (StorageService.getCurrentRole() === 'customer') {
@@ -390,7 +390,7 @@ export const App = {
               WorkerFrontend.render(viewContainer);
             } catch (workErr) {
               console.error('Worker frontend render error:', workErr);
-              viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading worker view: ${esc(workErr.message)}</p><button class="btn btn-primary" onclick="localStorage.clear(); window.location.reload();">Reset &amp; Reload</button></div>`;
+              viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading worker view: ${esc(workErr.message)}</p><button class="btn btn-primary" onclick="window.location.reload();">Reload</button></div>`;
             }
           }).catch((workErr) => {
             if (StorageService.getCurrentRole() === 'worker') {
@@ -423,7 +423,7 @@ export const App = {
       }
     } catch (err) {
       console.error('App render fatal error:', err);
-      root.innerHTML = `<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Something went wrong rendering this view.</p><button onclick="localStorage.clear(); window.location.reload();" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1a3300; color: white; border: none; border-radius: 8px; cursor: pointer;">Reset &amp; Reload App</button></div>`;
+      root.innerHTML = `<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Something went wrong rendering this view.</p><button onclick="window.location.reload();" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1a3300; color: white; border: none; border-radius: 8px; cursor: pointer;">Reload App</button></div>`;
     }
 
     // Refresh Lucide vector icons

@@ -8,7 +8,12 @@
 // hash is demo-grade (a 6-digit code is brute-forceable by anyone who
 // already has the booking data, which is why the server is authoritative).
 export function generateArrivalOtp() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  // Cryptographically random (Web Crypto works in browsers + Node 19+).
+  // Math.random() is predictable — a leaked hash could be brute-forced
+  // against a known code sequence.
+  const buf = new Uint32Array(1);
+  (globalThis.crypto || crypto).getRandomValues(buf);
+  return String(100000 + (buf[0] % 900000));
 }
 
 export function hashArrivalOtp(otp) {

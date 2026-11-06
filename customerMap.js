@@ -538,7 +538,7 @@ export const CustomerMap = {
       const popupHtml = `
         <div class="map-worker-popup" style="font-family: Inter, sans-serif; min-width: 220px; padding: 4px;">
           <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-            <img src="${w.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80'}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid ${catStyle.color};" />
+            <img src="${esc(w.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80')}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid ${catStyle.color};" />
             <div>
               <div style="font-weight: 700; font-size: 0.95rem; color: #111827; line-height: 1.2;">${esc(w.name)}</div>
               <div style="font-size: 0.75rem; color: ${catStyle.color}; font-weight: 600;">${catStyle.icon} ${catStyle.label}</div>
@@ -616,7 +616,7 @@ export const CustomerMap = {
       return `
         <div class="map-worker-card" id="list-worker-${esc(w.id)}" data-worker-id="${esc(w.id)}" style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem; cursor: pointer; transition: all 0.2s ease;">
           <div style="display: flex; gap: 0.65rem;">
-            <img src="${w.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80'}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid ${catStyle.color}; flex-shrink: 0;" />
+            <img src="${esc(w.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80')}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid ${catStyle.color}; flex-shrink: 0;" />
             <div style="flex: 1; min-width: 0;">
               <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">

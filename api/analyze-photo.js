@@ -5,6 +5,7 @@
 // rotation like api/customer-care.js: first working key wins, on
 // 401/403/429/5xx the request rotates to the next key.
 import { getPriceTablePromptSummary } from '../pricingTable.js';
+import { getDemoAiResult } from '../demoDiagnosis.js';
 
 const rateLimits = new Map(); // ip -> timestamps (per serverless instance)
 function checkRateLimit(ip) {
@@ -15,21 +16,6 @@ function checkRateLimit(ip) {
   record.push(now);
   rateLimits.set(ip, record);
   return true;
-}
-
-// Same demo fallback as server.js getDemoAiResult() / photoDiagnosis.js.
-function getDemoAiResult(note) {
-  const n = (note || '').toLowerCase();
-  if (n.includes('electric') || n.includes('wire') || n.includes('spark') || n.includes('switch')) {
-    return { problem_found: true, issue: 'Faulty electrical switchboard with exposed wiring', service_category: 'electrician', urgency: 'emergency', price_min: 800, price_max: 2500, likely_materials: ['MCB breaker', 'Electrical tape', 'Wire connectors'], estimated_duration_minutes: 45, safety_warning: 'Do NOT touch exposed wires. Turn off the main breaker immediately.', confidence: 'high', follow_up_question: null };
-  }
-  if (n.includes('paint') || n.includes('damp') || n.includes('wall') || n.includes('peel')) {
-    return { problem_found: true, issue: 'Damp wall with paint peeling and possible seepage', service_category: 'painter', urgency: 'medium', price_min: 1500, price_max: 5000, likely_materials: ['Primer', 'Waterproof putty', 'Emulsion paint'], estimated_duration_minutes: 180, safety_warning: null, confidence: 'high', follow_up_question: null };
-  }
-  if (n.includes('carpenter') || n.includes('wood') || n.includes('door') || n.includes('furniture')) {
-    return { problem_found: true, issue: 'Damaged wooden door hinge and frame repair needed', service_category: 'carpenter', urgency: 'low', price_min: 500, price_max: 2000, likely_materials: ['Door hinges', 'Wood screws', 'Wood filler'], estimated_duration_minutes: 60, safety_warning: null, confidence: 'high', follow_up_question: null };
-  }
-  return { problem_found: true, issue: 'Leaking kitchen tap with worn-out washer', service_category: 'plumber', urgency: 'medium', price_min: 300, price_max: 800, likely_materials: ['Tap washer', 'Teflon tape', 'Adjustable wrench'], estimated_duration_minutes: 30, safety_warning: null, confidence: 'high', follow_up_question: null };
 }
 
 export default async function handler(req, res) {

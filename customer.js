@@ -1411,7 +1411,7 @@ export const CustomerFrontend = {
         ${prefillOptions.photoUrl ? `
           <!-- Attached AI Photo Diagnosis Preview -->
           <div style="display: flex; gap: 0.85rem; align-items: center; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 16px;">
-            <img src="${prefillOptions.photoUrl}" alt="Problem preview" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; border: 1.5px solid #3b82f6; flex-shrink: 0;" />
+            <img src="${esc(prefillOptions.photoUrl)}" alt="Problem preview" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; border: 1.5px solid #3b82f6; flex-shrink: 0;" />
             <div style="flex: 1; min-width: 0;">
               <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 2px;">
                 <span class="badge" style="background: #2563eb; color: white; font-size: 0.7rem;">📸 AI Diagnosis Attached</span>
