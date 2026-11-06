@@ -635,13 +635,9 @@ select, input, textarea { font-family: inherit; }
    LANDING PAGE HERO & SHOWCASE
    ============================================================ */
 .landing-hero {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: clamp(24px, 4vw, 56px);
-  align-items: center;
-  padding: clamp(32px, 5vw, 64px) var(--section-padding-x);
-  max-width: var(--content-max-width);
-  margin: 0 auto;
+  /* Layout, padding and background are owned by landing-premium.css.
+     Only keep flow properties here. */
+  max-width: 100%;
   width: 100%;
 }
 
@@ -1689,9 +1685,7 @@ select, input, textarea { font-family: inherit; }
   .nav-hamburger { display: flex !important; }
 
   .landing-hero {
-    grid-template-columns: 1fr;
-    padding: 36px var(--section-padding-x);
-    gap: 32px;
+    padding: 48px var(--section-padding-x);
   }
 
   .hero-content { align-items: flex-start; }
@@ -1754,8 +1748,7 @@ select, input, textarea { font-family: inherit; }
   #nav-signin-btn { display: none !important; }
 
   .landing-hero {
-    padding: 20px 14px;
-    gap: 24px;
+    padding: 36px 16px;
   }
 
   .hero-content h1 { font-size: 2.1rem; line-height: 1.1; }
