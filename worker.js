@@ -354,10 +354,10 @@ export const WorkerFrontend = {
                   ${b.status === 'Confirmed' ? `
                     <button class="ui-btn ui-btn--secondary ui-btn--sm enroute-job-btn" data-id="${esc(b.id)}"><i data-lucide="truck" class="lucide-xs"></i> I'm On My Way</button>
                   ` : ''}
-                  ${b.status === 'Worker en route' ? `
+                  ${['Confirmed', 'Worker en route'].includes(b.status) ? `
                     <button class="ui-btn ui-btn--secondary ui-btn--sm verify-otp-btn" data-id="${esc(b.id)}"><i data-lucide="shield-check" class="lucide-xs"></i> Verify Customer OTP</button>
                   ` : ''}
-                  ${['Confirmed', 'Worker en route', 'Worker arrived'].includes(b.status) ? `
+                  ${b.status === 'Worker arrived' ? `
                     <button class="ui-btn ui-btn--accent ui-btn--sm start-job-btn" data-id="${esc(b.id)}"><i data-lucide="play" class="lucide-xs"></i> Start Job</button>
                   ` : ''}
                   ${b.status === 'Job in progress' ? `
@@ -831,7 +831,7 @@ export const WorkerFrontend = {
                     <td>
                       <div style="display: flex; gap: 4px; flex-wrap: wrap;">
                         ${['Confirmed', 'Accepted'].includes(b.status) ? `<button class="btn btn-outline btn-xs enroute-job-btn" data-id="${esc(b.id)}"><i data-lucide="truck" class="lucide-xs"></i> En Route</button>` : ''}
-                        ${b.status === 'Worker en route' ? `<button class="btn btn-outline btn-xs verify-otp-btn" data-id="${esc(b.id)}"><i data-lucide="shield-check" class="lucide-xs"></i> Verify OTP</button>` : ''}
+                        ${['Confirmed', 'Accepted', 'Worker en route'].includes(b.status) ? `<button class="btn btn-outline btn-xs verify-otp-btn" data-id="${esc(b.id)}"><i data-lucide="shield-check" class="lucide-xs"></i> Verify OTP</button>` : ''}
                         ${b.status === 'Worker arrived' ? `<button class="btn btn-primary btn-xs start-job-btn" data-id="${esc(b.id)}"><i data-lucide="play" class="lucide-xs"></i> Start Job</button>` : ''}
                         ${b.status === 'Job in progress' ? `<button class="btn btn-success btn-xs complete-job-btn" data-id="${esc(b.id)}"><i data-lucide="check-circle" class="lucide-xs"></i> Complete Job</button>` : ''}
                       </div>
@@ -2107,11 +2107,17 @@ export const WorkerFrontend = {
       };
     });
 
-    // 6. Start Job
+    // 6. Start Job — only AFTER the customer OTP is verified at the door.
     container.querySelectorAll('.start-job-btn').forEach(btn => {
       btn.onclick = () => {
         const bookingId = btn.getAttribute('data-id');
         let bookings = StorageService.getBookings();
+        const booking = bookings.find(b => b.id === bookingId);
+        if (!booking || booking.status !== 'Worker arrived') {
+          Toast.show('Verify the customer OTP first — the job can only start after arrival verification.', 'warning');
+          this.showOtpVerifyModal(bookingId, container);
+          return;
+        }
         bookings = bookings.map(b => b.id === bookingId ? BookingService.startJob(b) : b);
         StorageService.saveBookings(bookings);
         Toast.show(`Job in progress!`, 'success');
@@ -2401,7 +2407,7 @@ export const WorkerFrontend = {
         let bookings = StorageService.getBookings();
         const booking = bookings.find(b => b.id === bookingId);
 
-        if (booking?.arrivalOtp) {
+        if (booking?.arrivalOtpHash || booking?.arrivalOtp) {
           const result = verifyArrivalOtp(booking, otp);
           if (!result.ok) {
             const remaining = result.attemptsRemaining ?? '';
@@ -2413,6 +2419,7 @@ export const WorkerFrontend = {
           }
           overlay.remove();
           Toast.show('OTP verified! Arrival confirmed ✅', 'success');
+          StorageService.clearCustomerOtp(bookingId); // code is spent — wipe the plaintext
           bookings = bookings.map(b => b.id === bookingId ? { ...booking, status: 'Worker arrived' } : b);
           StorageService.saveBookings(bookings);
           if (container && container.isConnected) this.render(container);

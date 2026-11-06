@@ -896,14 +896,18 @@ export const CustomerFrontend = {
     container.querySelectorAll('.resend-arrival-otp-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const bookingId = btn.getAttribute('data-booking-id');
-        const { generateArrivalOtp, arrivalOtpExpiry } = await import('./bookings.js');
+        const { generateArrivalOtp, arrivalOtpExpiry, hashArrivalOtp } = await import('./bookings.js');
         let bookings = StorageService.getBookings();
         const booking = bookings.find(b => b.id === bookingId);
         if (!booking) { Toast.show('Booking not found.', 'error'); return; }
         if (booking.arrivalOtpUsed) { Toast.show('This booking is already verified.', 'info'); return; }
-        bookings = bookings.map(b => b.id === bookingId
-          ? { ...b, arrivalOtp: generateArrivalOtp(), arrivalOtpExpiresAt: arrivalOtpExpiry(b.appointmentDate), arrivalOtpAttempts: 0, arrivalOtpUsed: false }
-          : b);
+        const plainOtp = generateArrivalOtp();
+        StorageService.setCustomerOtp(bookingId, plainOtp); // customer-only
+        bookings = bookings.map(b => {
+          if (b.id !== bookingId) return b;
+          const { arrivalOtp: _legacyPlain, ...rest } = b; // never persist plaintext on booking
+          return { ...rest, arrivalOtpHash: hashArrivalOtp(plainOtp), arrivalOtpExpiresAt: arrivalOtpExpiry(b.appointmentDate), arrivalOtpAttempts: 0, arrivalOtpUsed: false };
+        });
         StorageService.saveBookings(bookings);
         Toast.show('New OTP generated in your app ✅', 'success');
         this.render(container);
@@ -1517,6 +1521,11 @@ export const CustomerFrontend = {
       };
 
       const newBooking = BookingService.createBooking(worker, customerData, bookingDetails);
+      // Plaintext OTP goes ONLY to the customer store + this confirmation
+      // screen. The saved booking (visible to workers) keeps just the hash.
+      const plainOtp = newBooking.arrivalOtp;
+      StorageService.setCustomerOtp(newBooking.id, plainOtp);
+      delete newBooking.arrivalOtp;
       const bookings = StorageService.getBookings();
       bookings.push(newBooking);
       StorageService.saveBookings(bookings);
@@ -1535,7 +1544,7 @@ export const CustomerFrontend = {
             </p>
             <div style="background:#ffe95c;border-radius:10px;padding:10px 16px;">
               <div style="font-size:0.75rem;font-weight:700;color:#4b5563;">YOUR ARRIVAL OTP</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:800;letter-spacing:0.12em;color:#1a3300;">${esc(newBooking.arrivalOtp)}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:800;letter-spacing:0.12em;color:#1a3300;">${esc(plainOtp)}</div>
               <div style="font-size:0.75rem;color:#4b5563;">Share this code verbally when the professional reaches your home.</div>
             </div>
             <div style="margin-top:12px;">
@@ -1912,8 +1921,11 @@ export const CustomerFrontend = {
   renderOtpStatusPanel(booking) {
     // OTP is issued when the customer books (Uber/Ola-style), so show it
     // from 'Pending confirmation' onwards, not just after acceptance.
+    // Plaintext comes from the customer-only store; the booking itself
+    // (shared with workers) holds only the hash.
     const statuses = ['Pending confirmation', 'Pending', 'Confirmed', 'Accepted', 'Worker en route'];
     if (!statuses.includes(booking.status)) return '';
+    const customerOtp = StorageService.getCustomerOtp(booking.id) || booking.arrivalOtp; // booking.arrivalOtp = legacy fallback
     return `
       <div class="otp-status-panel" data-otp-booking-id="${esc(booking.id)}"
         style="margin-top: 8px; padding: 10px 12px; border-radius: 8px; background: #f0fdf4; border: 1.5px solid #bbf7d0; display: flex; align-items: flex-start; gap: 8px;">
@@ -1925,8 +1937,8 @@ export const CustomerFrontend = {
           </p>
           ${booking.arrivalOtpUsed
             ? '<div style="font-size: 0.85rem; font-weight: 700; color: #16a34a;">✅ Arrival verified — technician has checked in!</div>'
-            : booking.arrivalOtp
-              ? `<div style="margin:4px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="color:#4b5563;font-weight:600;font-size:0.82rem;">Your arrival code:</span><strong style="font-family:'JetBrains Mono',monospace;font-size:1.4rem;letter-spacing:0.12em;color:#1a3300;background:#ffe95c;padding:2px 12px;border-radius:8px;">${esc(booking.arrivalOtp)}</strong><span style="color:#4b5563;font-size:0.78rem;">Share it verbally with the technician.</span></div>`
+            : customerOtp
+              ? `<div style="margin:4px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="color:#4b5563;font-weight:600;font-size:0.82rem;">Your arrival code:</span><strong style="font-family:'JetBrains Mono',monospace;font-size:1.4rem;letter-spacing:0.12em;color:#1a3300;background:#ffe95c;padding:2px 12px;border-radius:8px;">${esc(customerOtp)}</strong><span style="color:#4b5563;font-size:0.78rem;">Share it verbally with the technician.</span></div>`
               : '<div style="font-size: 0.78rem; color: #f59e0b; margin-bottom: 6px;">⏳ No code yet — tap Resend OTP below to generate your arrival code.</div>'}
           <div class="otp-panel-status-${esc(booking.id)}" style="font-size: 0.78rem; font-weight: 600; color: #166534; margin-bottom: 6px;"></div>
           <button class="btn btn-outline btn-xs resend-arrival-otp-btn"
@@ -1958,7 +1970,7 @@ export const CustomerFrontend = {
       if (!statusEl) continue;
       const booking = bookings.find(b => b.id === bookingId);
       if (!booking || booking.arrivalOtpUsed) { statusEl.textContent = ''; continue; }
-      if (!booking.arrivalOtp) {
+      if (!(booking.arrivalOtpHash || booking.arrivalOtp || StorageService.getCustomerOtp(bookingId))) {
         statusEl.innerHTML = '<span style="color:#f59e0b;">⏳ Tap Resend OTP below to generate your arrival code.</span>';
       } else if (Date.now() > (booking.arrivalOtpExpiresAt || 0)) {
         statusEl.innerHTML = '<span style="color:#dc2626;">⚠️ OTP expired. Click Resend OTP to get a new code in your app.</span>';

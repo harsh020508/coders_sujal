@@ -1,8 +1,27 @@
 // Uber/Ola-style arrival OTP, generated in-app when the customer books.
 // The customer sees it in the app and shares it verbally when the worker
 // reaches home; the worker types it in to verify arrival. No SMS/phone.
+//
+// The plaintext code is NEVER stored on the booking object (workers see
+// bookings) — only a hash is. The customer reads the plaintext from
+// StorageService.getCustomerOtp(). server.js uses SHA-256; this sync
+// hash is demo-grade (a 6-digit code is brute-forceable by anyone who
+// already has the booking data, which is why the server is authoritative).
 export function generateArrivalOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+export function hashArrivalOtp(otp) {
+  const str = String(otp || '');
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
 }
 
 export function arrivalOtpExpiry(appointmentDate) {
@@ -14,11 +33,17 @@ export function arrivalOtpExpiry(appointmentDate) {
 // Returns { ok: true } or { ok: false, error, attemptsRemaining? }.
 // On success the booking's OTP is marked used (single-use).
 export function verifyArrivalOtp(booking, otp) {
-  if (!booking?.arrivalOtp) return { ok: false, error: 'No OTP generated for this booking yet.' };
+  // Hash-only bookings (current) or legacy plaintext bookings.
+  const hasCode = booking?.arrivalOtpHash || booking?.arrivalOtp;
+  if (!hasCode) return { ok: false, error: 'No OTP generated for this booking yet.' };
   if (booking.arrivalOtpUsed) return { ok: false, error: 'This OTP has already been used.' };
   if (Date.now() > (booking.arrivalOtpExpiresAt || 0)) return { ok: false, error: 'OTP has expired. Please ask the customer for a new code.' };
   if ((booking.arrivalOtpAttempts || 0) >= 5) return { ok: false, error: 'Maximum OTP attempts exceeded. Please ask the customer for a new code.' };
-  if (String(otp || '').trim() !== String(booking.arrivalOtp)) {
+  const input = String(otp || '').trim();
+  const matches = booking.arrivalOtpHash
+    ? hashArrivalOtp(input) === booking.arrivalOtpHash
+    : input === String(booking.arrivalOtp);
+  if (!matches) {
     booking.arrivalOtpAttempts = (booking.arrivalOtpAttempts || 0) + 1;
     return { ok: false, error: 'Incorrect OTP.', attemptsRemaining: Math.max(0, 5 - booking.arrivalOtpAttempts) };
   }
@@ -66,7 +91,11 @@ export const BookingService = {
       customer_id: customerData.id || customerData.customerId || null,
       status: 'Pending confirmation',
       // Shown to the customer in-app at booking time (Uber/Ola-style).
+      // NOTE: `arrivalOtp` plaintext is transient — the caller must
+      // strip it before saving (see customer.js) so workers never see
+      // it. Only `arrivalOtpHash` is persisted on the booking.
       arrivalOtp: generateArrivalOtp(),
+      arrivalOtpHash: null, // filled below, once the code exists
       arrivalOtpExpiresAt: arrivalOtpExpiry(bookingDetails.appointmentDate || new Date().toISOString().split('T')[0]),
       arrivalOtpAttempts: 0,
       arrivalOtpUsed: false,
@@ -75,6 +104,7 @@ export const BookingService = {
       createdAt: new Date().toISOString(),
       completedAt: null
     };
+    newBooking.arrivalOtpHash = hashArrivalOtp(newBooking.arrivalOtp);
     return newBooking;
   },
 
@@ -156,7 +186,9 @@ export const BookingService = {
   },
 
   startJob(booking) {
-    if (!['Confirmed', 'Accepted', 'Worker arrived'].includes(booking.status)) return booking;
+    // Uber/Ola rule: the job can only start AFTER the worker verified
+    // the customer's OTP at the door (status becomes 'Worker arrived').
+    if (booking.status !== 'Worker arrived') return booking;
     return { ...booking, status: 'Job in progress' };
   },
 

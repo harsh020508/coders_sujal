@@ -17,7 +17,10 @@ const STORAGE_KEYS = {
   SELECTED_WORKER_ID: 'localkaam_selected_worker_id',
   CUSTOMER_LOCALITY: 'localkaam_customer_locality',
   THEME: 'localkaam_theme',
-  CURRENT_USER: 'localkaam_current_user'
+  CURRENT_USER: 'localkaam_current_user',
+  // Plaintext arrival OTPs, customer-only. Bookings (visible to workers)
+  // store only the hash — see bookings.js hashArrivalOtp().
+  CUSTOMER_OTPS: 'localkaam_customer_otps'
 };
 
 const memoryStore = {};
@@ -277,6 +280,24 @@ export const StorageService = {
         }
       });
     }
+  },
+
+  // --- CUSTOMER ARRIVAL OTPs (plaintext, customer-only) ---
+  getCustomerOtp(bookingId) {
+    const otps = safeGet(STORAGE_KEYS.CUSTOMER_OTPS, {}) || {};
+    return otps[bookingId] || null;
+  },
+
+  setCustomerOtp(bookingId, otp) {
+    const otps = safeGet(STORAGE_KEYS.CUSTOMER_OTPS, {}) || {};
+    otps[bookingId] = otp;
+    safeSetLocal(STORAGE_KEYS.CUSTOMER_OTPS, otps);
+  },
+
+  clearCustomerOtp(bookingId) {
+    const otps = safeGet(STORAGE_KEYS.CUSTOMER_OTPS, {}) || {};
+    delete otps[bookingId];
+    safeSetLocal(STORAGE_KEYS.CUSTOMER_OTPS, otps);
   },
 
   // --- BOOKINGS ---
