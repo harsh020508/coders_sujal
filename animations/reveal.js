@@ -2,7 +2,7 @@
 // parallax/scrub, counters + GPU progress bars.
 // Falls back to the existing IntersectionObserver (transitions.js) if the
 // GSAP CDN is unavailable, so content never stays hidden.
-import { prefersReducedMotion, MOTION } from './motion.js';
+import { prefersReducedMotion } from './motion.js';
 import { loadGsap } from './scroll.js';
 
 let gsapFn = null;
@@ -43,9 +43,15 @@ function splitHeroLine(h1) {
   return inners;
 }
 
-function parseCount(text) {
-  const m = String(text || '').match(/-?\d+(?:\.\d+)?/);
-  return m ? parseFloat(m[0]) : null;
+function animateHeroSplit(scope) {
+  if (!gsapFn) return;
+  const h1 = scope.querySelector ? scope.querySelector('.landing-hero h1') : document.querySelector('.landing-hero h1');
+  if (!h1) return;
+  const inners = splitHeroLine(h1);
+  if (!inners.length) return;
+  gsapFn.fromTo(inners,
+    { yPercent: 110, opacity: 0 },
+    { yPercent: 0, opacity: 1, duration: 0.7, ease: 'expo.out', stagger: 0.045, overwrite: true });
 }
 
 function tweenCounter(el, target, prefix, suffix) {
@@ -79,6 +85,8 @@ function initCounters(scope) {
     tweenCounter(el, target, prefix, suffix);
   });
   scope.querySelectorAll('[data-count]').forEach((el) => {
+    if (el.dataset.countBound) return;
+    el.dataset.countBound = '1';
     const target = parseFloat(el.dataset.count);
     if (Number.isNaN(target)) return;
     tweenCounter(el, target, el.dataset.countPrefix || '', el.dataset.countSuffix || '');
@@ -101,25 +109,16 @@ function initProgress(scope) {
 
 async function gsapReveals(scope) {
   if (inited) return;
-  inited = true;
   const loaded = await loadGsap();
   if (!loaded || prefersReducedMotion()) {
-    // Fallback: existing IO adds .is-visible (calm fades).
+    inited = true;
     return;
   }
+  inited = true;
   gsapFn = loaded.gsap;
   STFn = loaded.ScrollTrigger;
 
-  // Hero split-text: lines/words rise with stagger + slight blur-free scale.
-  const h1 = scope.querySelector ? scope.querySelector('.landing-hero h1') : document.querySelector('.landing-hero h1');
-  if (h1) {
-    const inners = splitHeroLine(h1);
-    if (inners.length) {
-      gsapFn.fromTo(inners,
-        { yPercent: 110, opacity: 0 },
-        { yPercent: 0, opacity: 1, duration: 0.7, ease: 'expo.out', stagger: 0.045, overwrite: true });
-    }
-  }
+  animateHeroSplit(scope);
 
   // Hero visual parallax (subtle, scrubbed).
   const visual = scope.querySelector ? scope.querySelector('.hero-visual') : document.querySelector('.hero-visual');
@@ -162,7 +161,8 @@ export async function refreshReveals(root) {
     const loaded = gsapFn && STFn ? { gsap: gsapFn, ScrollTrigger: STFn } : await loadGsap();
     if (loaded && loaded.gsap && loaded.ScrollTrigger) {
       gsapFn = loaded.gsap; STFn = loaded.ScrollTrigger;
-      const targets = Array.from(scope.querySelectorAll('.ui-cat,.ui-card,.category-card,.ui-reveal'));
+      animateHeroSplit(scope);
+      const targets = Array.from(scope.querySelectorAll('.ui-cat,.ui-card,.category-card,.ui-reveal,.lk-service-card,.lk-why-card,.lk-step-card'));
       const fresh = targets.filter((el) => !el.dataset.gsapBound);
       fresh.forEach((el) => { el.dataset.gsapBound = '1'; });
       if (fresh.length) {
@@ -174,6 +174,14 @@ export async function refreshReveals(root) {
           })
         });
         STFn.refresh();
+        setTimeout(() => {
+          fresh.forEach((el) => {
+            if (getComputedStyle(el).opacity === '0') {
+              el.style.opacity = '1';
+              el.style.transform = 'none';
+            }
+          });
+        }, 1800);
       }
     }
   } catch (e) {}

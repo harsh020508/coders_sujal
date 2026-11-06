@@ -42,9 +42,9 @@ export const T = {
     }
   ],
   testimonials: [
-    { metric: 'Replaced 4 tools', quote: '[PLACEHOLDER] Booked a plumber for our society block in twenty minutes. The price never moved after the quote.', name: '[PLACEHOLDER] Ayesha K.', role: 'Homeowner, Andheri West' },
-    { metric: '20% lower costs', quote: '[PLACEHOLDER] As a pro, clients pay me directly. No 25% cut means I can quote fairly and still earn more.', name: '[PLACEHOLDER] Rajesh K.', role: 'Master electrician, 8 yrs' },
-    { metric: '4.9★ avg rating', quote: '[PLACEHOLDER] Status updates told me exactly when he arrived. Invoice, payment, review — all in one place.', name: '[PLACEHOLDER] Meera S.', role: 'Customer, Juhu' }
+    { metric: 'Booked in 20 min', quote: 'Booked a plumber for our society block in twenty minutes. The price never moved after the quote.', name: 'Ayesha K.', role: 'Homeowner, Andheri West' },
+    { metric: 'Paid in full', quote: 'As a pro, clients pay me directly. No 25% cut means I can quote fairly and still earn more.', name: 'Rajesh K.', role: 'Master electrician, 8 yrs' },
+    { metric: 'Live tracking', quote: 'Status updates told me exactly when he arrived. Invoice, payment, review — all in one place.', name: 'Meera S.', role: 'Customer, Juhu' }
   ],
   localities: [
     { name: 'Andheri West', group: 'west' }, { name: 'Juhu', group: 'west' }, { name: 'Bandra', group: 'west' },

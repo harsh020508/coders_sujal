@@ -15,22 +15,22 @@ export function navHTML(theme) {
             ['search', 'Discover pros', 'Verified pros by trade and locality', '#services'],
             ['calendar-check', 'Book & negotiate', 'Agree time and price with counter-offers', '#how-it-works'],
             ['map-pin', 'Track live', 'Milestone updates from accept to invoice', '#how-it-works'],
-            ['hand-coins', 'Pay direct', '0% commission, direct to the pro', '#comparison'],
+            ['hand-coins', 'Pay direct', '0% commission, direct to the pro', '#usps'],
             ['star', 'Review', 'Ratings only on completed jobs', '#how-it-works'],
-            ['shield-check', 'Verified trust', 'ID checks and completed-job reviews', '#problem']
+            ['shield-check', 'Verified trust', 'ID checks and completed-job reviews', '#usps']
           ].map(x => `<a class="mega-item" href="${x[3]}" role="menuitem"><span class="mega-icon"><i data-lucide="${x[0]}" class="lucide-md"></i></span><span><strong>${x[1]}</strong><small>${x[2]}</small></span></a>`).join('')}
         </div>
       </div>
       <div class="nav-item">
         <button class="nav-link nav-menu-btn" aria-haspopup="true" aria-expanded="false" aria-controls="menu-pricing">Pricing <i data-lucide="chevron-down" class="lucide-xs"></i></button>
         <div class="mega mega-sm" id="menu-pricing" role="menu">
-          <a class="mega-item" href="#comparison" role="menuitem"><span class="mega-icon"><i data-lucide="percent" class="lucide-md"></i></span><span><strong>0% commission</strong><small>Pros keep 100% of agreed price</small></span></a>
+          <a class="mega-item" href="#usps" role="menuitem"><span class="mega-icon"><i data-lucide="percent" class="lucide-md"></i></span><span><strong>0% commission</strong><small>Pros keep 100% of agreed price</small></span></a>
           <a class="mega-item" href="#faq" role="menuitem"><span class="mega-icon"><i data-lucide="circle-help" class="lucide-md"></i></span><span><strong>How pricing works</strong><small>Quotes, counter-offers, surge-free</small></span></a>
         </div>
       </div>
-      <a class="nav-link" href="#built-for">Built For</a>
-      <a class="nav-link" href="#integrations">Integrations</a>
-      <a class="nav-link" href="#resources">Resources</a>
+      <a class="nav-link" href="#discovery">Neighbourhoods</a>
+      <a class="nav-link" href="#how-it-works">How it works</a>
+      <a class="nav-link" href="#faq">Help</a>
     </nav>
     <div class="nav-actions">
       <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle theme">
@@ -55,8 +55,8 @@ export function drawerHTML() {
       <button class="mobile-nav-close" id="mobile-nav-close" aria-label="Close menu">✕</button>
     </div>
     ${[
-      ['Platform', '#services'], ['Pricing', '#comparison'], ['Built For', '#built-for'],
-      ['Integrations', '#integrations'], ['Resources', '#resources']
+      ['Services', '#services'], ['Why LocalKaam', '#usps'], ['Neighbourhoods', '#discovery'],
+      ['How it works', '#how-it-works'], ['Help', '#faq']
     ].map(x => `<a class="nav-link lk-drawer-link" href="${x[1]}">${x[0]}</a>`).join('')}
     <div class="lk-drawer-actions">
       <button class="btn btn-outline btn-full" id="mobile-nav-signin-btn">Log in</button>

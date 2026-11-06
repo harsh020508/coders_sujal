@@ -1,12 +1,10 @@
 import { StorageService } from './storage.js';
-import { CATEGORIES } from './data.js';
 import { Toast } from './toast.js';
 import { AuthModal } from './authModal.js';
 import { AuthService } from './authService.js';
 import { NotificationService } from './notificationService.js';
 import { esc } from './utils.js';
-import { buildTaskIndex, searchTasks, catImage, icon } from './ui.js';
-import { initScrollReveal, fadeSlide } from './transitions.js';
+import { initScrollReveal } from './transitions.js';
 import { initMotion } from './animations/motion.js';
 import { initScroll } from './animations/scroll.js';
 import { refreshReveals } from './animations/reveal.js';
@@ -15,7 +13,6 @@ import { Settings } from './settingsService.js';
 import { landingHTML } from './components/landing/Landing.js';
 import { bindLanding } from './components/landing/bind.js';
 import { ProfileDropdown } from './components/ProfileDropdown.js';
-import { i18n, t } from './i18n.js';
 
 // Role dashboards are large (customer ~110KB, worker ~170KB, settings
 // ~100KB) and were parsed on every first load even for landing-page
@@ -488,7 +485,7 @@ export const App = {
 
   renderLandingPage() {
     const theme = Settings.getResolvedTheme();
-    return landingHTML({ theme, t, CATEGORIES, esc });
+    return landingHTML({ theme });
   },
 
   renderRoleSelectionPage() {
@@ -677,8 +674,8 @@ export const App = {
     const drawer    = root.querySelector('#mobile-nav-drawer');
     const closeBtn  = root.querySelector('#mobile-nav-close');
 
-    const openDrawer  = () => { overlay?.classList.add('open'); drawer?.classList.add('open'); document.body.style.overflow = 'hidden'; };
-    const closeDrawer = () => { overlay?.classList.remove('open'); drawer?.classList.remove('open'); document.body.style.overflow = ''; };
+    const openDrawer  = () => { overlay?.classList.add('open'); drawer?.classList.add('open'); document.body.style.overflow = 'hidden'; hamburger?.setAttribute('aria-expanded', 'true'); };
+    const closeDrawer = () => { overlay?.classList.remove('open'); drawer?.classList.remove('open'); document.body.style.overflow = ''; hamburger?.setAttribute('aria-expanded', 'false'); };
 
     hamburger?.addEventListener('click', openDrawer);
     overlay?.addEventListener('click', closeDrawer);

@@ -552,7 +552,7 @@ body.ann-dismissed .announce{display:none}
 .lk-resource-img{height:120px;border-radius:12px;background:var(--accent-light);color:var(--accent-primary);display:grid;place-items:center}
 .lk-tag{justify-self:start;background:var(--accent-light);color:var(--accent-primary);padding:4px 10px;border-radius:999px;font-size:.72rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
 .lk-footer{background:var(--bg-card);border-top:1px solid var(--border-color);padding:clamp(32px,5vw,56px) var(--section-padding-x)}
-.lk-footer-grid{display:grid;grid-template-columns:1.4fr repeat(5,1fr);gap:28px;max-width:1200px;margin:0 auto}
+.lk-footer-grid{display:grid;grid-template-columns:1.4fr repeat(4,1fr);gap:28px;max-width:1200px;margin:0 auto}
 .lk-footer-grid h4{margin:0 0 10px;font-size:.9rem}
 .lk-footer-grid nav{display:grid;gap:8px;align-content:start}
 .lk-footer-grid nav a{color:var(--text-secondary);text-decoration:none;font-size:.88rem}

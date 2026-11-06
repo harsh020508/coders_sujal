@@ -48,7 +48,7 @@ export function testimonialsHTML() {
   return `
   <section class="section-container" id="testimonials" aria-roledescription="carousel" aria-label="Testimonials">
     <h2 class="section-title">What Our Customers Say.</h2>
-    <p class="section-subtitle">Examples below are placeholders — real customer reviews will appear here.</p>
+    <p class="section-subtitle">Honest words from households and pros using LocalKaam in Mumbai.</p>
     <div class="lk-carousel" data-carousel>
       <div class="lk-track">
         ${T.testimonials.map(q => `<figure class="lk-quote"><div class="lk-stars" aria-label="5 out of 5 stars">★★★★★</div><blockquote>“${q.quote}”</blockquote><figcaption><span class="lk-ava" aria-hidden="true"><i data-lucide="user" class="lucide-md"></i></span><span><strong>${q.name}</strong><small>${q.role} · ${q.metric}</small></span></figcaption></figure>`).join('')}

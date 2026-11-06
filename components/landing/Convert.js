@@ -41,16 +41,16 @@ export function finalCTAHTML() {
 
 export function footerHTML() {
   const cols = [
-    ['Services', ['Cleaning', 'Plumbing', 'Electrical', 'AC Repair', 'Painting', 'Carpentry']],
-    ['Company', ['About Us', 'How It Works', 'Contact']],
-    ['Support', ['Help Center', 'FAQs', 'Privacy Policy', 'Terms and Conditions']],
-    ['For Professionals', ['Become a Partner', 'Professional Resources']]
+    ['Services', [['Cleaning', '#services'], ['Plumbing', '#services'], ['Electrical', '#services'], ['AC Repair', '#services'], ['Painting', '#services'], ['Carpentry', '#services']]],
+    ['Company', [['Why LocalKaam', '#usps'], ['How It Works', '#how-it-works'], ['Neighbourhoods', '#discovery']]],
+    ['Support', [['Help Centre', '#faq'], ['FAQs', '#faq']]],
+    ['For Professionals', [['Become a Partner', '#how-it-works'], ['How payouts work', '#usps']]]
   ];
   return `
   <footer class="lk-footer">
     <div class="lk-footer-grid">
       <div><div class="nav-logo">LK</div><strong>LocalKaam</strong><p>Good help lives on your street. Verified local pros, fair prices, direct payment.</p></div>
-      ${cols.map(c => `<nav aria-label="${c[0]}"><h4>${c[0]}</h4>${c[1].map(l => `<a href="#services">${l}</a>`).join('')}</nav>`).join('')}
+      ${cols.map(c => `<nav aria-label="${c[0]}"><h4>${c[0]}</h4>${c[1].map(([l, href]) => `<a href="${href}">${l}</a>`).join('')}</nav>`).join('')}
     </div>
     <div class="lk-footer-bottom"><span>© 2026 LocalKaam. All rights reserved.</span><span><a href="#faq">Privacy</a> · <a href="#faq">Terms</a></span></div>
   </footer>`;

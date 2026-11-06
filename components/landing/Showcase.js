@@ -14,7 +14,7 @@ export const SERVICES_12 = [
   ['other', 'wrench', 'General Maintenance', 'Hanging, fixing & small repairs.']
 ];
 
-export function servicesHTML(esc) {
+export function servicesHTML() {
   return `
   <section class="section-container" id="services">
     <div style="max-width:760px;margin:0 auto 36px;text-align:center;">

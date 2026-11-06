@@ -6,7 +6,7 @@ import { servicesHTML, whyHTML } from './Showcase.js';
 import { essentialHTML, statsHTML, discoveryHTML, testimonialsHTML } from './Proof.js';
 import { howHTML, faqHTML, finalCTAHTML, footerHTML } from './Convert.js';
 
-export function landingHTML({ theme, t, CATEGORIES, esc }) {
+export function landingHTML({ theme }) {
   return `
   <a class="lk-skip" href="#services">Skip to content</a>
   ${announcementBarHTML()}
@@ -14,7 +14,7 @@ export function landingHTML({ theme, t, CATEGORIES, esc }) {
   ${navHTML(theme)}
   <main id="lk-main">
     ${heroHTML()}
-    ${servicesHTML(esc)}
+    ${servicesHTML()}
     ${whyHTML()}
     ${essentialHTML()}
     ${statsHTML()}

@@ -1,7 +1,6 @@
 // animations/feedback.js — delight: confetti, shake-to-error, magnetic
 // buttons, card tilt, floating ambient blobs. Desktop-only where noted.
 import { prefersReducedMotion } from './motion.js';
-import { loadGsap } from './scroll.js';
 
 const ACCENT_FALLBACK = ['#1a3300', '#ffe95c', '#a8d879'];
 
