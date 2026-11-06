@@ -150,13 +150,41 @@ export const CustomerMap = {
 
     await this.initLeafletMap(container);
     this.attachEvents(container);
-    await this.detectUserLocation();
+    // Show workers immediately at the current centre — don't block on
+    // GPS (which can sit on its permission prompt for ~6s). When GPS
+    // resolves, re-centre and refresh the nearby list in the background.
     await this.fetchAndDisplayWorkers();
+    this.detectUserLocation().then(() => {
+      if (this.mapInstance) this.fetchAndDisplayWorkers();
+    });
 
     // If viewing active live tracking, start routing
     if (this.liveTrackingBooking) {
       this.startLiveTrackingMode(this.liveTrackingBooking);
     }
+  },
+
+  // Wait for the Leaflet CDN script (deferred in index.html). If it
+  // never arrives (blocked/slow network), inject it ourselves and wait
+  // again — instead of leaving a blank grey box forever.
+  async ensureLeaflet(mapElement) {
+    const wait = (ms) => new Promise(r => setTimeout(r, ms));
+    for (let i = 0; i < 25 && typeof L === 'undefined'; i++) await wait(200); // ~5s
+    if (typeof L !== 'undefined') return true;
+    try {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      for (let i = 0; i < 25 && typeof L === 'undefined'; i++) await wait(200);
+    } catch (_) {}
+    if (typeof L === 'undefined' && mapElement) {
+      mapElement.innerHTML = '<div style="display:grid;place-items:center;height:100%;padding:2rem;text-align:center;color:#6b7280;">🗺️ Map library could not load. Check your connection and <button class="btn btn-primary btn-sm" onclick="window.location.reload()">Reload</button></div>';
+    }
+    return typeof L !== 'undefined';
   },
 
   renderMapLayout() {
@@ -276,14 +304,9 @@ export const CustomerMap = {
   },
 
   async initLeafletMap(container) {
-    if (typeof L === 'undefined') {
-      console.error('Leaflet is not loaded!');
-      Toast.show('Leaflet Map library is loading...', 'info');
-      return;
-    }
-
     const mapElement = container.querySelector('#leaflet-map-canvas');
     if (!mapElement) return;
+    if (!(await this.ensureLeaflet(mapElement))) return;
 
     // Center on current location or demo city
     const initialCenter = [this.customerLocation.lat, this.customerLocation.lng];
@@ -294,11 +317,21 @@ export const CustomerMap = {
       zoomControl: true
     });
 
-    // Add standard OpenStreetMap tiles (free, zero API key)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Add standard OpenStreetMap tiles (free, zero API key), with a
+    // one-time fallback to Carto basemap if OSM tiles are blocked.
+    const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
     }).addTo(this.mapInstance);
+    tileLayer.on('tileerror', () => {
+      if (tileLayer.options.url.includes('openstreetmap')) {
+        tileLayer.setUrl('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', true);
+      }
+    });
+
+    // Keep tiles crisp when the window/sidebar resizes
+    this._onResize = () => { if (this.mapInstance) this.mapInstance.invalidateSize(); };
+    window.addEventListener('resize', this._onResize);
 
     // Add customer marker
     this.customerMarker = L.marker(initialCenter, {
@@ -420,11 +453,14 @@ export const CustomerMap = {
 
       try {
         const res = await fetch(`/api/workers/nearby?${params.toString()}`);
-        if (res.ok) {
+        // On Vercel the static fallback returns index.html (200) for API
+        // paths — only treat an actual JSON response as worker data.
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
           const data = await res.json();
           workers = Array.isArray(data) ? data : (data.workers || []);
         } else {
-          throw new Error('Server returned non-200');
+          throw new Error('Server endpoint unavailable');
         }
       } catch (e) {
         // Fallback to client-side store if server endpoint is unavailable
@@ -946,6 +982,10 @@ export const CustomerMap = {
     if (this.sseSource) {
       this.sseSource.close();
       this.sseSource = null;
+    }
+    if (this._onResize) {
+      window.removeEventListener('resize', this._onResize);
+      this._onResize = null;
     }
     if (this.mapInstance) {
       this.mapInstance.remove();
