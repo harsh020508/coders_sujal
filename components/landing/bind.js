@@ -53,11 +53,26 @@ export function bindLanding(root, { onCategory, onThemeToggle, onGetStarted, onS
   root.querySelector('#get-started-btn')?.addEventListener('click', onGetStarted);
   root.querySelector('#hero-find-pro-btn')?.addEventListener('click', onGetStarted);
   root.querySelector('#sp-cta-btn')?.addEventListener('click', onGetStarted);
+  root.querySelector('#essential-cta')?.addEventListener('click', () => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' }));
   root.querySelector('#cta-find-pro-btn')?.addEventListener('click', onGetStarted);
   root.querySelector('#cta-demo-btn')?.addEventListener('click', onDemo || onGetStarted);
-  root.querySelector('#hero-explore-btn')?.addEventListener('click', () => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }));
+  root.querySelector('#cta-explore-btn')?.addEventListener('click', () => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' }));
+  root.querySelector('#hero-explore-btn')?.addEventListener('click', () => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' }));
   root.querySelector('#theme-toggle-btn')?.addEventListener('click', onThemeToggle);
   root.querySelector('#mobile-theme-toggle-btn')?.addEventListener('click', onThemeToggle);
+
+  // Interactive locality chips — persists and updates the "Near:" label.
+  root.querySelectorAll('[data-locality]').forEach(chip => chip.addEventListener('click', () => {
+    root.querySelectorAll('[data-locality]').forEach(c => { c.classList.remove('is-active'); c.setAttribute('aria-pressed', 'false'); });
+    chip.classList.add('is-active'); chip.setAttribute('aria-pressed', 'true');
+    try { localStorage.setItem('localkaam_customer_locality', chip.dataset.locality); } catch (e) {}
+    const label = root.querySelector('#locality-current');
+    if (label) label.textContent = chip.textContent.trim();
+  }));
+  try {
+    const saved = localStorage.getItem('localkaam_customer_locality');
+    root.querySelector(`[data-locality="${saved}"]`)?.click();
+  } catch (e) {}
 
   // Category pills + tiles
   root.querySelectorAll('[data-category]').forEach(el => el.addEventListener('click', () => onCategory(el.getAttribute('data-category'))));

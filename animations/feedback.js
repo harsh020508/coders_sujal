@@ -66,39 +66,10 @@ export function shake(el) {
 }
 
 async function magneticAndTilt() {
-  if (prefersReducedMotion()) return;
-  const fine = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
-  const wide = window.matchMedia && window.matchMedia('(min-width: 1024px)').matches;
-  if (!fine || !wide) return;
-  const loaded = await loadGsap();
-  if (!loaded) return;
-  const gsap = loaded.gsap;
-
-  document.querySelectorAll('.btn-primary, .btn-lg, #get-started-btn, #hero-find-pro-btn').forEach((btn) => {
-    if (btn.dataset.magnetic) return;
-    btn.dataset.magnetic = '1';
-    const strength = 0.28;
-    btn.addEventListener('mousemove', (e) => {
-      const r = btn.getBoundingClientRect();
-      const x = e.clientX - r.left - r.width / 2;
-      const y = e.clientY - r.top - r.height / 2;
-      gsap.to(btn, { x: x * strength, y: y * strength, duration: 0.4, ease: 'elastic.out(1, 0.5)', overwrite: 'auto' });
-    });
-    btn.addEventListener('mouseleave', () => gsap.to(btn, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.4)' }));
-  });
-
-  document.querySelectorAll('.ui-card--interactive, .category-card, .worker-card').forEach((card) => {
-    if (card.dataset.tilt) return;
-    card.dataset.tilt = '1';
-    card.style.perspective = '900px';
-    card.addEventListener('mousemove', (e) => {
-      const r = card.getBoundingClientRect();
-      const px = (e.clientX - r.left) / r.width - 0.5;
-      const py = (e.clientY - r.top) / r.height - 0.5;
-      gsap.to(card, { rotateY: px * 8, rotateX: -py * 8, transformPerspective: 900, duration: 0.5, ease: 'power2.out', overwrite: 'auto' });
-    });
-    card.addEventListener('mouseleave', () => gsap.to(card, { rotateX: 0, rotateY: 0, duration: 0.6, ease: 'elastic.out(1, 0.5)' }));
-  });
+  // Intentionally disabled: pointer-following magnetic/tilt transforms made
+  // buttons feel like they lag or trail the cursor. Hover lifts + squish in
+  // motion.css cover the delight without any cursor tracking.
+  return;
 }
 
 function ambientBlobs() {

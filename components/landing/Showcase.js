@@ -1,41 +1,46 @@
-// components/landing/Showcase.js — tabbed features + comparison.
-import { T } from './data.js';
+// components/landing/Showcase.js — services (12) + why choose us.
+export const SERVICES_12 = [
+  ['cleaning', 'sparkles', 'Home Cleaning', 'Deep cleaning, kitchens, bathrooms & sofas.'],
+  ['plumber', 'droplets', 'Plumbing', 'Leaks, blockages, fittings & water tanks.'],
+  ['electrician', 'zap', 'Electrical Repairs', 'Wiring, switches, fans & fault finding.'],
+  ['ac_repair', 'snowflake', 'AC Servicing', 'Installation, gas refill & deep service.'],
+  ['appliance_repair', 'plug-zap', 'Appliance Repair', 'Washers, fridges, microwaves & RO.'],
+  ['painter', 'paint-roller', 'Painting', 'Fresh coats, touch-ups & waterproofing.'],
+  ['carpenter', 'hammer', 'Carpentry', 'Doors, furniture, locks & custom work.'],
+  ['pest_control', 'bug', 'Pest Control', 'Cockroaches, termites & mosquitoes.'],
+  ['other', 'leaf', 'Gardening', 'Plant care, pruning & balcony upkeep.'],
+  ['shifting', 'truck', 'Moving and Packing', 'Local shifting with packing help.'],
+  ['other', 'scissors', 'Salon at Home', 'Haircuts & grooming at your door.'],
+  ['other', 'wrench', 'General Maintenance', 'Hanging, fixing & small repairs.']
+];
 
-export function tabsHTML() {
-  const tabs = T.pillars;
+export function servicesHTML(esc) {
   return `
-  <section class="section-container" id="features">
-    <h2 class="section-title">Everything your team relies on, working together</h2>
-    <p class="section-subtitle">Five tools that replace phone tags, paper bills and masked calls.</p>
-    <div class="lk-tabs" data-tabs>
-      <div class="lk-tablist" role="tablist" aria-label="Features">
-        ${tabs.map((t, i) => `<button type="button" role="tab" id="tab-${t.id}" aria-controls="panel-${t.id}" aria-selected="${i === 0}" data-tab="${t.id}" class="${i === 0 ? 'is-active' : ''}"><i data-lucide="${t.icon}" class="lucide-md"></i> ${t.name}<span class="lk-tab-progress" aria-hidden="true"><span></span></span></button>`).join('')}
-      </div>
-      <div class="lk-tabpanels">
-        ${tabs.map((t, i) => `
-        <div class="lk-tabpanel ${i === 0 ? 'is-active' : ''}" role="tabpanel" id="panel-${t.id}" aria-labelledby="tab-${t.id}" ${i === 0 ? '' : 'hidden'}>
-          <div class="lk-tab-text"><h3>${t.headline}</h3><p>${t.desc}</p><ul>${t.bullets.map(b => `<li><i data-lucide="check" class="lucide-sm"></i> ${b}</li>`).join('')}</ul><a href="${t.link}" class="settings-link">Explore ${t.name.toLowerCase()} →</a></div>
-          <div class="lk-tab-visual" aria-hidden="true"><i data-lucide="${t.icon}" class="lucide-xl"></i><strong>${t.name}</strong><span>${t.bullets[0]}</span><span class="lk-tab-bar"><span style="width:${55 + i * 11}%"></span></span></div>
-        </div>`).join('')}
-      </div>
+  <section class="section-container" id="services">
+    <div style="max-width:760px;margin:0 auto 36px;text-align:center;">
+      <h2 class="section-title">Everything Your Home Needs, All in One Place.</h2>
+      <p class="section-subtitle">Find reliable professionals for everyday household jobs, essential repairs, and home maintenance without the hassle.</p>
+    </div>
+    <div class="lk-services-grid">
+      ${SERVICES_12.map(s => `<article class="lk-service-card"><span class="lk-service-icon"><i data-lucide="${s[1]}" class="lucide-lg"></i></span><h3>${s[2]}</h3><p>${s[3]}</p><button type="button" class="lk-service-btn" data-category="${s[0]}">Explore <i data-lucide="arrow-right" class="lucide-xs"></i></button></article>`).join('')}
     </div>
   </section>`;
 }
 
-export function comparisonHTML() {
+export function whyHTML() {
+  const feats = [
+    ['shield-check', 'Verified Professionals', 'Reviewed pros with relevant skills and experience.'],
+    ['indian-rupee', 'Transparent Pricing', 'See charges before you confirm your booking.'],
+    ['calendar-check', 'Convenient Scheduling', 'Pick a time that fits your daily routine.'],
+    ['heart-handshake', 'Reliable Support', 'Help with bookings and service questions.']
+  ];
   return `
-  <section class="section-container" id="problem">
-    <h2 class="section-title">Why connected work wins</h2>
-    <p class="section-subtitle">The old way scatters your home across apps and phone calls.</p>
-    <div class="lk-vs">
-      <div class="lk-vs-col is-old">
-        <h3><i data-lucide="x" class="lucide-md"></i> The old way</h3>
-        <ul><li><i data-lucide="x" class="lucide-xs"></i><span><strong>Scattered.</strong> Separate apps, numbers, paper bills.</span></li><li><i data-lucide="clock" class="lucide-xs"></i><span><strong>Manual.</strong> Fixed menus, surge fees, no negotiation.</span></li><li><i data-lucide="turtle" class="lucide-xs"></i><span><strong>Slow.</strong> City-wide strangers, masked calls.</span></li></ul>
-      </div>
-      <div class="lk-vs-col is-ours">
-        <h3><i data-lucide="check" class="lucide-md"></i> With LocalKaam</h3>
-        <ul><li><i data-lucide="link" class="lucide-xs"></i><span><strong>Connected.</strong> Book, track, pay, review in one place.</span></li><li><i data-lucide="zap" class="lucide-xs"></i><span><strong>Fast.</strong> Neighbours arrive in ~25 minutes.</span></li><li><i data-lucide="hand-coins" class="lucide-xs"></i><span><strong>Fair.</strong> 0% commission, direct payment.</span></li></ul>
-      </div>
+  <section class="section-container" id="usps">
+    <div style="max-width:760px;margin:0 auto 36px;text-align:center;">
+      <h2 class="section-title">Why Good Service Makes All the Difference.</h2>
+    </div>
+    <div class="lk-why-grid">
+      ${feats.map(f => `<article class="lk-why-card"><span class="lk-card-icon"><i data-lucide="${f[0]}" class="lucide-lg"></i></span><h3>${f[1]}</h3><p>${f[2]}</p></article>`).join('')}
     </div>
   </section>`;
 }
