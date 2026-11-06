@@ -965,10 +965,15 @@ export const server = http.createServer(async (req, res) => {
       }
 
       const DEMO_MODE = process.env.DEMO_MODE === 'true';
-      const API_KEY = process.env.AI_API_KEY || process.env.GEMINI_API_KEY || '';
+      const API_KEYS = [
+        ...(process.env.GEMINI_API_KEYS || '').split(/[,\n\r]+/),
+        ...(process.env.AI_API_KEYS || '').split(/[,\n\r]+/),
+        process.env.AI_API_KEY || '',
+        process.env.GEMINI_API_KEY || ''
+      ].map((k) => String(k || '').trim()).filter(Boolean);
 
       // Use demo fallback if no key or demo mode
-      if (DEMO_MODE || !API_KEY) {
+      if (DEMO_MODE || !API_KEYS.length) {
         const demoResult = getDemoAiResult(note);
         return sendJson(res, 200, { success: true, diagnosis: demoResult, ...demoResult });
       }
@@ -1020,21 +1025,24 @@ Rules:
         }
       };
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-      const aiRes = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiBody)
-      });
-
-      if (!aiRes.ok) {
+      const MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+      let aiData = null;
+      for (const apiKey of API_KEYS) {
+        const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(geminiBody)
+        });
+        if (aiRes.ok) { aiData = await aiRes.json(); break; }
         console.error('Gemini API error:', aiRes.status);
+        if (!(aiRes.status === 401 || aiRes.status === 403 || aiRes.status === 429 || aiRes.status >= 500)) break;
+      }
+
+      if (!aiData) {
         // Fallback to demo on API error
         const fallback = getDemoAiResult(note);
         return sendJson(res, 200, { success: true, diagnosis: fallback, ...fallback });
       }
-
-      const aiData = await aiRes.json();
       let text = aiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
       // Strip markdown fences if present
       text = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();

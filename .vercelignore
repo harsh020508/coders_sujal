@@ -4,5 +4,6 @@ server.js
 *.db-wal
 *.db-shm
 .env
+vercel.env
 .env.local
 node_modules
