@@ -1509,9 +1509,11 @@ export const WorkerFrontend = {
       };
     }
 
-    // Sidebar navigation clicks
+    // Sidebar navigation clicks (mouse + keyboard)
     container.querySelectorAll('.sidebar-item').forEach(item => {
-      item.addEventListener('click', () => {
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('role', 'button');
+      const go = () => {
         const view = item.getAttribute('data-view');
         this.currentView = view;
         this.activeView = view;
@@ -1533,6 +1535,10 @@ export const WorkerFrontend = {
           this.attachViewEvents(view, container, worker);
         if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
         }
+      };
+      item.addEventListener('click', go);
+      item.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
       });
     });
 

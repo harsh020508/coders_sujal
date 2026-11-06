@@ -52,11 +52,11 @@ export const CustomerFrontend = {
               <span>Discover Services</span>
             </div>
             <div class="sidebar-item" data-view="map">
-              <span>🗺️</span>
+              <span><i data-lucide="map" class="lucide-xs"></i></span>
               <span>Live Map &amp; Nearby</span>
             </div>
             <div class="sidebar-item" data-view="photo">
-              <span>📸</span>
+              <span><i data-lucide="camera" class="lucide-xs"></i></span>
               <span>AI Photo Diagnosis</span>
             </div>
             <div class="sidebar-item" data-view="bookings">
@@ -134,6 +134,9 @@ export const CustomerFrontend = {
 
   renderDiscoverView(eligibleWorkers) {
     const localityObj = LOCALITIES.find(l => l.id === StorageService.getCustomerLocality()) || { name: 'Mumbai' };
+    const allBookings = StorageService.getBookings();
+    const activeBookings = allBookings.filter(b => !['Job completed', 'Cancelled', 'Disputed'].includes(b.status)).length;
+    const completedBookings = allBookings.filter(b => b.status === 'Job completed').length;
     return `
       <div class="dashboard-header">
         <div>
@@ -142,12 +145,27 @@ export const CustomerFrontend = {
         </div>
       </div>
 
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-card-header"><span>Workers Nearby</span><i data-lucide="users" class="lucide-xs"></i></div>
+          <h2>${eligibleWorkers.length}</h2>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-header"><span>Active Bookings</span><i data-lucide="calendar" class="lucide-xs"></i></div>
+          <h2>${activeBookings}</h2>
+        </div>
+        <div class="metric-card">
+          <div class="metric-card-header"><span>Completed Jobs</span><i data-lucide="circle-check" class="lucide-xs"></i></div>
+          <h2>${completedBookings}</h2>
+        </div>
+      </div>
+
       <!-- Quick Action Cards: AI Photo Diagnosis & Live Interactive Map -->
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.75rem;">
-        <div style="background: linear-gradient(135deg, rgba(26, 51, 0, 0.05), rgba(213, 245, 194, 0.35)); border: 1.5px solid var(--accent-primary); border-radius: 12px; padding: 1.15rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: var(--shadow-subtle);">
+        <div class="quick-action-card">
           <div>
             <div style="display: flex; align-items: center; gap: 0.4rem; font-weight: 800; font-size: 1.05rem; color: var(--text-primary); margin-bottom: 0.2rem;">
-              <span>📸</span> AI Photo Diagnosis
+              <i data-lucide="camera" class="lucide-sm"></i> AI Photo Diagnosis
               <span class="badge" style="background: var(--accent-primary); color: white; font-size: 0.65rem;">Gemini</span>
             </div>
             <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0; line-height: 1.3;">
@@ -159,17 +177,17 @@ export const CustomerFrontend = {
           </button>
         </div>
 
-        <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(219, 234, 254, 0.4)); border: 1.5px solid #2563eb; border-radius: 12px; padding: 1.15rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: var(--shadow-subtle);">
+        <div class="quick-action-card quick-action-card--map">
           <div>
-            <div style="display: flex; align-items: center; gap: 0.4rem; font-weight: 800; font-size: 1.05rem; color: #1e40af; margin-bottom: 0.2rem;">
-              <span>🗺️</span> Interactive Live Map
+            <div style="display: flex; align-items: center; gap: 0.4rem; font-weight: 800; font-size: 1.05rem; color: var(--text-primary); margin-bottom: 0.2rem;">
+              <i data-lucide="map" class="lucide-sm"></i> Interactive Live Map
               <span class="badge" style="background: #2563eb; color: white; font-size: 0.65rem;">OSM Free</span>
             </div>
             <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0; line-height: 1.3;">
               Explore workers on map with live distance, Nominatim address search &amp; live OSRM turn-by-turn tracking.
             </p>
           </div>
-          <button class="btn btn-outline btn-sm" id="hero-btn-live-map" style="flex-shrink: 0; white-space: nowrap; border-color: #2563eb; color: #2563eb; background: white;">
+          <button class="btn btn-outline btn-sm" id="hero-btn-live-map" style="flex-shrink: 0; white-space: nowrap;">
             Open Map →
           </button>
         </div>
@@ -434,9 +452,12 @@ export const CustomerFrontend = {
     }
 
     container.querySelectorAll('.sidebar-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const view = item.getAttribute('data-view');
-        this.switchView(view, {}, container);
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('role', 'button');
+      const go = () => this.switchView(item.getAttribute('data-view'), {}, container);
+      item.addEventListener('click', go);
+      item.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
       });
     });
 
