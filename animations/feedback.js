@@ -72,13 +72,8 @@ async function magneticAndTilt() {
 }
 
 function ambientBlobs() {
-  if (prefersReducedMotion()) return;
-  if (document.getElementById('ambient-blobs')) return;
-  const wrap = document.createElement('div');
-  wrap.id = 'ambient-blobs';
-  wrap.setAttribute('aria-hidden', 'true');
-  wrap.innerHTML = '<span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>';
-  document.body.prepend(wrap);
+  // Disabled to eliminate continuous 60px blur filter rasterization
+  return;
 }
 
 export async function initPolish() {

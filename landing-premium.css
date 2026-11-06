@@ -638,3 +638,16 @@
 .landing-hero h1, .section-container h2, .lk-sp-left h3 { cursor: default; }
 h1, h2, h3 { caret-color: transparent; }
 button, a { cursor: pointer; }
+
+/* GPU hardware acceleration for 120Hz high refresh rate screens */
+.landing-hero,
+.lk-service-card,
+.lk-why-card,
+.lk-step-card,
+.role-card,
+.btn,
+.navbar {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}

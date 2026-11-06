@@ -168,10 +168,15 @@ export const CustomerMap = {
   // never arrives (blocked/slow network), inject it ourselves and wait
   // again — instead of leaving a blank grey box forever.
   async ensureLeaflet(mapElement) {
-    const wait = (ms) => new Promise(r => setTimeout(r, ms));
-    for (let i = 0; i < 25 && typeof L === 'undefined'; i++) await wait(200); // ~5s
     if (typeof L !== 'undefined') return true;
     try {
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
       await new Promise((resolve, reject) => {
         const s = document.createElement('script');
         s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
@@ -179,7 +184,6 @@ export const CustomerMap = {
         s.onerror = reject;
         document.head.appendChild(s);
       });
-      for (let i = 0; i < 25 && typeof L === 'undefined'; i++) await wait(200);
     } catch (_) {}
     if (typeof L === 'undefined' && mapElement) {
       mapElement.innerHTML = '<div style="display:grid;place-items:center;height:100%;padding:2rem;text-align:center;color:#6b7280;">🗺️ Map library could not load. Check your connection and <button class="btn btn-primary btn-sm" onclick="window.location.reload()">Reload</button></div>';
