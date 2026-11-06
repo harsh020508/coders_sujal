@@ -36,6 +36,8 @@ export const CustomerFrontend = {
     const notifications = StorageService.getNotifications();
     const unreadNotifsCount = notifications.filter(n => !n.isRead).length;
     const customerLocality = StorageService.getCustomerLocality();
+    const availableLocalities = MatchingService.getAvailableLocalities(workers);
+    const currentLocalityName = (LOCALITIES.find(l => l.id === customerLocality) || { name: customerLocality }).name;
     let eligibleWorkers = MatchingService.getEligibleWorkers(workers, customerLocality, this.currentCategory, this.searchQuery);
     eligibleWorkers = this.sortWorkers(eligibleWorkers);
 
@@ -83,12 +85,19 @@ export const CustomerFrontend = {
           </div>
 
           <div class="sidebar-locality-box">
-            <label for="locality-select">
+            <label for="locality-input">
               Service Location
             </label>
-            <select id="locality-select" class="form-select">
-              ${LOCALITIES.map(l => `<option value="${esc(l.id)}" ${l.id === customerLocality ? 'selected' : ''}>${esc(l.name)} (${esc(l.zone)})</option>`).join('')}
-            </select>
+            <input type="text" id="locality-input" class="form-control" list="locality-suggestions"
+              autocomplete="off" placeholder="Type your city or locality…"
+              value="${esc(currentLocalityName)}"
+              style="width: 100%; box-sizing: border-box; font-size: 0.88rem; padding: 0.5rem 0.6rem;" />
+            <datalist id="locality-suggestions">
+              ${availableLocalities.map(l => `<option value="${esc(l.name)}">${esc(l.name)} (${esc(l.zone)}) · ${l.workerCount} worker${l.workerCount !== 1 ? 's' : ''} available</option>`).join('')}
+            </datalist>
+            <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">
+              Only cities with available workers are listed.
+            </div>
           </div>
         </aside>
 
@@ -394,12 +403,33 @@ export const CustomerFrontend = {
   },
 
   attachEvents(container) {
-    const localitySelect = container.querySelector('#locality-select');
-    if (localitySelect) {
-      localitySelect.addEventListener('change', (e) => {
-        StorageService.setCustomerLocality(e.target.value);
-        Toast.show(`Location updated to ${e.target.options[e.target.selectedIndex].text}`, 'info');
+    // Service Location: type-ahead input, restricted to cities where
+    // workers are available. Unknown cities (or cities with no online
+    // workers) get a popup instead of silently changing location.
+    const localityInput = container.querySelector('#locality-input');
+    if (localityInput) {
+      const applyLocality = () => {
+        const raw = localityInput.value;
+        const matched = MatchingService.findLocalityByName(raw);
+        const available = MatchingService.getAvailableLocalities(StorageService.getWorkers());
+        if (!matched) {
+          const names = available.map(l => l.name).join(', ') || 'none right now';
+          Toast.show(`Workers are not available in "${raw.trim()}" yet. Available in: ${names}.`, 'warning');
+          localityInput.value = (LOCALITIES.find(l => l.id === StorageService.getCustomerLocality()) || { name: '' }).name;
+          return;
+        }
+        if (!available.some(l => l.id === matched.id)) {
+          Toast.show(`No workers are available in ${matched.name} right now. Please pick another city.`, 'warning');
+          localityInput.value = (LOCALITIES.find(l => l.id === StorageService.getCustomerLocality()) || { name: '' }).name;
+          return;
+        }
+        StorageService.setCustomerLocality(matched.id);
+        Toast.show(`Location updated to ${matched.name}`, 'success');
         this.render(container);
+      };
+      localityInput.addEventListener('change', applyLocality);
+      localityInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); applyLocality(); }
       });
     }
 
@@ -1306,6 +1336,14 @@ export const CustomerFrontend = {
     }
     if (!worker.available) {
       Toast.show('This professional is currently offline and not accepting new bookings.', 'warning');
+      return;
+    }
+    // City check: the worker must actually serve the customer's location.
+    const customerLocalityId = StorageService.getCustomerLocality();
+    if (!MatchingService.isWorkerAvailableIn(worker, customerLocalityId)) {
+      const customerLocName = (LOCALITIES.find(l => l.id === customerLocalityId) || {}).name || customerLocalityId;
+      const workerLocName = (LOCALITIES.find(l => l.id === worker.baseLocality) || {}).name || worker.baseLocality;
+      Toast.show(`${worker.name} is not available in ${customerLocName}. They serve from ${workerLocName} (up to ${worker.serviceRadius || 10} km). Please choose a worker in your city.`, 'warning');
       return;
     }
 

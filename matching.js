@@ -5,6 +5,41 @@ export const MatchingService = {
     return LOCALITIES.find(l => l.id === id) || LOCALITIES[0];
   },
 
+  // Match a typed city/locality name ("andheri", "Andheri West", …)
+  // to a known locality. Returns null for unknown cities (e.g. Delhi).
+  findLocalityByName(query, localities = LOCALITIES) {
+    if (!query || String(query).trim().length < 3) return null;
+    const q = String(query).trim().toLowerCase();
+    return localities.find(l =>
+      l.id === q ||
+      l.name.toLowerCase() === q ||
+      l.name.toLowerCase().startsWith(q) ||
+      l.id.startsWith(q)
+    ) || null;
+  },
+
+  // Only the localities where at least one available worker is based,
+  // each annotated with how many workers are there.
+  getAvailableLocalities(workers, localities = LOCALITIES) {
+    const counts = {};
+    for (const w of workers || []) {
+      if (w.available && !w.pauseNewBookings && w.baseLocality) {
+        counts[w.baseLocality] = (counts[w.baseLocality] || 0) + 1;
+      }
+    }
+    return localities
+      .filter(l => counts[l.id])
+      .map(l => ({ ...l, workerCount: counts[l.id] }))
+      .sort((a, b) => b.workerCount - a.workerCount);
+  },
+
+  // True when the worker can serve the customer's location (within
+  // their service radius from their base locality).
+  isWorkerAvailableIn(worker, customerLocalityId) {
+    if (!worker || !worker.available || worker.pauseNewBookings) return false;
+    return this.calculateDistance(worker.baseLocality, customerLocalityId) <= (worker.serviceRadius || 10);
+  },
+
   calculateDistance(loc1Id, loc2Id) {
     const l1 = this.getLocality(loc1Id);
     const l2 = this.getLocality(loc2Id);
