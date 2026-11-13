@@ -1,11 +1,12 @@
 import { StorageService } from './storage.js';
 import { BookingService } from './bookings.js';
 import { CATEGORIES, LOCALITIES, COMPLAINT_CATEGORIES, REQUIRED_VERIFICATION_DOCUMENTS } from './data.js';
-import { WorkerFeedback, WorkerEarnings } from './worker_new_features.js';
+import { WorkerFeedback, WorkerEarnings, buildDailyEarningsBuckets, buildEarningsSparklineSVG } from './worker_new_features.js';
 import { Toast } from './toast.js';
 import { AuthService } from './authService.js';
 import { esc } from './utils.js';
 import { i18n, t } from './i18n.js';
+import { WorkerPartsPanel, MaterialSourcingService, PARTS_CATALOG } from './materialSourcing.js';
 
 export const WorkerFrontend = {
   currentView: 'overview',
@@ -118,6 +119,7 @@ export const WorkerFrontend = {
 
     this.attachEvents(container);
     if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+    try { i18n.translateDOM(container); } catch (_) {}
   },
 
   renderMainContent(view, worker, pendingRequests, activeJobs, completedJobs, totalEarnings, bookings) {
@@ -294,7 +296,7 @@ export const WorkerFrontend = {
                     Slot: <strong style="color:var(--ink);">${esc(b.appointmentDate)} @ ${esc(b.appointmentTime)}</strong>
                     &nbsp;·&nbsp;
                     Base + Visit: ₹${(b.basePrice || 350) + (b.visitingCharge || 100)}
-                    ${b.customerOffer ? `<br><span style="color: var(--peacock-600); font-weight: 700;">💬 Customer Offered: ₹${b.customerOffer}</span>` : ''}
+                    ${b.customerOffer ? `<br><span style="color: var(--accent-primary); font-weight: 700;">💬 Customer Offered: ₹${b.customerOffer}</span>` : ''}
                   </div>
                 </div>
                 <div class="request-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -490,6 +492,15 @@ export const WorkerFrontend = {
 
     const maxDayVal = Math.max(...dayEarnings, 1200);
 
+    // Date-accurate 30-day trend for the sparkline card
+    const trendBuckets = buildDailyEarningsBuckets(completedJobsList, 30);
+    const trendSVG = buildEarningsSparklineSVG(trendBuckets);
+    const trendTotal = trendBuckets.reduce((a, b) => a + b.total, 0);
+    const trendActiveDays = trendBuckets.filter(b => b.total > 0).length;
+    const reducedMotion = (typeof window !== 'undefined' && typeof window.matchMedia === 'function')
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false;
+
     // Service category breakdown
     const categoryTotals = {};
     completedJobsList.forEach(b => {
@@ -531,7 +542,7 @@ export const WorkerFrontend = {
           <div class="metric-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
               <span style="font-size:0.8rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Total Take-Home</span>
-              <span style="width:36px;height:36px;border-radius:50%;background:#e0f2fe;color:#0284c7;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;">💰</span>
+              <span class="worker-stat-badge stat-blue">💰</span>
             </div>
             <div style="font-size:1.85rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.03em;">₹${Math.round(netTakeHome).toLocaleString('en-IN')}</div>
             <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;display:flex;align-items:center;gap:4px;">
@@ -543,7 +554,7 @@ export const WorkerFrontend = {
           <div class="metric-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
               <span style="font-size:0.8rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">This Month</span>
-              <span style="width:36px;height:36px;border-radius:50%;background:#fef3c7;color:#d97706;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;">📅</span>
+              <span class="worker-stat-badge stat-amber">📅</span>
             </div>
             <div style="font-size:1.85rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.03em;">₹${Math.round(thisMonth).toLocaleString('en-IN')}</div>
             <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;">
@@ -555,10 +566,10 @@ export const WorkerFrontend = {
           <div class="metric-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
               <span style="font-size:0.8rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Avg. Ticket Value</span>
-              <span style="width:36px;height:36px;border-radius:50%;background:#dcfce7;color:#16a34a;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;">⚡</span>
+              <span class="worker-stat-badge stat-green">⚡</span>
             </div>
             <div style="font-size:1.85rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.03em;">₹${Math.round(avgJob).toLocaleString('en-IN')}</div>
-            <div style="font-size:0.75rem;color:#16a34a;font-weight:600;margin-top:0.5rem;">
+            <div style="font-size:0.75rem;color:var(--color-success);font-weight:600;margin-top:0.5rem;">
               +12% vs Mumbai locality avg
             </div>
           </div>
@@ -567,7 +578,7 @@ export const WorkerFrontend = {
           <div class="metric-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
               <span style="font-size:0.8rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Client Rating</span>
-              <span style="width:36px;height:36px;border-radius:50%;background:#f3e8ff;color:#9333ea;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;">⭐</span>
+              <span class="worker-stat-badge stat-purple">⭐</span>
             </div>
             <div style="font-size:1.85rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.03em;">${ratingVal} <span style="font-size:1.1rem;color:#f59e0b;">★</span></div>
             <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;">
@@ -626,8 +637,10 @@ export const WorkerFrontend = {
                     <g style="cursor:pointer;">
                       <title>${day}: ₹${val.toFixed(2)}</title>
                       <rect x="${x}" y="${y}" width="38" height="${barH}" rx="6" fill="${fill}">
+                        ${reducedMotion ? '' : `
                         <animate attributeName="height" from="0" to="${barH}" dur="0.5s" fill="freeze" />
                         <animate attributeName="y" from="160" to="${y}" dur="0.5s" fill="freeze" />
+                        `}
                       </rect>
                       ${val > 0 ? `<text x="${x + 19}" y="${y - 6}" font-size="10" font-family="Inter,sans-serif" font-weight="700" fill="var(--text-primary)" text-anchor="middle">₹${Math.round(val)}</text>` : ''}
                       <text x="${x + 19}" y="180" font-size="11" font-family="Inter,sans-serif" font-weight="${isToday ? '800' : '600'}" fill="${isToday ? 'var(--text-primary)' : 'var(--text-secondary)'}" text-anchor="middle">${day}</text>
@@ -681,6 +694,22 @@ export const WorkerFrontend = {
               </div>
             </div>
           </div>
+
+          <!-- Chart 3: Date-accurate 30-day earnings sparkline -->
+          <div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+              <div>
+                <h3 style="font-size:1.05rem;font-weight:700;margin:0 0 2px 0;">Last 30 Days</h3>
+                <p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">Date-by-date earnings curve with daily totals</p>
+              </div>
+              <span style="font-size:0.75rem;font-weight:700;color:var(--color-forest-ink,#1a3300);background:var(--color-highlighter-yellow,#ffe95c);padding:2px 8px;border-radius:4px;">
+                ₹${Math.round(trendTotal).toLocaleString('en-IN')} / ${trendActiveDays}d
+              </span>
+            </div>
+            <div style="width:100%;overflow-x:auto;">
+              ${trendSVG}
+            </div>
+          </div>
         </div>
 
         <!-- Recent Transactions & Settlement Ledger -->
@@ -721,10 +750,10 @@ export const WorkerFrontend = {
                         <td style="padding:0.85rem 0.5rem;color:var(--text-secondary);font-size:0.8rem;">${new Date(t.date || Date.now()).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}</td>
                         <td style="padding:0.85rem 0.5rem;text-align:right;color:var(--text-secondary);">₹${Number(t.amount || 0).toFixed(2)}</td>
                         <td style="padding:0.85rem 0.5rem;text-align:right;color:var(--text-muted);font-size:0.8rem;">-₹${Number(t.platformFee || 0).toFixed(2)}</td>
-                        <td style="padding:0.85rem 0.5rem;text-align:right;font-weight:800;color:#16a34a;">₹${Number(netAmt).toFixed(2)}</td>
+                        <td style="padding:0.85rem 0.5rem;text-align:right;font-weight:800;color:var(--color-success);">₹${Number(netAmt).toFixed(2)}</td>
                         <td style="padding:0.85rem 0.5rem;text-align:center;font-size:0.8rem;color:var(--text-secondary);">${t.paymentMethod || 'UPI Direct'}</td>
                         <td style="padding:0.85rem 0.5rem;text-align:center;">
-                          <span style="display:inline-block;padding:2px 8px;border-radius:9999px;font-size:0.75rem;font-weight:700;${isPaid ? 'background:#dcfce7;color:#166534;' : 'background:#fef3c7;color:#92400e;'}">
+                          <span style="display:inline-block;padding:2px 8px;border-radius:9999px;font-size:0.75rem;font-weight:700;${isPaid ? 'background:rgba(16,185,129,0.18);color:var(--color-success, #10b981);' : 'background:rgba(217,119,6,0.18);color:var(--color-warning, #f59e0b);'}">
                             ${isPaid ? '✓ Paid' : '⏳ Pending'}
                           </span>
                         </td>
@@ -834,6 +863,7 @@ export const WorkerFrontend = {
                         ${['Confirmed', 'Accepted', 'Worker en route'].includes(b.status) ? `<button class="btn btn-outline btn-xs verify-otp-btn" data-id="${esc(b.id)}"><i data-lucide="shield-check" class="lucide-xs"></i> Verify OTP</button>` : ''}
                         ${b.status === 'Worker arrived' ? `<button class="btn btn-primary btn-xs start-job-btn" data-id="${esc(b.id)}"><i data-lucide="play" class="lucide-xs"></i> Start Job</button>` : ''}
                         ${b.status === 'Job in progress' ? `<button class="btn btn-success btn-xs complete-job-btn" data-id="${esc(b.id)}"><i data-lucide="check-circle" class="lucide-xs"></i> Complete Job</button>` : ''}
+                        ${['Worker arrived', 'Job in progress'].includes(b.status) ? `<button class="btn btn-outline btn-xs request-parts-btn" data-id="${esc(b.id)}" style="border-color:#d97706;color:#d97706;" title="Request parts delivery to job site"><i data-lucide="package" class="lucide-xs"></i> Parts</button>` : ''}
                       </div>
                     </td>
                   </tr>
@@ -1533,7 +1563,8 @@ export const WorkerFrontend = {
         if (mainContent) {
           mainContent.innerHTML = this.renderMainContent(view, worker, pendingRequests, activeJobs, completedJobs, totalEarnings, bookings);
           this.attachViewEvents(view, container, worker);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+          if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+          try { i18n.translateDOM(mainContent); } catch (_) {}
         }
       };
       item.addEventListener('click', go);
@@ -1649,6 +1680,7 @@ export const WorkerFrontend = {
         if (mainContent) {
           mainContent.innerHTML = this.renderEarningsDashboardView(worker.id);
           this.attachEarningsEvents(container, worker);
+          try { i18n.translateDOM(mainContent); } catch (_) {}
         }
       });
     }
@@ -1661,6 +1693,7 @@ export const WorkerFrontend = {
         if (mainContent) {
           mainContent.innerHTML = this.renderEarningsDashboardView(worker.id);
           this.attachEarningsEvents(container, worker);
+          try { i18n.translateDOM(mainContent); } catch (_) {}
         }
       });
     }
@@ -2149,7 +2182,57 @@ export const WorkerFrontend = {
         if (container && container.isConnected) this.render(container);
       };
     });
+
+    // 8. Request Parts (Feature 11) ─────────────────────────────────────────
+    container.querySelectorAll('.request-parts-btn').forEach(btn => {
+      btn.onclick = () => {
+        const bookingId = btn.getAttribute('data-id');
+        const bookings = StorageService.getBookings();
+        const booking = bookings.find(b => b.id === bookingId);
+        if (!booking) return;
+        const workers = StorageService.getWorkers();
+        const worker = workers.find(w => w.id === booking.workerId) || workers[0];
+        this.showPartsRequestModal(booking, worker, container);
+      };
+    });
   },
+
+  showPartsRequestModal(booking, worker, container) {
+    const existing = document.getElementById('parts-request-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'parts-request-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-card" style="max-width:760px;max-height:90vh;overflow-y:auto;">
+        <button class="modal-close" id="parts-modal-close" aria-label="Close">×</button>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <span style="font-size:1.5rem;">📦</span>
+          <div>
+            <h2 style="margin:0;font-size:1.25rem;font-weight:800;">Request Parts & Materials</h2>
+            <p style="margin:0;font-size:0.8rem;color:var(--text-muted);">
+              Job: <strong>${esc(booking.serviceTask)}</strong> · ${esc(booking.id)}
+            </p>
+          </div>
+        </div>
+        <div id="parts-form-area">
+          ${WorkerPartsPanel.renderRequestForm(booking, worker)}
+        </div>
+        <div class="parts-existing-section" style="margin-top:0;">
+          ${WorkerPartsPanel.renderExistingRequests(booking.id)}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    modal.querySelector('#parts-modal-close').onclick = () => modal.remove();
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+    WorkerPartsPanel.attachEvents(modal, booking, worker);
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
+  },
+
 
   // ------------------------------------------------------------------------
   // MODALS & ACTIONS
@@ -2196,6 +2279,7 @@ export const WorkerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    try { i18n.translateDOM(modal); } catch (_) {}
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#cancel-counter-btn').onclick = () => modal.remove();
 
@@ -2256,6 +2340,7 @@ export const WorkerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    try { i18n.translateDOM(modal); } catch (_) {}
     modal.querySelector('#close-payout-modal').onclick = () => modal.remove();
     modal.querySelector('#cancel-payout-btn').onclick = () => modal.remove();
 
@@ -2307,6 +2392,7 @@ export const WorkerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    try { i18n.translateDOM(modal); } catch (_) {}
     modal.querySelector('#close-receipt-modal').onclick = () => modal.remove();
     modal.querySelector('#ok-receipt-btn').onclick = () => modal.remove();
   },
@@ -2337,7 +2423,7 @@ export const WorkerFrontend = {
       <div style="background:var(--bg-card);border-radius:16px;padding:2rem;max-width:440px;width:100%;box-sizing:border-box;box-shadow:0 20px 60px rgba(0,0,0,0.25);position:relative;overflow:hidden;">
         <button id="otp-modal-close" aria-label="Close dialog" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-muted);">✕</button>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;">
-          <div style="width:48px;height:48px;border-radius:12px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">🔐</div>
+          <div style="width:48px;height:48px;border-radius:12px;background:var(--color-info-bg);color:var(--color-info);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">🔐</div>
           <div>
             <h3 style="margin:0;font-size:1.15rem;font-weight:800;">Verify Customer OTP</h3>
             <p style="margin:0;font-size:0.82rem;color:var(--text-muted);">Booking: ${bookingId}</p>
@@ -2346,7 +2432,7 @@ export const WorkerFrontend = {
         <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:1.25rem;line-height:1.5;">
           Ask your customer for the <strong>6-digit OTP</strong> shown in their app. Enter it below to confirm your arrival.
         </p>
-        <div id="otp-modal-error" style="display:none;padding:0.65rem 1rem;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;font-size:0.85rem;margin-bottom:1rem;"></div>
+        <div id="otp-modal-error" style="display:none;padding:0.65rem 1rem;border-radius:8px;background:var(--color-danger-bg, rgba(220,38,38,0.15));border:1px solid rgba(220,38,38,0.35);color:#f87171;font-size:0.85rem;margin-bottom:1rem;"></div>
         <div style="width:100%;box-sizing:border-box;margin-bottom:1.25rem;">
           <input id="otp-input-field"
             type="text"
@@ -2370,6 +2456,7 @@ export const WorkerFrontend = {
     `;
 
     document.body.appendChild(overlay);
+    try { i18n.translateDOM(overlay); } catch (_) {}
 
     const input = overlay.querySelector('#otp-input-field');
     const submitBtn = overlay.querySelector('#otp-submit-btn');
@@ -2378,7 +2465,7 @@ export const WorkerFrontend = {
 
     input.addEventListener('input', () => {
       input.value = input.value.replace(/\D/g, '').slice(0, 6);
-      if (input.value.length === 6) input.style.borderColor = '#16a34a';
+      if (input.value.length === 6) input.style.borderColor = 'var(--color-success)';
       else input.style.borderColor = 'var(--border-color)';
     });
 
@@ -2388,7 +2475,7 @@ export const WorkerFrontend = {
     const showError = (msg) => {
       errorDiv.textContent = msg;
       errorDiv.style.display = 'block';
-      input.style.borderColor = '#dc2626';
+      input.style.borderColor = 'var(--color-danger)';
     };
 
     submitBtn.onclick = async () => {
@@ -2498,6 +2585,7 @@ export const WorkerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    try { i18n.translateDOM(modal); } catch (_) {}
     modal.querySelector('#close-review-modal').onclick = () => modal.remove();
     modal.querySelector('#cancel-review-btn').onclick = () => modal.remove();
 
@@ -2518,17 +2606,17 @@ export const WorkerFrontend = {
       case 'Job completed':
       case 'Resolved':
       case 'Paid':
-        return '#10b981';
+        return 'var(--color-success)';
       case 'Pending confirmation':
       case 'Open':
       case 'Pending':
-        return '#f59e0b';
+        return 'var(--color-warning)';
       case 'Cancelled':
       case 'Disputed':
       case 'Failed':
-        return '#ef4444';
+        return 'var(--color-danger)';
       default:
-        return '#3b82f6';
+        return 'var(--color-info)';
     }
 
     const saveAndGotoDocsBtn = container.querySelector('#save-and-goto-docs-btn');
@@ -2681,7 +2769,7 @@ export const WorkerFrontend = {
           <div style="font-size: 2rem;">🛡️</div>
           <div>
             <h3 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 0.15rem;">${esc(doc.title || doc.fileName)}</h3>
-            <span class="badge" style="background: #10b981; color: white; font-size: 0.75rem;">✓ Verified Credential</span>
+            <span class="badge" style="background: var(--color-success); color: white; font-size: 0.75rem;">✓ Verified Credential</span>
           </div>
         </div>
 
@@ -2690,7 +2778,7 @@ export const WorkerFrontend = {
           <div><strong>File Name:</strong> ${esc(doc.fileName)}</div>
           <div><strong>File Size:</strong> ${esc(doc.fileSize || '1.2 MB')}</div>
           <div><strong>Verification Date:</strong> ${new Date(doc.uploadedAt || Date.now()).toLocaleString()}</div>
-          <div><strong>Status:</strong> <span style="color: #10b981; font-weight: 700;">✓ Verified & Validated</span></div>
+          <div><strong>Status:</strong> <span style="color: var(--color-success); font-weight: 700;">✓ Verified & Validated</span></div>
         </div>
 
         ${doc.dataUrl ? `
@@ -2715,6 +2803,7 @@ export const WorkerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    try { i18n.translateDOM(modal); } catch (_) {}
     modal.querySelector('#close-doc-preview-modal').onclick = () => modal.remove();
     modal.querySelector('#close-preview-btn').onclick = () => modal.remove();
   },
@@ -2759,12 +2848,12 @@ export const WorkerFrontend = {
             <div style="display: flex; align-items: center; gap: 0.75rem;">
               <div style="font-size: 2rem; background: var(--color-highlighter-yellow); width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">🛠️</div>
               <div>
-                <h2 style="font-size: 1.4rem; font-weight: 800; margin: 0; font-family: 'Bricolage Grotesque', sans-serif;">Worker Profile & Document Verification</h2>
+                <h2 style="font-size: 1.4rem; font-weight: 800; margin: 0; font-family: 'Inter Tight', sans-serif;">Worker Profile & Document Verification</h2>
                 <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0.2rem 0 0 0;">Configuring details & verification for <strong>${esc(currentWorker.name)}</strong></p>
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span class="badge" style="background: ${isFullyVerified ? '#10b981' : '#f59e0b'}; color: white; font-size: 0.75rem; padding: 4px 10px; border-radius: 999px;">
+              <span class="badge" style="background: ${isFullyVerified ? 'var(--color-success)' : 'var(--color-warning)'}; color: white; font-size: 0.75rem; padding: 4px 10px; border-radius: 999px;">
                 ${isFullyVerified ? '🛡️ Verified Pro Active' : '⏳ Verification In Progress'}
               </span>
             </div>
@@ -2852,7 +2941,7 @@ export const WorkerFrontend = {
               <!-- Step 1 Footer -->
               <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
                 <button type="button" class="btn btn-outline" id="m-close-modal-btn">Skip to Dashboard</button>
-                <button type="submit" class="btn btn-primary" id="m-save-goto-step2-btn" style="background: #047857; border-color: #047857; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem;">
+                <button type="submit" class="btn btn-primary" id="m-save-goto-step2-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem;">
                   <span>Save & Continue to Manage Documents</span>
                   <span>→</span>
                 </button>
@@ -2873,7 +2962,7 @@ export const WorkerFrontend = {
                     </p>
                   </div>
                   <div style="text-align: right; min-width: 130px;">
-                    <div style="font-size: 1.75rem; font-weight: 800; color: #047857;">${uploadedCount} / ${reqDocs.length}</div>
+                    <div style="font-size: 1.75rem; font-weight: 800; color: var(--color-success-text);">${uploadedCount} / ${reqDocs.length}</div>
                     <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Uploaded</span>
                   </div>
                 </div>
@@ -2892,10 +2981,10 @@ export const WorkerFrontend = {
                             <span style="font-size: 1.5rem;">${docMeta.icon}</span>
                             <div>
                               <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.1rem;">${esc(docMeta.title)}</h4>
-                              <span style="font-size: 0.7rem; color: var(--text-secondary);">${docMeta.required ? '<span style="color: #dc2626; font-weight: 600;">* Mandatory</span>' : '<span style="color: var(--text-secondary);">Optional Evidence</span>'}</span>
+                              <span style="font-size: 0.7rem; color: var(--text-secondary);">${docMeta.required ? '<span style="color: var(--color-danger); font-weight: 600;">* Mandatory</span>' : '<span style="color: var(--text-secondary);">Optional Evidence</span>'}</span>
                             </div>
                           </div>
-                          <span class="badge" style="background: ${isUploaded ? '#10b981' : 'var(--bg-primary)'}; color: ${isUploaded ? 'white' : 'var(--text-secondary)'}; font-size: 0.7rem; border: 1px solid ${isUploaded ? 'transparent' : 'var(--border-color)'};">
+                          <span class="badge" style="background: ${isUploaded ? 'var(--color-success)' : 'var(--bg-primary)'}; color: ${isUploaded ? 'white' : 'var(--text-secondary)'}; font-size: 0.7rem; border: 1px solid ${isUploaded ? 'transparent' : 'var(--border-color)'};">
                             ${isUploaded ? '✓ Verified' : 'Action Required'}
                           </span>
                         </div>
@@ -2907,7 +2996,7 @@ export const WorkerFrontend = {
                         ${isUploaded ? `
                           <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.65rem 0.85rem; margin-bottom: 0.85rem;">
                             <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.2rem;">
-                              <span style="color: #10b981; font-weight: 700;">📄</span>
+                              <span style="color: var(--color-success); font-weight: 700;">📄</span>
                               <strong style="font-size: 0.8rem; word-break: break-all;">${esc(doc.fileName || docMeta.title)}</strong>
                             </div>
                             <div style="font-size: 0.7rem; color: var(--text-secondary);">
@@ -2933,7 +3022,7 @@ export const WorkerFrontend = {
                             <button type="button" class="btn btn-outline btn-sm modal-replace-doc-btn" data-type="${docMeta.type}" style="font-size: 0.75rem; padding: 4px 8px;">
                               🔄 Replace
                             </button>
-                            <button type="button" class="btn btn-outline btn-sm modal-remove-doc-btn" data-type="${docMeta.type}" style="color: #dc2626; font-size: 0.75rem; padding: 4px 8px;" title="Remove Document">
+                            <button type="button" class="btn btn-outline btn-sm modal-remove-doc-btn" data-type="${docMeta.type}" style="color: var(--color-danger); font-size: 0.75rem; padding: 4px 8px;" title="Remove Document">
                               🗑️
                             </button>
                           ` : `
@@ -2954,7 +3043,7 @@ export const WorkerFrontend = {
               <!-- Step 2 Footer -->
               <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
                 <button type="button" class="btn btn-outline" id="m-back-to-step1-btn">← Back to Profile</button>
-                <button type="button" class="btn btn-primary" id="m-finish-dashboard-btn" style="background: #10b981; border-color: #10b981; padding: 0.65rem 1.5rem; font-weight: 700;">
+                <button type="button" class="btn btn-primary" id="m-finish-dashboard-btn" style="padding: 0.65rem 1.5rem; font-weight: 700;">
                   ✓ Complete & Enter Dashboard →
                 </button>
               </div>
@@ -3162,10 +3251,12 @@ export const WorkerFrontend = {
           };
         });
       }
+      try { i18n.translateDOM(modal); } catch (_) {}
     };
 
     renderModalStep();
     document.body.appendChild(modal);
+    try { i18n.translateDOM(modal); } catch (_) {}
   },
 
   attachOverviewEvents(container, worker) {
@@ -3237,7 +3328,7 @@ export const WorkerFrontend = {
           <div class="dash-card">
             <h3>Emergency Helpline (24/7)</h3>
             <div style="padding: 1.25rem; background: var(--bg-secondary); border-radius: 12px; margin: 1rem 0;">
-              <div style="font-size: 1.45rem; font-weight: 800; color: #ea580c;">📞 1800-419-KAAM</div>
+              <div style="font-size: 1.45rem; font-weight: 800; color: var(--accent-primary);">📞 1800-419-KAAM</div>
               <p style="font-size: 0.82rem; color: var(--text-muted); margin: 4px 0 0;">Free helpline in Hindi, Marathi &amp; English</p>
             </div>
             <a href="tel:18004195226" class="btn btn-primary btn-sm" style="text-decoration: none; text-align: center; display: inline-block;">Call Helpline</a>

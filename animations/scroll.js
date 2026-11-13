@@ -17,7 +17,7 @@ function onScrollNavbar() {
   const y = window.scrollY || document.documentElement.scrollTop || 0;
   const navbar = document.querySelector('.navbar');
   document.body.classList.toggle('is-scrolled', y > 8);
-  if (navbar) navbar.classList.toggle('is-scrolled', y > 8);
+  if (navbar) navbar.classList.toggle('navbar--scrolled', y > 8);
   const down = y > lastY + 4;
   const up = y < lastY - 4;
   if (y > 140 && down) document.body.classList.add('nav-hidden');

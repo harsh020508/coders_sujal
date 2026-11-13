@@ -10,6 +10,8 @@ import { i18n } from './i18n.js';
 import { avatar, rating, statusBadge, emptyState, trapFocus } from './ui.js';
 import { CustomerMap } from './customerMap.js';
 import { PhotoDiagnosis } from './photoDiagnosis.js';
+import { VoiceBooking } from './voiceBooking.js';
+import { CustomerPartsPanel, MaterialSourcingService } from './materialSourcing.js';
 
 // Helper to get all feedback tags
 const FEEDBACK_TAGS = [
@@ -499,9 +501,48 @@ export const CustomerFrontend = {
       });
     }
 
+    // ── Feature 14: Voice Booking FAB ──────────────────────────────────────
+    // Remove any stale FAB from a previous render, then mount fresh
+    const oldFab = document.getElementById('voice-booking-fab');
+    if (oldFab) oldFab.remove();
+
+    VoiceBooking.renderButton((intent) => {
+      // intent = { category, categoryName, locality, urgency, problemHint, … }
+      if (!intent.category) {
+        Toast.show('Could not detect a service from your speech. Please browse or search manually.', 'warning');
+        return;
+      }
+
+      // Set locality if detected
+      if (intent.locality) {
+        StorageService.setCustomerLocality(intent.locality);
+      }
+
+      // Set category filter and find best matching worker
+      this.currentCategory = intent.category;
+      const workers = StorageService.getWorkers();
+      const customerLocality = StorageService.getCustomerLocality();
+      const eligible = MatchingService.getEligibleWorkers(workers, customerLocality, intent.category, '');
+      const chosenWorker = eligible.length > 0 ? eligible[0] : null;
+
+      if (chosenWorker) {
+        Toast.show(`🎤 Voice detected: ${intent.categoryName}${intent.localityName ? ' in ' + intent.localityName : ''}. Opening booking…`, 'success', 3500);
+        this.showBookingModal(chosenWorker.id, container, {
+          jobDescription: intent.problemHint ? `${intent.problemHint}` : '',
+          urgency: intent.urgency || 'medium',
+          serviceKey: intent.category,
+        });
+      } else {
+        Toast.show(`Voice detected: ${intent.categoryName}. Showing workers nearby…`, 'info');
+        this.switchView('discover', {}, container);
+      }
+    });
+
     this.attachDiscoverEvents(container);
     if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+    try { i18n.translateDOM(container); } catch (_) {}
   },
+
 
   switchView(viewName, options = {}, container) {
     const sidebar = container.querySelector('.sidebar');
@@ -544,6 +585,7 @@ export const CustomerFrontend = {
     }
 
     if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+    try { i18n.translateDOM(mainContent); } catch (_) {}
   },
 
   getSupportCategoryIcon(categoryId) {
@@ -566,6 +608,7 @@ export const CustomerFrontend = {
       results.innerHTML = this.renderDiscoverResults(eligible);
       this.attachDiscoverResultEvents(container);
       if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+      try { i18n.translateDOM(results); } catch (_) {}
     }
     return eligible;
   },
@@ -801,7 +844,12 @@ export const CustomerFrontend = {
           body: JSON.stringify({ message: text, history: careHistory.slice(-10) })
         });
         const data = await res.json().catch(() => ({}));
-        const reply = (data && data.reply) || 'I could not answer right now. Please open a Support Ticket below.';
+        let reply = (data && data.reply);
+        if (res.status === 429) {
+          reply = (data && data.error) || 'Too many requests. Please wait a moment before sending another message.';
+        } else if (!reply) {
+          reply = 'I could not answer right now. Please open a Support Ticket below.';
+        }
         if (thinkingBubble) thinkingBubble.textContent = reply;
         else appendCare('assistant', reply);
         careHistory.push({ role: 'assistant', content: reply });
@@ -824,6 +872,7 @@ export const CustomerFrontend = {
         container.querySelector('#customer-main-content').innerHTML = this.renderHelpCentreView();
         this.attachHelpEvents(container);
         if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+        try { i18n.translateDOM(container.querySelector('#customer-main-content')); } catch (_) {}
       });
     });
 
@@ -836,7 +885,10 @@ export const CustomerFrontend = {
           ? allFaqs.filter(f => f.q.toLowerCase().includes(query) || f.a.toLowerCase().includes(query))
           : allFaqs;
         const faqBox = container.querySelector('#help-faq-container');
-        if (faqBox) faqBox.innerHTML = this.renderFAQs(filtered);
+        if (faqBox) {
+          faqBox.innerHTML = this.renderFAQs(filtered);
+          try { i18n.translateDOM(faqBox); } catch (_) {}
+        }
       });
     }
 
@@ -872,6 +924,7 @@ export const CustomerFrontend = {
         container.querySelector('#customer-main-content').innerHTML = this.renderDiscoverView(eligible);
         this.attachDiscoverEvents(container);
         if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+        try { i18n.translateDOM(container.querySelector('#customer-main-content')); } catch (_) {}
       });
     }
 
@@ -893,6 +946,7 @@ export const CustomerFrontend = {
         container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
         this.attachBookingsEvents(container);
         if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+        try { i18n.translateDOM(container.querySelector('#customer-main-content')); } catch (_) {}
       });
     });
 
@@ -907,7 +961,8 @@ export const CustomerFrontend = {
           Toast.show('Counter-offer declined. Booking cancelled.', 'info');
           container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
           this.attachBookingsEvents(container);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+          if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+          try { i18n.translateDOM(container.querySelector('#customer-main-content')); } catch (_) {}
         }
       });
     });
@@ -922,7 +977,8 @@ export const CustomerFrontend = {
           Toast.show('Booking cancelled successfully', 'info');
           container.querySelector('#customer-main-content').innerHTML = this.renderBookingsView();
           this.attachBookingsEvents(container);
-        if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+          if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
+          try { i18n.translateDOM(container.querySelector('#customer-main-content')); } catch (_) {}
         }
       });
     });
@@ -1217,6 +1273,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    try { i18n.translateDOM(modal); } catch (_) {}
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#close-complaint-btn').onclick = () => modal.remove();
 
@@ -1337,6 +1394,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    try { i18n.translateDOM(modal); } catch (_) {}
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#close-profile-btn').onclick = () => modal.remove();
   },
@@ -1410,7 +1468,7 @@ export const CustomerFrontend = {
 
         ${prefillOptions.photoUrl ? `
           <!-- Attached AI Photo Diagnosis Preview -->
-          <div style="display: flex; gap: 0.85rem; align-items: center; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 16px;">
+          <div style="display: flex; gap: 0.85rem; align-items: center; background: rgba(37, 99, 235, 0.15); border: 1.5px solid rgba(37, 99, 235, 0.35); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 16px;">
             <img src="${esc(prefillOptions.photoUrl)}" alt="Problem preview" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; border: 1.5px solid #3b82f6; flex-shrink: 0;" />
             <div style="flex: 1; min-width: 0;">
               <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 2px; flex-wrap: wrap;">
@@ -1421,7 +1479,7 @@ export const CustomerFrontend = {
                 ${esc(prefillOptions.aiDiagnosis?.issue || prefillOptions.jobDescription || 'Household Issue')}
               </div>
               ${prefillOptions.aiDiagnosis ? `
-                <div style="font-size: 0.75rem; color: #15803d; font-weight: 600; margin-top: 2px;">
+                <div style="font-size: 0.75rem; color: var(--color-success); font-weight: 600; margin-top: 2px;">
                   Estimated Rate: ₹${prefillOptions.aiDiagnosis.price_min} – ₹${prefillOptions.aiDiagnosis.price_max}
                 </div>
               ` : ''}
@@ -1510,6 +1568,7 @@ export const CustomerFrontend = {
     `;
 
     document.body.appendChild(modal);
+    try { i18n.translateDOM(modal); } catch (_) {}
     const release = trapFocus(modal, () => {
       release();
       modal.remove();
@@ -1602,9 +1661,9 @@ export const CustomerFrontend = {
               ${esc(worker.name)} will review it and you'll be notified when they respond.
             </p>
             <div style="background:#ffe95c;border-radius:10px;padding:10px 16px;">
-              <div style="font-size:0.75rem;font-weight:700;color:#4b5563;">YOUR ARRIVAL OTP</div>
+              <div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);">YOUR ARRIVAL OTP</div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:800;letter-spacing:0.12em;color:#1a3300;">${esc(plainOtp)}</div>
-              <div style="font-size:0.75rem;color:#4b5563;">Share this code verbally when the professional reaches your home.</div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);">Share this code verbally when the professional reaches your home.</div>
             </div>
             <div style="margin-top:12px;">
               <button type="button" class="ui-btn ui-btn--accent ui-btn--sm" id="booking-done-btn">Done</button>
@@ -1733,7 +1792,7 @@ export const CustomerFrontend = {
           ` : ''}
           ${booking.aiDiagnosis ? `
             <div style="background: var(--bg-card); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); margin-top: 4px;">
-              <strong style="font-size: 0.8rem; color: #15803d;">🤖 AI Diagnosis:</strong> ${esc(booking.aiDiagnosis.issue || 'Identified')}<br>
+              <strong style="font-size: 0.8rem; color: var(--color-success);">🤖 AI Diagnosis:</strong> ${esc(booking.aiDiagnosis.issue || 'Identified')}<br>
               <small style="color: var(--text-muted);">
                 Estimated Price: ₹${booking.aiDiagnosis.price_min} – ₹${booking.aiDiagnosis.price_max} · 
                 Urgency: <span class="diagnosis-urgency-badge urgency-${esc(booking.aiDiagnosis.urgency || 'medium')}" style="font-size: 0.65rem; padding: 2px 6px;">${esc((booking.aiDiagnosis.urgency || 'medium').toUpperCase())}</span>
@@ -1768,7 +1827,42 @@ export const CustomerFrontend = {
     i18n.translateDOM(modal);
     modal.querySelector('#close-modal').onclick = () => modal.remove();
     modal.querySelector('#close-btn').onclick = () => modal.remove();
+
+    // ── Feature 11: Parts Approval Panel ──────────────────────────────────────
+    const partsHtml = CustomerPartsPanel.renderForBooking(bookingId);
+    if (partsHtml) {
+      const detailsBox = modal.querySelector('.modal-card');
+      if (detailsBox) {
+        const partsWrapper = document.createElement('div');
+        partsWrapper.className = 'parts-customer-panel-wrapper';
+        partsWrapper.innerHTML = `
+          <div style="margin-bottom:1.25rem;">
+            <h4 style="font-size:0.85rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+              <i data-lucide="package" style="width:14px;height:14px;"></i> Parts & Materials
+            </h4>
+            ${partsHtml}
+          </div>
+        `;
+        // Insert before the action buttons row
+        const actionsRow = detailsBox.querySelector('div[style*="justify-content: flex-end"]');
+        if (actionsRow) {
+          detailsBox.insertBefore(partsWrapper, actionsRow);
+        } else {
+          detailsBox.appendChild(partsWrapper);
+        }
+
+        const refreshParts = () => {
+          partsWrapper.querySelector('.parts-customer-panel').outerHTML =
+            CustomerPartsPanel.renderForBooking(bookingId) || '';
+          CustomerPartsPanel.attachEvents(partsWrapper, refreshParts);
+          if (typeof window.refreshIcons === 'function') window.refreshIcons();
+        };
+        CustomerPartsPanel.attachEvents(partsWrapper, refreshParts);
+        if (typeof window.refreshIcons === 'function') window.refreshIcons();
+      }
+    }
   },
+
 
   showInvoiceModal(bookingId) {
     const bookings = StorageService.getBookings();
@@ -1987,22 +2081,22 @@ export const CustomerFrontend = {
     const customerOtp = StorageService.getCustomerOtp(booking.id) || booking.arrivalOtp; // booking.arrivalOtp = legacy fallback
     return `
       <div class="otp-status-panel" data-otp-booking-id="${esc(booking.id)}"
-        style="margin-top: 8px; padding: 10px 12px; border-radius: 8px; background: #f0fdf4; border: 1.5px solid #bbf7d0; display: flex; align-items: flex-start; gap: 8px;">
+        style="margin-top: 8px; padding: 10px 12px; border-radius: 8px; background: var(--color-success-bg, rgba(16, 185, 129, 0.15)); border: 1.5px solid rgba(16, 185, 129, 0.35); display: flex; align-items: flex-start; gap: 8px;">
         <span style="font-size: 1.25rem; flex-shrink: 0; line-height: 1;">🔐</span>
         <div style="flex: 1; min-width: 0;">
-          <div style="font-weight: 700; font-size: 0.82rem; color: #166534; margin-bottom: 2px;">Arrival Verification OTP</div>
-          <p style="font-size: 0.78rem; color: #15803d; margin: 0 0 6px; line-height: 1.4;">
+          <div style="font-weight: 700; font-size: 0.82rem; color: var(--color-success, #10b981); margin-bottom: 2px;">Arrival Verification OTP</div>
+          <p style="font-size: 0.78rem; color: var(--text-secondary); margin: 0 0 6px; line-height: 1.4;">
             Share this 6-digit code with the professional <strong>verbally</strong> upon their arrival at your location.
           </p>
           ${booking.arrivalOtpUsed
-            ? '<div style="font-size: 0.85rem; font-weight: 700; color: #16a34a;">✅ Arrival verified — technician has checked in!</div>'
+            ? '<div style="font-size: 0.85rem; font-weight: 700; color: var(--color-success);">✅ Arrival verified — technician has checked in!</div>'
             : customerOtp
-              ? `<div style="margin:4px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="color:#4b5563;font-weight:600;font-size:0.82rem;">Your arrival code:</span><strong style="font-family:'JetBrains Mono',monospace;font-size:1.4rem;letter-spacing:0.12em;color:#1a3300;background:#ffe95c;padding:2px 12px;border-radius:8px;">${esc(customerOtp)}</strong><span style="color:#4b5563;font-size:0.78rem;">Share it verbally with the technician.</span></div>`
+              ? `<div style="margin:4px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="color:var(--text-secondary);font-weight:600;font-size:0.82rem;">Your arrival code:</span><strong style="font-family:'JetBrains Mono',monospace;font-size:1.4rem;letter-spacing:0.12em;color:#1a3300;background:#ffe95c;padding:2px 12px;border-radius:8px;">${esc(customerOtp)}</strong><span style="color:var(--text-secondary);font-size:0.78rem;">Share it verbally with the technician.</span></div>`
               : '<div style="font-size: 0.78rem; color: #f59e0b; margin-bottom: 6px;">⏳ No code yet — tap Resend OTP below to generate your arrival code.</div>'}
-          <div class="otp-panel-status-${esc(booking.id)}" style="font-size: 0.78rem; font-weight: 600; color: #166534; margin-bottom: 6px;"></div>
+          <div class="otp-panel-status-${esc(booking.id)}" style="font-size: 0.78rem; font-weight: 600; color: var(--color-success-text); margin-bottom: 6px;"></div>
           <button class="btn btn-outline btn-xs resend-arrival-otp-btn"
             data-booking-id="${esc(booking.id)}"
-            style="font-size: 0.72rem; padding: 2px 8px; border-color: #16a34a; color: #166534;">
+            style="font-size: 0.72rem; padding: 2px 8px; border-color: var(--color-success); color: var(--color-success-text);">
             🔁 Resend OTP
           </button>
         </div>
@@ -2035,7 +2129,7 @@ export const CustomerFrontend = {
         statusEl.innerHTML = '<span style="color:#dc2626;">⚠️ OTP expired. Click Resend OTP to get a new code in your app.</span>';
       } else {
         const expiry = new Date(booking.arrivalOtpExpiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        statusEl.innerHTML = `<span style="color:#166534;font-weight:normal;">Valid until ${expiry} · share verbally at your door.</span>`;
+        statusEl.innerHTML = `<span style="color:var(--color-success-text);font-weight:normal;">Valid until ${expiry} · share verbally at your door.</span>`;
       }
     }
   },
@@ -2119,6 +2213,8 @@ export const CustomerFrontend = {
         await StorageService.markAllNotificationsRead();
         container.querySelector('#customer-main-content').innerHTML = this.renderNotificationsView();
         this.attachNotificationsEvents(container);
+        try { i18n.translateDOM(container.querySelector('#customer-main-content')); } catch (_) {}
+        try { i18n.translateDOM(container.querySelector('#customer-main-content')); } catch (_) {}
         if (typeof window !== 'undefined' && typeof window.refreshIcons === 'function') window.refreshIcons();
       });
     }

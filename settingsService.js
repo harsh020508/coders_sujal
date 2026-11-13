@@ -605,7 +605,7 @@ class SettingsManager {
   }
 
   applyAccent() {
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined' || !document.documentElement || !document.documentElement.style) return;
     const root = document.documentElement;
     const color = this.get('appearance.accentColor', '');
     ACCENT_CSS_VARS.forEach((name) => root.style.removeProperty(name));
@@ -654,14 +654,14 @@ class SettingsManager {
   }
 
   applyFontSize() {
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined' || !document.documentElement || !document.documentElement.style) return;
     const size = this.get('appearance.fontSize', 'medium');
     const px = size === 'small' ? '15px' : size === 'large' ? '18px' : '16px';
     document.documentElement.style.fontSize = px;
   }
 
   applyDensity() {
-    if (typeof document === 'undefined' || !document.body) return;
+    if (typeof document === 'undefined' || !document.body || !document.body.classList || typeof document.body.classList.toggle !== 'function') return;
     const density = this.get('appearance.density', 'comfortable');
     document.body.classList.toggle('density-compact', density === 'compact');
   }

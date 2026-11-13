@@ -13,6 +13,7 @@ import { Settings } from './settingsService.js';
 import { landingHTML } from './components/landing/Landing.js';
 import { bindLanding } from './components/landing/bind.js';
 import { ProfileDropdown } from './components/ProfileDropdown.js';
+import { i18n } from './i18n.js';
 
 // Role dashboards are large (customer ~110KB, worker ~170KB, settings
 // ~100KB) and were parsed on every first load even for landing-page
@@ -20,6 +21,7 @@ import { ProfileDropdown } from './components/ProfileDropdown.js';
 let _customerFrontend = null;
 let _workerFrontend = null;
 let _settingsPage = null;
+let _adminDashboard = null;
 async function loadCustomerFrontend() {
   if (!_customerFrontend) _customerFrontend = (await import('./customer.js')).CustomerFrontend;
   return _customerFrontend;
@@ -32,8 +34,12 @@ async function loadSettingsPage() {
   if (!_settingsPage) _settingsPage = (await import('./components/SettingsPage.js')).SettingsPage;
   return _settingsPage;
 }
+async function loadAdminDashboard() {
+  if (!_adminDashboard) _adminDashboard = (await import('./admin.js')).AdminDashboard;
+  return _adminDashboard;
+}
 
-const ROLES = ['landing', 'role-select', 'customer', 'worker', 'settings'];
+const ROLES = ['landing', 'role-select', 'customer', 'worker', 'settings', 'admin'];
 
 export const App = {
   _globalsBound: false,
@@ -54,15 +60,18 @@ export const App = {
     // This rescues an OAuth login whose hash was stripped while the
     // session finished exchanging after boot.
     let hash = (typeof window !== 'undefined' && window.location.hash) ? window.location.hash.replace('#', '') : '';
-    if (hash === 'admin') {
-      hash = 'landing';
-      if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-        window.history.replaceState(null, '', window.location.pathname);
-      }
-    }
     if (ROLES.includes(hash)) {
       StorageService.setCurrentRole(hash);
     } else {
+      const tabRole = (() => {
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            const tr = sessionStorage.getItem('localkaam_current_role');
+            if (ROLES.includes(tr)) return tr;
+          }
+        } catch (_) {}
+        return null;
+      })();
       const profileRole = (() => {
         try {
           const p = AuthService.getProfile();
@@ -70,7 +79,15 @@ export const App = {
           return (r === 'worker' || r === 'customer') && AuthService.isAuthenticated() ? r : null;
         } catch (e) { return null; }
       })();
-      StorageService.setCurrentRole(profileRole || 'landing');
+      const chosen = tabRole || profileRole || 'landing';
+      StorageService.setCurrentRole(chosen);
+      if (chosen !== 'landing' && typeof window !== 'undefined' && window.location && !window.location.hash) {
+        try {
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState({ role: chosen }, '', `#${chosen}`);
+          }
+        } catch (_) {}
+      }
     }
 
     this.render();
@@ -129,7 +146,13 @@ export const App = {
     StorageService.setCurrentRole(role);
     try {
       if (window.history && window.history.pushState) {
-        window.history.pushState({ role }, '', `#${role}`);
+        if (options.replace) {
+          window.history.replaceState({ role }, '', `#${role}`);
+        } else {
+          window.history.pushState({ role }, '', `#${role}`);
+        }
+      } else if (typeof window !== 'undefined') {
+        window.location.hash = `#${role}`;
       }
     } catch (e) {}
     NotificationService.setupUserSubscription();
@@ -222,7 +245,13 @@ export const App = {
     const target = event.target;
     const typing = target && target.matches && (target.matches('input, textarea, select') || target.isContentEditable);
     const hasModifier = event.ctrlKey || event.metaKey || event.altKey;
-    if (typing && !hasModifier) return;
+    // Admin dashboard shortcut: Ctrl+Shift+A (or Cmd+Shift+A on Mac)
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && (event.key === 'A' || event.key === 'a')) {
+      event.preventDefault();
+      this.navigateToRole('admin');
+      Toast.show('Opened Admin Portal', 'info');
+      return;
+    }
 
     const openKey = Settings.getShortcut('openSettings');
     if (openKey && this.matchesShortcut(event, openKey)) {
@@ -274,9 +303,55 @@ export const App = {
 
     window.addEventListener('locakaam:theme-changed', () => this.updateThemeButtons());
     window.addEventListener('locakaam:language-changed', () => { this.render(); });
+    window.addEventListener('localkaam:language-changed', () => { this.render(); });
     window.addEventListener('locakaam:session-timeout-changed', () => this.setupSessionTimeout());
 
+    // Global listener so any language picker anywhere on the page instantly flips language
+    document.addEventListener('change', (e) => {
+      const t = e.target;
+      if (t && (t.classList.contains('lang-picker') || (t.id && (t.id.includes('lang-picker') || t.id.includes('language'))))) {
+        if (i18n.getLanguage() !== t.value) {
+          i18n.setLanguage(t.value);
+        }
+      }
+    });
+
     window.addEventListener('keydown', (event) => this.handleGlobalKeydown(event));
+
+    // Secret trick 1: Click the LK logo or brand text 5 times rapidly to open Admin dashboard
+    let logoClicks = 0;
+    let logoTimer = null;
+    document.addEventListener('click', (e) => {
+      const isLogo = e.target && (e.target.closest('.nav-logo') || e.target.closest('.nav-brand') || e.target.id === 'nav-home-logo' || e.target.id === 'nav-brand-dashboard');
+      if (isLogo) {
+        logoClicks++;
+        clearTimeout(logoTimer);
+        logoTimer = setTimeout(() => { logoClicks = 0; }, 2200);
+        if (logoClicks >= 5) {
+          logoClicks = 0;
+          this.navigateToRole('admin');
+          Toast.show('Secret Admin Portal Unlocked!', 'success');
+        }
+      }
+    });
+
+    // Secret trick 2: Type 'admin' anywhere on the page (when not typing in an input field)
+    let typedCode = '';
+    let typedTimer = null;
+    window.addEventListener('keydown', (e) => {
+      const tag = (e.target && e.target.tagName || '').toLowerCase();
+      if (['input', 'textarea', 'select'].includes(tag) || (e.target && e.target.isContentEditable)) return;
+      if (e.key && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        typedCode += e.key.toLowerCase();
+        if (typedCode.endsWith('admin')) {
+          typedCode = '';
+          this.navigateToRole('admin');
+          Toast.show('Secret Admin Portal Unlocked via keyword!', 'success');
+        }
+        clearTimeout(typedTimer);
+        typedTimer = setTimeout(() => { typedCode = ''; }, 2000);
+      }
+    });
 
     try {
       AuthService.onAuthStateChange((event) => {
@@ -377,6 +452,7 @@ export const App = {
                 this._pendingCustomerCategory = null;
               }
               CustomerFrontend.render(viewContainer);
+              try { i18n.translateDOM(root); } catch (_) {}
             } catch (custErr) {
               console.error('Customer frontend render error:', custErr);
               viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading customer view: ${esc(custErr.message)}</p><button class="btn btn-primary" onclick="window.location.reload();">Reload</button></div>`;
@@ -401,6 +477,7 @@ export const App = {
               if (this._pendingWorkerSetup) WorkerFrontend.shouldOpenSetupModal = true;
               this._pendingWorkerSetup = false;
               WorkerFrontend.render(viewContainer);
+              try { i18n.translateDOM(root); } catch (_) {}
             } catch (workErr) {
               console.error('Worker frontend render error:', workErr);
               viewContainer.innerHTML = `<div style="padding: 3rem; text-align: center;"><p style="color: var(--color-danger);">Error loading worker view: ${esc(workErr.message)}</p><button class="btn btn-primary" onclick="window.location.reload();">Reload</button></div>`;
@@ -421,6 +498,7 @@ export const App = {
           if (StorageService.getCurrentRole() !== 'settings') return;
           try {
             SettingsPage.init(pending);
+            try { i18n.translateDOM(root); } catch (_) {}
           } catch (settingsErr) {
             console.error('Settings render error:', settingsErr);
             const viewContainer = root.querySelector('#app-view-container');
@@ -430,13 +508,35 @@ export const App = {
             }
           }
         }).catch(() => {});
+      } else if (role === 'admin') {
+        root.innerHTML = `
+          <div class="app-container" style="min-height:100vh;display:flex;flex-direction:column;">
+            <div id="app-view-container" style="flex:1;display:flex;flex-direction:column;"></div>
+          </div>`;
+        const adminContainer = root.querySelector('#app-view-container');
+        if (adminContainer) {
+          adminContainer.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-secondary);">Loading Admin Dashboard…</div>';
+          loadAdminDashboard().then((AdminDashboard) => {
+            if (StorageService.getCurrentRole() !== 'admin' || !adminContainer.isConnected) return;
+            try {
+              AdminDashboard.render(adminContainer);
+            } catch (adminErr) {
+              console.error('Admin dashboard render error:', adminErr);
+              adminContainer.innerHTML = `<div style="padding:3rem;text-align:center;"><p style="color:var(--color-danger);">Error loading admin dashboard: ${esc(adminErr.message)}</p><button class="btn btn-primary" onclick="window.location.reload();">Reload</button></div>`;
+            }
+          }).catch((adminErr) => {
+            if (StorageService.getCurrentRole() === 'admin') {
+              adminContainer.innerHTML = `<div style="padding:3rem;text-align:center;"><p style="color:var(--color-danger);">Error loading admin dashboard: ${esc(adminErr.message)}</p><button class="btn btn-primary" onclick="window.location.reload();">Reload</button></div>`;
+            }
+          });
+        }
       } else {
         root.innerHTML = this.renderLandingPage();
         this.attachLandingEvents(root);
       }
     } catch (err) {
       console.error('App render fatal error:', err);
-      root.innerHTML = `<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Something went wrong rendering this view.</p><button onclick="window.location.reload();" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1a3300; color: white; border: none; border-radius: 8px; cursor: pointer;">Reload App</button></div>`;
+      root.innerHTML = `<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Something went wrong rendering this view.</p><button onclick="window.location.reload();" class="btn btn-primary" style="margin-top: 1rem;">Reload App</button></div>`;
     }
 
     // Refresh Lucide vector icons
@@ -449,6 +549,11 @@ export const App = {
       } catch (e) {}
       try { refreshReveals(root); } catch (e) {}
     }
+
+    // Auto-translate entire view according to current language
+    try {
+      i18n.translateDOM(root);
+    } catch (_) {}
   },
 
   _mobileNavHTML(theme) {
@@ -501,6 +606,9 @@ export const App = {
             <div class="nav-title">LocalKaam</div>
           </div>
           <div class="nav-actions">
+            <div class="nav-lang-picker-wrapper">
+              ${i18n.renderLanguageSelector('role-lang-picker', 'nav-lang-select')}
+            </div>
             <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle theme">
               <i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}" class="lucide-sm"></i>
             </button>
@@ -511,7 +619,7 @@ export const App = {
         </header>
 
         <div class="role-selection-wrapper" id="role-selection-wrapper">
-          <h1 style="font-size:clamp(1.75rem,4vw,2.5rem);font-weight:800;margin-bottom:12px;font-family:'Bricolage Grotesque',sans-serif;text-align:center;">
+          <h1 style="font-size:clamp(1.75rem,4vw,2.5rem);font-weight:800;margin-bottom:12px;font-family:'Inter Tight',sans-serif;text-align:center;">
             How would you like to use LocalKaam?
           </h1>
           <p style="color:var(--text-secondary);font-size:clamp(1rem,1.8vw,1.1rem);margin-bottom:32px;line-height:1.6;text-align:center;max-width:600px;">
@@ -577,7 +685,7 @@ export const App = {
           <div class="demo-mode-banner" role="status" aria-live="polite">
             <span class="demo-mode-badge"><i data-lucide="info" class="lucide-xs"></i> Demo Mode</span>
             <span>You are exploring with simulated sandbox data. Actions and updates will not persist to a live database.</span>
-            <button class="btn btn-sm btn-outline" id="demo-banner-signin-btn" style="background:#fff;color:#1a3300;border:1px solid #1a3300;padding:2px 10px;font-size:0.75rem;cursor:pointer;">
+            <button class="btn btn-sm btn-outline" id="demo-banner-signin-btn" style="background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-color);padding:2px 10px;font-size:0.75rem;cursor:pointer;">
               Sign in with real account
             </button>
           </div>
@@ -602,6 +710,9 @@ export const App = {
           <button class="btn btn-outline btn-full" id="mobile-switch-role-btn" style="justify-content:center;gap:6px;">
             <i data-lucide="arrow-left-right" class="lucide-xs"></i> Switch Mode
           </button>
+          <div class="nav-lang-picker-wrapper" style="margin-top:8px;">
+            ${i18n.renderLanguageSelector('mobile-shell-lang-picker', 'nav-lang-select')}
+          </div>
           <button class="theme-toggle" id="mobile-theme-toggle-btn" style="width:100%;justify-content:center;margin-top:8px;gap:6px;">
             <i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}" class="lucide-xs"></i>
             ${theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
@@ -632,13 +743,16 @@ export const App = {
                 <div class="notification-dropdown" id="notification-dropdown"></div>
               </div>
             ` : ''}
+            <div class="nav-lang-picker-wrapper">
+              ${i18n.renderLanguageSelector('shell-lang-picker', 'nav-lang-select')}
+            </div>
             <button class="btn btn-outline btn-sm" id="switch-role-btn" title="Switch Role Mode">
               <i data-lucide="arrow-left-right" class="lucide-xs"></i> Switch
             </button>
-            <button class="theme-toggle" id="theme-toggle-btn" title="Toggle theme">
+            <button class="theme-toggle" id="theme-toggle-btn" title="Toggle theme" aria-label="Toggle theme">
               <i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}" class="lucide-xs"></i>
             </button>
-            <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Demo Data" style="font-size:0.75rem;">
+            <button class="btn btn-outline btn-sm" id="reset-demo-btn" title="Reset Demo Data" aria-label="Reset demo data" style="font-size:0.75rem;">
               <i data-lucide="rotate-cw" class="lucide-xs"></i>
             </button>
             <div id="profile-menu-root" class="profile-menu-root"></div>
@@ -648,7 +762,7 @@ export const App = {
           </div>
         </header>
 
-        <div id="app-view-container" style="flex:1;display:flex;flex-direction:column;"></div>
+        <div id="app-view-container" tabindex="-1" style="flex:1;display:flex;flex-direction:column;"></div>
       </div>
     `;
   },
@@ -667,6 +781,9 @@ export const App = {
             <span class="role-badge" style="background:var(--accent-light);color:var(--text-primary);font-weight:700;">Settings</span>
           </div>
           <div class="nav-actions">
+            <div class="nav-lang-picker-wrapper">
+              ${i18n.renderLanguageSelector('settings-shell-lang-picker', 'nav-lang-select')}
+            </div>
             <button class="btn btn-outline btn-sm" id="settings-back-btn">← Back to dashboard</button>
             <button class="theme-toggle" id="theme-toggle-btn" title="Toggle theme">
               <i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}" class="lucide-xs"></i>
@@ -812,6 +929,12 @@ export const App = {
     });
 
     
+    root.querySelectorAll('#role-lang-picker, .lang-picker').forEach(el => {
+      el.addEventListener('change', (e) => {
+        i18n.setLanguage(e.target.value);
+      });
+    });
+
     const themeBtn = root.querySelector('#theme-toggle-btn');
     if (themeBtn) {
       themeBtn.addEventListener('click', () => {
@@ -823,6 +946,12 @@ export const App = {
 
   attachShellEvents(root) {
     this._attachMobileNav(root);
+
+    root.querySelectorAll('#shell-lang-picker, #mobile-shell-lang-picker, #settings-shell-lang-picker, .lang-picker').forEach(el => {
+      el.addEventListener('change', (e) => {
+        i18n.setLanguage(e.target.value);
+      });
+    });
 
     root.querySelector('#nav-brand-dashboard')?.addEventListener('click', () => {
       this.navigateToRole('landing');

@@ -2,6 +2,7 @@
 import { prefersReducedMotion } from './motion.js';
 
 let revealObserver = null;
+let dataRevealObserver = null;
 
 function getRevealObserver() {
   if (revealObserver) return revealObserver;
@@ -10,8 +11,13 @@ function getRevealObserver() {
   revealObserver = new IntersectionObserver((entries) => {
     for (const entry of entries) {
       if (entry.isIntersecting) {
-        entry.target.classList.add('is-revealed');
-        revealObserver.unobserve(entry.target);
+        const el = entry.target;
+        el.style.willChange = 'transform, opacity';
+        el.classList.add('is-revealed');
+        el.addEventListener('transitionend', () => {
+          el.style.willChange = 'auto';
+        }, { once: true });
+        revealObserver.unobserve(el);
       }
     }
   }, {
@@ -20,6 +26,26 @@ function getRevealObserver() {
   });
 
   return revealObserver;
+}
+
+function getDataRevealObserver() {
+  if (dataRevealObserver) return dataRevealObserver;
+  if (typeof IntersectionObserver === 'undefined' || prefersReducedMotion()) return null;
+
+  dataRevealObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        el.classList.add('is-visible');
+        dataRevealObserver.unobserve(el);
+      }
+    }
+  }, {
+    rootMargin: '0px 0px -48px 0px',
+    threshold: 0.08
+  });
+
+  return dataRevealObserver;
 }
 
 function tweenCounter(el, target, prefix, suffix) {
@@ -76,9 +102,10 @@ function initProgress(scope) {
 export async function refreshReveals(root) {
   const scope = root && root.querySelector ? root : document;
   const obs = getRevealObserver();
+  const dataObs = getDataRevealObserver();
 
   const targets = scope.querySelectorAll(
-    '.ui-cat, .ui-card, .category-card, .step-card, .usp-card, .pricing-card, .ui-reveal, .service-card, .lk-service-card, .lk-why-card, .lk-step-card'
+    '.ui-cat, .ui-card, .category-card, .step-card, .usp-card, .pricing-card, .ui-reveal, .service-card, .lk-service-card, .lk-why-card, .lk-step-card, .lk-feature-card, .lk-quote, .lk-price-card'
   );
 
   targets.forEach((el) => {
@@ -89,6 +116,18 @@ export async function refreshReveals(root) {
       obs.observe(el);
     } else {
       el.classList.add('is-revealed');
+    }
+  });
+
+  // Handle [data-reveal] attribute-based reveals (landing page sections)
+  scope.querySelectorAll('[data-reveal]:not([data-reveal-bound])').forEach((el) => {
+    el.dataset.revealBound = '1';
+    if (prefersReducedMotion()) {
+      el.classList.add('is-visible');
+    } else if (dataObs) {
+      dataObs.observe(el);
+    } else {
+      el.classList.add('is-visible');
     }
   });
 

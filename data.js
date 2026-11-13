@@ -1220,4 +1220,65 @@ export const INITIAL_REVIEWS = [
   }
 ];
 
-export const INITIAL_COMPLAINTS = [];
+export const INITIAL_COMPLAINTS = [
+  {
+    id: 'CMP-DEMO-001',
+    bookingId: 'BK-10492',
+    customerName: 'Aarav Mehta',
+    issue: 'arrived_late',
+    category: 'arrived_late',
+    details: 'The plumber arrived almost 50 minutes after the confirmed slot and did not call ahead. I had to reschedule my morning around it.',
+    status: 'Under Review',
+    incidentDate: '2026-11-08',
+    attachments: [],
+    resolutionRequest: 'Sincere apology plus priority scheduling for the follow-up visit.',
+    resolutionNotes: '',
+    workerResponse: '',
+    createdAt: '2026-11-08T09:15:00.000Z',
+    updatedAt: '2026-11-09T05:40:00.000Z',
+    statusHistory: [
+      { status: 'Submitted', timestamp: '2026-11-08T09:15:00.000Z', note: 'Complaint submitted' },
+      { status: 'Under Review', timestamp: '2026-11-09T05:40:00.000Z', note: 'Reviewing with the worker' }
+    ]
+  },
+  {
+    id: 'CMP-DEMO-002',
+    bookingId: 'BK-10381',
+    customerName: 'Aarav Mehta',
+    issue: 'incomplete_service',
+    category: 'incomplete_service',
+    details: 'Two of the six switchboard points were still dead when the electrician left. He promised to come back next day but never did.',
+    status: 'Resolved',
+    incidentDate: '2026-11-05',
+    attachments: [],
+    resolutionRequest: 'Free follow-up visit to complete the pending points.',
+    resolutionNotes: 'Follow-up visit completed on 12 Nov; all six points verified working by the customer.',
+    workerResponse: 'Apologies — I had a family emergency the next day. Completed the pending work on my return.',
+    createdAt: '2026-11-05T14:30:00.000Z',
+    updatedAt: '2026-11-12T10:05:00.000Z',
+    statusHistory: [
+      { status: 'Submitted', timestamp: '2026-11-05T14:30:00.000Z', note: 'Complaint submitted' },
+      { status: 'Under Review', timestamp: '2026-11-06T06:00:00.000Z', note: 'Coordinating return visit' },
+      { status: 'Resolved', timestamp: '2026-11-12T10:05:00.000Z', note: 'Work completed and verified' }
+    ]
+  },
+  {
+    id: 'CMP-DEMO-003',
+    bookingId: null,
+    customerName: 'Aarav Mehta',
+    issue: 'unexpected_charges',
+    category: 'unexpected_charges',
+    details: 'Was quoted ₹350 for the tap repair over the app but was asked for ₹600 in cash at the door, including a ₹100 "visit charge" that was never mentioned.',
+    status: 'Submitted',
+    incidentDate: '2026-11-12',
+    attachments: [],
+    resolutionRequest: 'Refund of the extra ₹250 and clarity on visit charges.',
+    resolutionNotes: '',
+    workerResponse: '',
+    createdAt: '2026-11-12T18:20:00.000Z',
+    updatedAt: '2026-11-12T18:20:00.000Z',
+    statusHistory: [
+      { status: 'Submitted', timestamp: '2026-11-12T18:20:00.000Z', note: 'Complaint submitted' }
+    ]
+  }
+];

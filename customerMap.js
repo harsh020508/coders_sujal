@@ -42,6 +42,73 @@ export function getCategoryStyle(categoryKey) {
   return CATEGORY_STYLES[categoryKey] || CATEGORY_STYLES.default;
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// En-route transit animation helpers
+// Pure math so the live-drive simulation is unit-testable without Leaflet.
+// ─────────────────────────────────────────────────────────────────────
+
+// Demo duration for the worker's drive along the rendered route
+export const ROUTE_TRANSIT_DEMO_MS = 25000;
+
+/**
+ * Haversine great-circle distance in metres (matches the booking matcher).
+ */
+export function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // metres
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+/**
+ * Cumulative distance (metres) at each vertex of a [lat, lng] path.
+ * Result length equals coords.length; result[0] === 0.
+ */
+export function cumulativePathDistances(coords) {
+  const cum = [0];
+  for (let i = 1; i < coords.length; i++) {
+    const [lat1, lng1] = coords[i - 1];
+    const [lat2, lng2] = coords[i];
+    cum.push(cum[i - 1] + haversineDistance(lat1, lng1, lat2, lng2));
+  }
+  return cum;
+}
+
+/**
+ * Position ([lat, lng]) at fraction `progress` (0 → 1) of the total path
+ * length, measured along the polyline rather than as-the-crow-flies, so the
+ * marker follows the actual driving route corners.
+ */
+export function positionAlongPath(coords, progress) {
+  if (!Array.isArray(coords) || coords.length === 0) return null;
+  const p = Math.min(1, Math.max(0, Number(progress) || 0));
+  if (coords.length === 1) return [coords[0][0], coords[0][1]];
+
+  const cum = cumulativePathDistances(coords);
+  const total = cum[cum.length - 1];
+  if (total <= 0) {
+    const last = coords[coords.length - 1];
+    return [last[0], last[1]];
+  }
+
+  const target = p * total;
+  for (let i = 1; i < coords.length; i++) {
+    if (cum[i] >= target) {
+      const segLen = cum[i] - cum[i - 1];
+      const f = segLen > 0 ? (target - cum[i - 1]) / segLen : 0;
+      const [lat1, lng1] = coords[i - 1];
+      const [lat2, lng2] = coords[i];
+      return [lat1 + (lat2 - lat1) * f, lng1 + (lng2 - lng1) * f];
+    }
+  }
+  const last = coords[coords.length - 1];
+  return [last[0], last[1]];
+}
+
 // Generate stylish custom SVG Leaflet pin icons
 export function createCategoryDivIcon(categoryKey, isOnline = true, isSelected = false) {
   const style = getCategoryStyle(categoryKey);
@@ -186,7 +253,7 @@ export const CustomerMap = {
       });
     } catch (_) {}
     if (typeof L === 'undefined' && mapElement) {
-      mapElement.innerHTML = '<div style="display:grid;place-items:center;height:100%;padding:2rem;text-align:center;color:#6b7280;">🗺️ Map library could not load. Check your connection and <button class="btn btn-primary btn-sm" onclick="window.location.reload()">Reload</button></div>';
+      mapElement.innerHTML = '<div style="display:grid;place-items:center;height:100%;padding:2rem;text-align:center;color:var(--text-muted);">🗺️ Map library could not load. Check your connection and <button class="btn btn-primary btn-sm" onclick="window.location.reload()">Reload</button></div>';
     }
     return typeof L !== 'undefined';
   },
@@ -251,16 +318,16 @@ export const CustomerMap = {
         </div>
 
         <!-- Live Tracking Banner (when active) -->
-        <div id="live-tracking-banner" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 0.75rem 1rem; align-items: center; justify-content: space-between;">
+        <div id="live-tracking-banner" style="display: none; background: var(--color-info-bg); border: 1px solid var(--color-info-border); border-radius: 8px; padding: 0.75rem 1rem; align-items: center; justify-content: space-between;">
           <div style="display: flex; align-items: center; gap: 0.75rem;">
             <span style="font-size: 1.5rem; animation: floatSoft 3s ease-in-out infinite;">🛵</span>
             <div>
-              <div style="font-weight: 700; color: #1e40af; font-size: 0.95rem;" id="tracking-title">Worker En Route</div>
-              <div style="font-size: 0.82rem; color: #3b82f6;" id="tracking-eta">Calculating route and arrival time...</div>
+              <div style="font-weight: 700; color: var(--color-info); font-size: 0.95rem;" id="tracking-title">Worker En Route</div>
+              <div style="font-size: 0.82rem; color: var(--text-secondary);" id="tracking-eta">Calculating route and arrival time...</div>
             </div>
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button class="btn btn-outline btn-sm" id="btn-simulate-tracking" style="font-size: 0.75rem; background: white;">
+            <button class="btn btn-outline btn-sm" id="btn-simulate-tracking" style="font-size: 0.75rem; background: var(--bg-card); color: var(--text-primary);">
               🎮 Simulate Live Drive
             </button>
             <button class="btn btn-danger btn-sm" id="btn-close-tracking" style="font-size: 0.75rem;">
@@ -273,7 +340,7 @@ export const CustomerMap = {
         <div class="map-grid-split" style="display: grid; grid-template-columns: 1fr 380px; gap: 0.75rem; flex: 1; min-height: 480px; position: relative;">
           
           <!-- Leaflet Map Container -->
-          <div id="leaflet-map-canvas" style="width: 100%; height: 100%; min-height: 450px; border-radius: var(--radius-cards); border: 1px solid var(--border-color); overflow: hidden; background: #e5e7eb; position: relative;">
+          <div id="leaflet-map-canvas" style="width: 100%; height: 100%; min-height: 450px; border-radius: var(--radius-cards); border: 1px solid var(--border-color); overflow: hidden; background: var(--bg-secondary); position: relative;">
             <div id="map-loading-indicator" style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(0,0,0,0.75); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; display: none; align-items: center; gap: 6px;">
               <span>⏳</span> Updating nearby workers...
             </div>
@@ -344,9 +411,9 @@ export const CustomerMap = {
     }).addTo(this.mapInstance);
 
     this.customerMarker.bindPopup(`
-      <div style="font-family: Inter, sans-serif; padding: 4px;">
-        <div style="font-weight: 700; font-size: 0.9rem; color: #dc2626; margin-bottom: 2px;">📍 Your Location</div>
-        <div style="font-size: 0.78rem; color: #4b5563;">${esc(this.customerLocation.name || 'Current Service Point')}</div>
+      <div style="font-family: Inter, sans-serif; padding: 4px; color: var(--text-primary);">
+        <div style="font-weight: 700; font-size: 0.9rem; color: var(--color-danger, #ef4444); margin-bottom: 2px;">📍 Your Location</div>
+        <div style="font-size: 0.78rem; color: var(--text-secondary);">${esc(this.customerLocation.name || 'Current Service Point')}</div>
       </div>
     `);
 
@@ -388,8 +455,8 @@ export const CustomerMap = {
       this.customerMarker.setLatLng([lat, lng]);
       this.customerMarker.getPopup().setContent(`
         <div style="font-family: Inter, sans-serif; padding: 4px;">
-          <div style="font-weight: 700; font-size: 0.9rem; color: #dc2626; margin-bottom: 2px;">📍 ${esc(name)}</div>
-          <div style="font-size: 0.78rem; color: #4b5563;">Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}</div>
+          <div style="font-weight: 700; font-size: 0.9rem; color: var(--color-danger); margin-bottom: 2px;">📍 ${esc(name)}</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);">Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}</div>
         </div>
       `);
       this.mapInstance.panTo([lat, lng]);
@@ -540,26 +607,26 @@ export const CustomerMap = {
 
       // Marker popup contents
       const popupHtml = `
-        <div class="map-worker-popup" style="font-family: Inter, sans-serif; min-width: 220px; padding: 4px;">
+        <div class="map-worker-popup" style="font-family: Inter, sans-serif; min-width: 220px; padding: 4px; color: var(--text-primary);">
           <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
             <img src="${esc(w.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80')}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid ${catStyle.color};" />
             <div>
-              <div style="font-weight: 700; font-size: 0.95rem; color: #111827; line-height: 1.2;">${esc(w.name)}</div>
+              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); line-height: 1.2;">${esc(w.name)}</div>
               <div style="font-size: 0.75rem; color: ${catStyle.color}; font-weight: 600;">${catStyle.icon} ${catStyle.label}</div>
             </div>
           </div>
           
-          <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.5rem; background: #f3f4f6; padding: 4px 8px; border-radius: 6px;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-light); padding: 4px 8px; border-radius: 6px; color: var(--text-primary);">
             <span>⭐ <strong>${w.ratingAverage || 4.8}</strong> (${w.ratingCount || 0})</span>
             <span>📍 <strong>${w.distanceKm} km</strong></span>
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; font-size: 0.82rem;">
-            <span style="color: #4b5563;">Rate from:</span>
-            <span style="font-weight: 700; color: #15803d; font-size: 0.95rem;">₹${spec.startingPrice || 350}/job</span>
+            <span style="color: var(--text-secondary);">Rate from:</span>
+            <span style="font-weight: 700; color: var(--color-success, #10b981); font-size: 0.95rem;">₹${spec.startingPrice || 350}/job</span>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #16a34a; margin-bottom: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: var(--color-success, #10b981); margin-bottom: 0.75rem;">
             <span>⚡</span> Estimated arrival: <strong>~${w.estimatedArrivalMinutes} mins</strong>
           </div>
 
@@ -636,11 +703,11 @@ export const CustomerMap = {
                 <span>•</span>
                 <span>📍 <strong>${w.distanceKm} km</strong></span>
                 <span>•</span>
-                <span style="color: #16a34a; font-weight: 600;">~${w.estimatedArrivalMinutes} min ETA</span>
+                <span style="color: var(--color-success); font-weight: 600;">~${w.estimatedArrivalMinutes} min ETA</span>
               </div>
 
               <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
-                <div style="font-size: 0.82rem; font-weight: 700; color: #15803d;">
+                <div style="font-size: 0.82rem; font-weight: 700; color: var(--color-success);">
                   ₹${spec.startingPrice || 350}/job
                 </div>
                 <button class="btn btn-primary btn-sm list-book-btn" data-worker-id="${esc(w.id)}" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;">
@@ -729,6 +796,10 @@ export const CustomerMap = {
     // Draw route using OSRM
     await this.fetchAndRenderOSRMRoute(workerLng, workerLat, custLng, custLat);
 
+    // Auto-run the live drive: the worker marker follows the rendered route
+    // corner-by-corner (falls back to a straight-line glide offline).
+    this.startRouteTransitAnimation();
+
     // Subscribe to SSE updates from server for real-time live GPS marker ticks
     this.subscribeLiveLocationUpdates(booking);
   },
@@ -754,6 +825,13 @@ export const CustomerMap = {
           etaEl.innerHTML = `Live ETA: <strong>${durationMin} mins</strong> (${distanceKm} km away) via driving route`;
         }
 
+        // Remember the geometry so the transit animation can follow the
+        // actual driving path corner-by-corner.
+        this.activeRouteDurationMin = durationMin;
+        this.activeRouteCoords = (route.geometry && Array.isArray(route.geometry.coordinates))
+          ? route.geometry.coordinates.map(([lng, lat]) => [lat, lng])
+          : [[startLat, startLng], [endLat, endLng]];
+
         // Remove old route layer
         if (this.activeRouteLayer) {
           this.mapInstance.removeLayer(this.activeRouteLayer);
@@ -774,7 +852,9 @@ export const CustomerMap = {
       }
     } catch (err) {
       console.warn('[OSRM route error, fallback to straight line]', err);
-      // Fallback straight line
+      // Fallback straight line — still animate along it
+      this.activeRouteDurationMin = null;
+      this.activeRouteCoords = [[startLat, startLng], [endLat, endLng]];
       if (this.activeRouteLayer) this.mapInstance.removeLayer(this.activeRouteLayer);
       this.activeRouteLayer = L.polyline([
         [startLat, startLng],
@@ -784,12 +864,16 @@ export const CustomerMap = {
   },
 
   /**
-   * SSE listener for live GPS location broadcasts
+   * SSE listener for live GPS location broadcasts.
+   * The browser auto-reconnects EventSource forever; on hosts without the
+   * Node backend (static deploy) /api/events 404s, so close after a few
+   * failures — the client-side transit animation covers the demo meanwhile.
    */
   subscribeLiveLocationUpdates(booking) {
     try {
       if (this.sseSource) this.sseSource.close();
       this.sseSource = new EventSource('/api/events');
+      this.sseFailures = 0;
 
       this.sseSource.addEventListener('sync', (e) => {
         try {
@@ -799,6 +883,14 @@ export const CustomerMap = {
           }
         } catch (err) {}
       });
+
+      this.sseSource.onerror = () => {
+        this.sseFailures = (this.sseFailures || 0) + 1;
+        if (this.sseFailures >= 3) {
+          try { this.sseSource.close(); } catch (err) {}
+          this.sseSource = null;
+        }
+      };
     } catch (err) {}
   },
 
@@ -816,15 +908,109 @@ export const CustomerMap = {
   },
 
   /**
-   * Simulation mode: moves worker closer to customer step-by-step for live hackathon demo
+   * Animate the worker marker along the rendered route (OSRM geometry, or a
+   * straight-line fallback) from origin to the customer's doorstep.
+   * Continuous rAF motion; users with prefers-reduced-motion get discrete
+   * position updates instead of a smoothly interpolated drive.
+   */
+  startRouteTransitAnimation() {
+    if (!this.mapInstance || !this.liveTrackingBooking) return;
+    const coords = this.activeRouteCoords;
+    if (!Array.isArray(coords) || coords.length < 2) return;
+
+    this.stopRouteTransitAnimation();
+
+    const workers = StorageService.getWorkers();
+    const worker = workers.find(w => w.id === this.liveTrackingBooking.workerId) || workers[0];
+    const etaEl = document.getElementById('tracking-eta');
+    const durationMin = this.activeRouteDurationMin || Math.max(2, Math.round(this._estimateRouteMinutes(coords)));
+
+    const placeMarker = (progress) => {
+      const pos = positionAlongPath(coords, progress);
+      if (!pos) return;
+      this.updateMovingWorkerMarker(pos[0], pos[1]);
+      if (etaEl && progress < 1) {
+        const minsLeft = Math.max(1, Math.ceil(durationMin * (1 - progress)));
+        etaEl.innerHTML = `Live ETA: <strong>~${minsLeft} mins</strong> away — follow the scooter on the route`;
+      }
+    };
+
+    const finish = () => {
+      this._transitRaf = null;
+      this._transitTimer = null;
+      Toast.show(`${worker.name} has arrived at your doorstep!`, 'success');
+      if (etaEl) etaEl.innerHTML = `🎉 <strong>Worker Arrived!</strong> Service professional is at your door.`;
+    };
+
+    const reducedMotion = (typeof window !== 'undefined' && typeof window.matchMedia === 'function')
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false;
+
+    if (reducedMotion) {
+      // Discrete hops instead of continuous interpolation
+      const STEPS = 10;
+      let step = 0;
+      this._transitTimer = setInterval(() => {
+        step += 1;
+        placeMarker(step / STEPS);
+        if (step >= STEPS) {
+          clearInterval(this._transitTimer);
+          finish();
+        }
+      }, ROUTE_TRANSIT_DEMO_MS / STEPS);
+      placeMarker(0);
+      return;
+    }
+
+    const startedAt = performance.now();
+    const tick = (now) => {
+      const progress = Math.min(1, (now - startedAt) / ROUTE_TRANSIT_DEMO_MS);
+      placeMarker(progress);
+      if (progress < 1) {
+        this._transitRaf = requestAnimationFrame(tick);
+      } else {
+        finish();
+      }
+    };
+    this._transitRaf = requestAnimationFrame(tick);
+  },
+
+  stopRouteTransitAnimation() {
+    if (this._transitRaf) {
+      cancelAnimationFrame(this._transitRaf);
+      this._transitRaf = null;
+    }
+    if (this._transitTimer) {
+      clearInterval(this._transitTimer);
+      this._transitTimer = null;
+    }
+  },
+
+  _estimateRouteMinutes(coords) {
+    const cum = cumulativePathDistances(coords);
+    const km = (cum[cum.length - 1] || 0) / 1000;
+    // Mumbai city traffic: ~22 km/h door-to-door average
+    return Math.max(2, (km / 22) * 60);
+  },
+
+  /**
+   * Simulation mode (button): replay the live drive along the rendered route.
+   * Falls back to a straight-line glide when no route geometry is available.
    */
   simulateDriverProgress() {
     if (!this.liveTrackingBooking) return;
+
+    if (Array.isArray(this.activeRouteCoords) && this.activeRouteCoords.length >= 2) {
+      Toast.show('Replaying the live drive along the route…', 'info');
+      this.startRouteTransitAnimation();
+      return;
+    }
+
     Toast.show('Simulating real-time worker transit towards customer...', 'info');
 
     const workers = StorageService.getWorkers();
     const worker = workers.find(w => w.id === this.liveTrackingBooking.workerId) || workers[0];
-    
+
     let currentLat = worker.lat || 19.1136;
     let currentLng = worker.lng || 72.8258;
     const targetLat = this.customerLocation.lat;
@@ -833,21 +1019,13 @@ export const CustomerMap = {
     let steps = 0;
     if (this.trackingInterval) clearInterval(this.trackingInterval);
 
-    this.trackingInterval = setInterval(async () => {
+    this.trackingInterval = setInterval(() => {
       steps++;
       // Move 15% closer on each tick
       currentLat += (targetLat - currentLat) * 0.18;
       currentLng += (targetLng - currentLng) * 0.18;
 
       this.updateMovingWorkerMarker(currentLat, currentLng);
-      await this.fetchAndRenderOSRMRoute(currentLng, currentLat, targetLng, targetLat);
-
-      // Post update to backend
-      fetch(`/api/workers/${worker.id}/location`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat: currentLat, lng: currentLng, bookingId: this.liveTrackingBooking.id })
-      }).catch(() => {});
 
       if (steps >= 8) {
         clearInterval(this.trackingInterval);
@@ -947,12 +1125,20 @@ export const CustomerMap = {
       closeTrackingBtn.addEventListener('click', () => {
         const banner = container.querySelector('#live-tracking-banner');
         if (banner) banner.style.display = 'none';
+        this.stopRouteTransitAnimation();
+        if (this.sseSource) {
+          try { this.sseSource.close(); } catch (e) {}
+          this.sseSource = null;
+        }
         if (this.activeRouteLayer && this.mapInstance) {
           this.mapInstance.removeLayer(this.activeRouteLayer);
+          this.activeRouteLayer = null;
         }
         if (this.liveTrackingMarker && this.mapInstance) {
           this.mapInstance.removeLayer(this.liveTrackingMarker);
+          this.liveTrackingMarker = null;
         }
+        this.activeRouteCoords = null;
         if (this.trackingInterval) {
           clearInterval(this.trackingInterval);
           this.trackingInterval = null;
@@ -979,6 +1165,7 @@ export const CustomerMap = {
       navigator.geolocation.clearWatch(this.trackingWatchId);
       this.trackingWatchId = null;
     }
+    this.stopRouteTransitAnimation();
     if (this.trackingInterval) {
       clearInterval(this.trackingInterval);
       this.trackingInterval = null;
@@ -997,6 +1184,8 @@ export const CustomerMap = {
     }
     this.workerMarkers.clear();
     this.activeRouteLayer = null;
+    this.activeRouteCoords = null;
     this.liveTrackingMarker = null;
+    this.liveTrackingBooking = null;
   }
 };

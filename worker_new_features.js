@@ -276,6 +276,127 @@ export const WorkerFeedback = {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────
+// 30-day earnings trend helpers (pure, unit-testable, no DOM access)
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Bucket completed jobs into `days` date-accurate day buckets ending today.
+ * Each bucket: { date, label, total, count }. Jobs outside the window are
+ * ignored (they still appear in the all-time metric cards).
+ */
+export function buildDailyEarningsBuckets(completedJobs, days = 30, now = new Date()) {
+  const n = Number(days);
+  const N = Math.max(1, Math.min(120, Number.isFinite(n) ? n : 30));
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const buckets = [];
+  for (let i = N - 1; i >= 0; i--) {
+    const d = new Date(base);
+    d.setDate(base.getDate() - i);
+    buckets.push({
+      date: d,
+      label: `${d.getDate()} ${d.toLocaleString('en', { month: 'short' })}`,
+      total: 0,
+      count: 0
+    });
+  }
+
+  (completedJobs || []).forEach((job) => {
+    const t = new Date(job.completedAt || job.createdAt || 0);
+    if (isNaN(t.getTime())) return;
+    const dayStart = new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
+    const bucket = buckets.find((b) => b.date.getTime() === dayStart);
+    if (bucket) {
+      bucket.total += Number(job.agreedPrice || 0);
+      bucket.count += 1;
+    }
+  });
+
+  return buckets;
+}
+
+/**
+ * Static SVG area sparkline for the last-N-days trend. No animation (safe
+ * under prefers-reduced-motion), title tooltips per data point, and an
+ * accessible aria-label. Returns an SVG string sized via viewBox.
+ */
+export function buildEarningsSparklineSVG(buckets, opts = {}) {
+  const width = opts.width || 520;
+  const height = opts.height || 200;
+  const padLeft = 46;
+  const padRight = 14;
+  const padTop = 26;
+  const padBottom = 34;
+  const innerW = width - padLeft - padRight;
+  const innerH = height - padTop - padBottom;
+
+  const list = Array.isArray(buckets) ? buckets : [];
+  const totals = list.map((b) => Number(b.total) || 0);
+  const maxTotal = Math.max(...totals, 1);
+  const grandTotal = totals.reduce((a, b) => a + b, 0);
+  const activeDays = totals.filter((t) => t > 0).length;
+
+  const x = (i) => padLeft + (list.length <= 1 ? innerW / 2 : (i / (list.length - 1)) * innerW);
+  const y = (v) => padTop + innerH - (v / maxTotal) * innerH;
+
+  const linePoints = totals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const areaPath = `M ${padLeft},${padTop + innerH} L ${linePoints.split(' ').join(' L ')} L ${padLeft + innerW},${padTop + innerH} Z`;
+
+  const hasData = grandTotal > 0;
+
+  // X labels: about every 7th day plus the last day
+  const labelStep = Math.max(1, Math.round(list.length / 5));
+  const xLabels = list
+    .map((b, i) => ({ b, i }))
+    .filter(({ b, i }) => i === list.length - 1 || i % labelStep === 0)
+    .map(({ b, i }) =>
+      `<text x="${x(i).toFixed(1)}" y="${height - 10}" font-size="10" font-family="Inter,sans-serif" fill="var(--text-muted)" text-anchor="middle">${b.label}</text>`
+    )
+    .join('');
+
+  const dots = hasData
+    ? totals
+        .map((v, i) => ({ v, i }))
+        .filter(({ v }) => v > 0)
+        .map(({ v, i }) =>
+          `<g><title>${list[i].label}: ₹${v.toFixed(0)} (${list[i].count} job${list[i].count === 1 ? '' : 's'})</title>` +
+          `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5" fill="var(--accent-primary,#1a3300)" stroke="var(--bg-card,#fff)" stroke-width="1.5"/></g>`
+        )
+        .join('')
+    : '';
+
+  const todayLabel = list.length ? list[list.length - 1].label : '';
+
+  return `
+    <svg viewBox="0 0 ${width} ${height}" width="100%" height="190" style="display:block;min-width:320px;" role="img"
+         aria-label="Daily earnings over the last ${list.length} days: ₹${Math.round(grandTotal)} total across ${activeDays} active days">
+      <defs>
+        <linearGradient id="lkTrendArea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1a3300" stop-opacity="0.16"/>
+          <stop offset="100%" stop-color="#1a3300" stop-opacity="0.02"/>
+        </linearGradient>
+      </defs>
+
+      <line x1="${padLeft}" y1="${padTop}" x2="${padLeft + innerW}" y2="${padTop}" stroke="var(--border-color)" stroke-dasharray="3,3" opacity="0.6"/>
+      <text x="${padLeft - 6}" y="${padTop + 4}" font-size="10" font-family="Inter,sans-serif" fill="var(--text-muted)" text-anchor="end">₹${Math.round(maxTotal)}</text>
+
+      <line x1="${padLeft}" y1="${padTop + innerH}" x2="${padLeft + innerW}" y2="${padTop + innerH}" stroke="var(--border-color)" stroke-width="1.5"/>
+      <text x="${padLeft - 6}" y="${padTop + innerH + 4}" font-size="10" font-family="Inter,sans-serif" fill="var(--text-muted)" text-anchor="end">₹0</text>
+
+      ${hasData
+        ? `<path d="${areaPath}" fill="url(#lkTrendArea)"/>
+           <polyline points="${linePoints}" fill="none" stroke="var(--accent-primary,#1a3300)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+           ${dots}
+           <circle cx="${x(totals.length - 1).toFixed(1)}" cy="${y(totals[totals.length - 1]).toFixed(1)}" r="5" fill="var(--color-highlighter-yellow,#ffe95c)" stroke="var(--accent-primary,#1a3300)" stroke-width="2">
+             <title>Latest day (${todayLabel}): ₹${(totals[totals.length - 1] || 0).toFixed(0)}</title>
+           </circle>`
+        : `<text x="${(width / 2)}" y="${(height / 2)}" font-size="13" font-family="Inter,sans-serif" fill="var(--text-muted)" text-anchor="middle">No completed jobs in the last ${list.length} days</text>`}
+
+      ${xLabels}
+    </svg>
+  `;
+}
+
 export const WorkerEarnings = {
   renderEarningsDashboard(workerId) {
     const earnings = WorkerFeedback.getEarningsForWorker(workerId);

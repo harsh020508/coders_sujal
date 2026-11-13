@@ -42,9 +42,9 @@ export const T = {
     }
   ],
   testimonials: [
-    { metric: 'Booked in 20 min', quote: 'Booked a plumber for our society block in twenty minutes. The price never moved after the quote.', name: 'Ayesha K.', role: 'Homeowner, Andheri West' },
-    { metric: 'Paid in full', quote: 'As a pro, clients pay me directly. No 25% cut means I can quote fairly and still earn more.', name: 'Rajesh K.', role: 'Master electrician, 8 yrs' },
-    { metric: 'Live tracking', quote: 'Status updates told me exactly when he arrived. Invoice, payment, review — all in one place.', name: 'Meera S.', role: 'Customer, Juhu' }
+    { metric: 'Arrived in 22 min', quote: 'The electrician arrived in 22 minutes. No haggling, the price was what I saw on screen. Brilliant.', name: 'Priya Nair', role: 'Customer · Bandra West' },
+    { metric: '+40% earnings', quote: 'I make 40% more than when I used other apps. No cuts, no tricks.', name: 'Ravi Sharma', role: 'Plumber · LocalKaam Pro' },
+    { metric: 'Done by noon', quote: 'Booked a deep clean for Sunday morning. Done by noon. The app even asked me to rate before they left.', name: 'Meera Joshi', role: 'Customer · Powai' }
   ],
   localities: [
     { name: 'Andheri West', group: 'west' }, { name: 'Juhu', group: 'west' }, { name: 'Bandra', group: 'west' },

@@ -13,7 +13,7 @@
   --ok:#0F7A4F; --ok-bg:#E4F6EE; --warn:#8A5300; --warn-bg:#FFF3DB;
   --bad:#B42F2F; --bad-bg:#FDECEC; --info:#1F5BC4; --info-bg:#E8F0FD;
   /* type */
-  --font-display:'Bricolage Grotesque','Inter',system-ui,sans-serif;
+  --font-display:'Inter Tight','Inter',system-ui,sans-serif;
   --font-body:'Inter',system-ui,-apple-system,'Segoe UI','Noto Sans Devanagari',sans-serif;
   --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
   --fs-xs:.75rem; --fs-sm:.875rem; --fs-base:1rem; --fs-lg:1.125rem; --fs-xl:1.375rem; --fs-2xl:1.75rem;
@@ -353,4 +353,84 @@ section[id], div[id], article[id] { scroll-margin-top: 80px; }
   .status-dot.online{ animation:none; }
   .ui-toast{ animation:none; }
   .ui-toast--exiting{ animation:none; }
+}
+
+/* ---------- PWA: install pill & offline banner ---------- */
+.lk-install-pill{
+  position:fixed; right:16px; bottom:16px; z-index:var(--z-toast,1100);
+  display:flex; align-items:center; gap:10px;
+  max-width:calc(100vw - 32px);
+  padding:10px 12px;
+  background:var(--surface-raised,#fff);
+  color:var(--text-primary,#1a3300);
+  border:1px solid var(--border-color,#d6d3ca);
+  border-radius:var(--radius-buttons,10px);
+  box-shadow:var(--shadow-lg);
+  animation:lk-pill-in var(--dur-2,200ms) var(--ease-decel,cubic-bezier(0,0,.2,1)) both;
+}
+@keyframes lk-pill-in{
+  from{ opacity:0; transform:translateY(10px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+.lk-install-pill-icon{
+  display:grid; place-items:center; flex:none;
+  width:36px; height:36px; border-radius:var(--radius-buttons,10px);
+  background:var(--accent-primary,#1a3300); color:var(--accent-contrast,#ffe95c);
+}
+.lk-install-pill-copy{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+.lk-install-pill-copy strong{ font-size:.875rem; font-weight:700; line-height:1.2; }
+.lk-install-pill-copy span{ font-size:.75rem; color:var(--text-secondary,var(--ink-2,#5B6676)); line-height:1.3; }
+.lk-install-pill-btn{
+  flex:none; padding:8px 14px; margin-left:2px;
+  min-height:36px;
+  font:inherit; font-size:.8125rem; font-weight:700;
+  color:var(--accent-contrast,#ffe95c);
+  background:var(--accent-primary,#1a3300);
+  border:none; border-radius:var(--radius-pill,999px);
+  cursor:pointer;
+  transition:background var(--dur-1,120ms) var(--ease,cubic-bezier(.2,.7,.2,1)), transform var(--dur-1,120ms) var(--ease,cubic-bezier(.2,.7,.2,1));
+}
+.lk-install-pill-btn:hover{ background:var(--accent-hover,#264d00); }
+.lk-install-pill-btn:active{ transform:scale(.97); }
+.lk-install-pill-btn:focus-visible{ outline:none; box-shadow:var(--focus-ring,0 0 0 3px rgba(26,51,0,.35)); }
+.lk-install-pill-close{
+  flex:none; display:grid; place-items:center;
+  width:36px; height:36px; padding:0;
+  font:inherit; font-size:1.05rem; line-height:1;
+  color:var(--text-secondary,var(--ink-2,#5B6676));
+  background:transparent; border:none; border-radius:var(--radius-pill,999px);
+  cursor:pointer;
+  transition:background var(--dur-1,120ms) var(--ease,cubic-bezier(.2,.7,.2,1));
+}
+.lk-install-pill-close:hover{ background:var(--surface-sunken,#f4f0e6); color:var(--text-primary,#1a3300); }
+.lk-install-pill-close:focus-visible{ outline:none; box-shadow:var(--focus-ring,0 0 0 3px rgba(26,51,0,.35)); }
+
+.lk-offline-banner{
+  position:fixed; top:12px; left:50%; z-index:var(--z-toast,1100);
+  transform:translateX(-50%);
+  display:flex; align-items:center; gap:8px;
+  max-width:calc(100vw - 32px);
+  padding:8px 14px;
+  background:var(--text-primary,#1a3300);
+  color:var(--accent-contrast,#ffe95c);
+  border-radius:var(--radius-pill,999px);
+  box-shadow:var(--shadow-md);
+  font-size:.8125rem; font-weight:600; line-height:1.3;
+  animation:lk-banner-in var(--dur-2,200ms) var(--ease-decel,cubic-bezier(0,0,.2,1)) both;
+}
+@keyframes lk-banner-in{
+  from{ opacity:0; transform:translate(-50%,-8px); }
+  to{ opacity:1; transform:translate(-50%,0); }
+}
+.lk-offline-banner i{ flex:none; }
+
+@media (max-width:480px){
+  .lk-install-pill{ right:12px; bottom:12px; left:12px; justify-content:space-between; }
+  .lk-install-pill-copy span{ display:none; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .lk-install-pill,.lk-offline-banner{ animation:none; }
+  .lk-install-pill-btn,.lk-install-pill-close{ transition:none; }
+  .lk-install-pill-btn:active{ transform:none; }
 }

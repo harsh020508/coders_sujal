@@ -43,6 +43,11 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='36' fill='%23ffe95c'/%3E%3Ctext x='96' y='126' font-size='84' font-weight='900' font-family='sans-serif' text-anchor='middle' fill='%231a3300'%3ELK%3C/text%3E%3C/svg%3E">
 
+  <!-- PERF-01: Layout Shift Prevention -->
+  <style>
+    #app { min-height: 100vh; }
+    .leaflet-container { height: 400px; }
+  </style>
   <!-- Core Design System Tokens & Stylesheets -->
   <link rel="stylesheet" href="./tokens.css">
   <link rel="stylesheet" href="./styles.css">
@@ -50,14 +55,13 @@
   <link rel="stylesheet" href="./ui.css">
   <link rel="stylesheet" href="./animations/motion.css">
   <link rel="stylesheet" href="./landing.css">
-  <link rel="stylesheet" href="./landing-premium.css">
   <!-- High-Performance Typography: Non-blocking async font loading -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Inter:wght@400..700&family=JetBrains+Mono:wght@500&display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Inter:wght@400..700&family=JetBrains+Mono:wght@500&display=swap" media="print" onload="this.media='all'">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" media="print" onload="this.media='all'">
   <noscript>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Inter:wght@400..700&family=JetBrains+Mono:wght@500&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
   </noscript>
 
   <!-- Lucide Icons -->
@@ -85,6 +89,7 @@
     import { StorageService } from './storage.js';
     import { Toast } from './toast.js';
     import { NotificationService } from './notificationService.js';
+    import { PwaService } from './pwa.js';
 
     window.NotificationService = NotificationService;
 
@@ -162,11 +167,13 @@
         autoRefreshIcons(document.body);
         App.init();
         window.refreshIcons();
+        // PWA: service worker, install prompt, offline banner (non-blocking)
+        try { PwaService.init(); } catch (e) { console.warn('[PWA] init warning:', e); }
       } catch (err) {
         console.error('App init fatal error:', err);
         const appDiv = document.getElementById('app');
         if (appDiv) {
-          appDiv.innerHTML = '<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Please refresh the page to load the marketplace.</p><button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1a3300; color: white; border: none; border-radius: 8px; cursor: pointer;">Refresh App</button></div>';
+          appDiv.innerHTML = '<div style="padding: 3rem; text-align: center; font-family: Inter, sans-serif;"><h2>LocalKaam</h2><p>Please refresh the page to load the marketplace.</p><button onclick="window.location.reload()" class="btn btn-primary" style="margin-top: 1rem;">Refresh App</button></div>';
         }
       }
     }

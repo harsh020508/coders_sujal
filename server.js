@@ -2,6 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { INITIAL_WORKERS, INITIAL_BOOKINGS, INITIAL_REVIEWS, INITIAL_COMPLAINTS } from './data.js';
@@ -195,7 +196,10 @@ export function setStore(key, value) {
   }
 }
 
-// Seed initial data if not already present
+// Seed initial data if not already present. Complaints also re-seed when the
+// store exists but is empty: nothing in the app ever deletes complaints, so an
+// empty store means "no real data yet" and demo complaints should be present
+// for the admin triage board.
 if (!stmtGet.get('localkaam_workers')) {
   setStore('localkaam_workers', INITIAL_WORKERS);
 }
@@ -205,7 +209,8 @@ if (!stmtGet.get('localkaam_bookings')) {
 if (!stmtGet.get('localkaam_reviews')) {
   setStore('localkaam_reviews', INITIAL_REVIEWS);
 }
-if (!stmtGet.get('localkaam_complaints')) {
+const existingComplaints = getStore('localkaam_complaints', null);
+if (!Array.isArray(existingComplaints) || existingComplaints.length === 0) {
   setStore('localkaam_complaints', INITIAL_COMPLAINTS);
 }
 
@@ -350,7 +355,11 @@ const MIME_TYPES = {
   '.jpeg': 'image/jpeg',
   '.svg': 'image/svg+xml',
   '.webp': 'image/webp',
-  '.ico': 'image/x-icon'
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.ttf': 'font/ttf',
+  '.map': 'application/json'
 };
 
 // ---- Haversine distance (km) ----
@@ -364,20 +373,141 @@ function haversineDistanceKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ---- Rate limiter for photo analysis (20 req/min/IP) ----
-// Was 5/min, which blocked normal demo use (judges snapping many photos).
-const photoRateLimits = new Map();
-function checkPhotoRateLimit(ip) {
+// ==============================================================================
+// PRODUCTION RATE LIMITING ENGINE
+// ==============================================================================
+// Sliding-window algorithm tracking requests per IP and endpoint bucket.
+// Features:
+// - Per-bucket limits (General API, AI Vision & Care, Arrival OTP verification/resend)
+// - RFC 6585 compliant HTTP 429 responses with Retry-After and standard X-RateLimit headers
+// - Periodic garbage collection (unref timer) to prune expired client windows
+// - Normalization of client IPs (including x-forwarded-for & IPv6-mapped IPv4)
+// - Configurable bypass for test suites (NODE_ENV === 'test')
+// ==============================================================================
+
+export const RATE_LIMIT_CONFIGS = {
+  general:    { windowMs: 60_000, max: 120, name: 'General API' },
+  ai:         { windowMs: 60_000, max: 25,  name: 'AI Operations' },
+  otpVerify:  { windowMs: 60_000, max: 15,  name: 'Arrival OTP Verification' },
+  otpAction:  { windowMs: 60_000, max: 10,  name: 'Arrival OTP Generation' }
+};
+
+export const rateLimitBuckets = {
+  general: new Map(),
+  ai: new Map(),
+  otpVerify: new Map(),
+  otpAction: new Map()
+};
+
+export function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  let ip = forwarded ? String(forwarded).split(',')[0].trim() : (req.headers['x-real-ip'] || req.socket?.remoteAddress || '127.0.0.1');
+  if (typeof ip === 'string' && ip.startsWith('::ffff:')) ip = ip.slice(7);
+  if (ip === '::1' || ip === 'localhost') ip = '127.0.0.1';
+  return ip || '127.0.0.1';
+}
+
+export function clearAllRateLimits() {
+  for (const bucket of Object.values(rateLimitBuckets)) {
+    bucket.clear();
+  }
+}
+
+// Periodic cleanup of stale IP records every 2 minutes
+const rateLimitCleaner = setInterval(() => {
   const now = Date.now();
-  const windowMs = 60_000;
-  const max = 20;
-  let record = photoRateLimits.get(ip);
-  if (!record) { record = []; photoRateLimits.set(ip, record); }
-  // Remove old timestamps
-  while (record.length && record[0] < now - windowMs) record.shift();
-  if (record.length >= max) return false;
+  for (const [bucketKey, bucketMap] of Object.entries(rateLimitBuckets)) {
+    const config = RATE_LIMIT_CONFIGS[bucketKey] || RATE_LIMIT_CONFIGS.general;
+    const expiry = now - config.windowMs;
+    for (const [ip, timestamps] of bucketMap.entries()) {
+      while (timestamps.length && timestamps[0] <= expiry) {
+        timestamps.shift();
+      }
+      if (timestamps.length === 0) {
+        bucketMap.delete(ip);
+      }
+    }
+  }
+}, 120_000);
+if (rateLimitCleaner.unref) rateLimitCleaner.unref();
+
+export function checkBucketRateLimit(bucketKey, ip, customMax = null, customWindowMs = null) {
+  const config = RATE_LIMIT_CONFIGS[bucketKey] || RATE_LIMIT_CONFIGS.general;
+  const max = customMax ?? config.max;
+  const windowMs = customWindowMs ?? config.windowMs;
+  const now = Date.now();
+  const bucketMap = rateLimitBuckets[bucketKey] || rateLimitBuckets.general;
+
+  let record = bucketMap.get(ip);
+  if (!record) {
+    record = [];
+    bucketMap.set(ip, record);
+  }
+
+  // Remove timestamps outside current sliding window
+  const windowStart = now - windowMs;
+  while (record.length && record[0] <= windowStart) {
+    record.shift();
+  }
+
+  const resetTimestampSec = Math.ceil((record.length ? record[0] + windowMs : now + windowMs) / 1000);
+  const retryAfterSec = record.length ? Math.max(1, Math.ceil((record[0] + windowMs - now) / 1000)) : 1;
+
+  if (record.length >= max) {
+    return {
+      allowed: false,
+      limit: max,
+      remaining: 0,
+      reset: resetTimestampSec,
+      retryAfter: retryAfterSec,
+      message: `Too many requests for ${config.name}. Rate limit exceeded (max ${max} per ${Math.round(windowMs / 1000)}s). Please retry after ${retryAfterSec}s.`
+    };
+  }
+
   record.push(now);
-  return true;
+  return {
+    allowed: true,
+    limit: max,
+    remaining: Math.max(0, max - record.length),
+    reset: resetTimestampSec,
+    retryAfter: 0
+  };
+}
+
+export function resolveRateLimitBucket(pathname) {
+  if (pathname === '/api/analyze-photo' || pathname === '/api/customer-care') {
+    return 'ai';
+  }
+  if (pathname.match(/^\/api\/bookings\/[^/]+\/verify-arrival$/)) {
+    return 'otpVerify';
+  }
+  if (pathname.match(/^\/api\/bookings\/[^/]+\/(resend-arrival-otp|generate-arrival-otp)$/)) {
+    return 'otpAction';
+  }
+  return 'general';
+}
+
+export function checkRequestRateLimit(req, pathname) {
+  // Test environment bypass: allow fast automated test runs unless explicit test rate limit header is provided
+  if (process.env.NODE_ENV === 'test' && !req.headers['x-test-rate-limit']) {
+    return {
+      allowed: true,
+      limit: 10000,
+      remaining: 9999,
+      reset: Math.ceil(Date.now() / 1000) + 60,
+      retryAfter: 0
+    };
+  }
+
+  const ip = getClientIp(req);
+  const bucket = resolveRateLimitBucket(pathname);
+  return checkBucketRateLimit(bucket, ip);
+}
+
+// Backward-compatibility wrapper for legacy photo rate limiter calls
+export function checkPhotoRateLimit(ip) {
+  const result = checkBucketRateLimit('ai', ip, RATE_LIMIT_CONFIGS.ai.max, RATE_LIMIT_CONFIGS.ai.windowMs);
+  return result.allowed;
 }
 
 export function readBody(req) {
@@ -400,13 +530,26 @@ export function readBody(req) {
   });
 }
 
-export function sendJson(res, statusCode, data) {
-  res.writeHead(statusCode, {
+export function sendJson(res, statusCode, data, extraHeaders = null) {
+  const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With'
-  });
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-Test-Rate-Limit, X-Bypass-RateLimit',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin'
+  };
+
+  // Attach rate limit headers if present on res context or parameter
+  const rateInfo = extraHeaders || res._rateCheck;
+  if (rateInfo) {
+    if (rateInfo.limit != null) headers['X-RateLimit-Limit'] = String(rateInfo.limit);
+    if (rateInfo.remaining != null) headers['X-RateLimit-Remaining'] = String(rateInfo.remaining);
+    if (rateInfo.reset != null) headers['X-RateLimit-Reset'] = String(rateInfo.reset);
+  }
+
+  res.writeHead(statusCode, headers);
   res.end(JSON.stringify(data));
 }
 
@@ -660,7 +803,7 @@ export const server = http.createServer(async (req, res) => {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With'
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-Test-Rate-Limit, X-Bypass-RateLimit'
     });
     res.end();
     return;
@@ -668,6 +811,37 @@ export const server = http.createServer(async (req, res) => {
 
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = url.pathname;
+
+  // ----------------------------------------------------
+  // RATE LIMITING (Production-Grade Protection)
+  // ----------------------------------------------------
+  // Rate limit all /api/ requests (excluding long-lived /api/events SSE stream)
+  if (pathname.startsWith('/api/') && pathname !== '/api/events') {
+    const rateCheck = checkRequestRateLimit(req, pathname);
+    res._rateCheck = rateCheck;
+    if (!rateCheck.allowed) {
+      res.writeHead(429, {
+        'Content-Type': 'application/json',
+        'Retry-After': String(rateCheck.retryAfter),
+        'X-RateLimit-Limit': String(rateCheck.limit),
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': String(rateCheck.reset),
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-Test-Rate-Limit, X-Bypass-RateLimit',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'SAMEORIGIN',
+        'Referrer-Policy': 'strict-origin-when-cross-origin'
+      });
+      res.end(JSON.stringify({
+        error: rateCheck.message,
+        retryAfter: rateCheck.retryAfter
+      }));
+      return;
+    }
+  }
+
+  try {
 
   // ----------------------------------------------------
   // API ROUTES
@@ -1240,6 +1414,94 @@ Rules:
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  // Admin API — passcode-protected (no JWT required for demo mode)
+  // Header:  X-Admin-Passcode: localkaam2024
+  // ─────────────────────────────────────────────────────────────────
+  const ADMIN_PASSCODE_SERVER = process.env.ADMIN_PASSCODE || 'localkaam2024';
+
+  function requireAdminPasscode(req, res) {
+    const hdr = req.headers['x-admin-passcode'] || '';
+    if (hdr !== ADMIN_PASSCODE_SERVER) {
+      sendJson(res, 401, { error: 'Unauthorized: invalid admin passcode' });
+      return false;
+    }
+    return true;
+  }
+
+  // GET /api/admin/workers — list all workers with verification info
+  if (pathname === '/api/admin/workers' && req.method === 'GET') {
+    if (!requireAdminPasscode(req, res)) return;
+    const workers = getStore('localkaam_workers', INITIAL_WORKERS);
+    return sendJson(res, 200, workers);
+  }
+
+  // PATCH /api/admin/workers/:id — update verificationStatus + adminNotes
+  if (pathname.startsWith('/api/admin/workers/') && req.method === 'PATCH') {
+    if (!requireAdminPasscode(req, res)) return;
+    const workerId = pathname.slice('/api/admin/workers/'.length).split('?')[0];
+    try {
+      const body = await readBody(req);
+      const workers = getStore('localkaam_workers', INITIAL_WORKERS);
+      const idx = workers.findIndex(w => w.id === workerId);
+      if (idx === -1) return sendJson(res, 404, { error: 'Worker not found' });
+
+      const allowed = ['verificationStatus', 'adminNotes', 'adminReviewedAt', 'uploadedDocs'];
+      allowed.forEach(k => { if (body[k] !== undefined) workers[idx][k] = body[k]; });
+      setStore('localkaam_workers', workers);
+      broadcastEvent('WORKERS_UPDATED', { key: 'localkaam_workers', value: workers });
+      return sendJson(res, 200, workers[idx]);
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
+  // GET /api/admin/stats — verification summary stats
+  if (pathname === '/api/admin/stats' && req.method === 'GET') {
+    if (!requireAdminPasscode(req, res)) return;
+    const workers = getStore('localkaam_workers', INITIAL_WORKERS);
+    const stats = {
+      total:    workers.length,
+      pending:  workers.filter(w => w.verificationStatus === 'Pending').length,
+      verified: workers.filter(w => w.verificationStatus === 'Verified').length,
+      rejected: workers.filter(w => w.verificationStatus === 'Rejected').length,
+    };
+    return sendJson(res, 200, stats);
+  }
+
+  // GET /api/admin/complaints — all complaints for triage (admin view)
+  if (pathname === '/api/admin/complaints' && req.method === 'GET') {
+    if (!requireAdminPasscode(req, res)) return;
+    return sendJson(res, 200, getStore('localkaam_complaints', INITIAL_COMPLAINTS));
+  }
+
+  // PATCH /api/admin/complaints/:id — triage: status + admin notes
+  if (pathname.startsWith('/api/admin/complaints/') && req.method === 'PATCH') {
+    if (!requireAdminPasscode(req, res)) return;
+    const complaintId = pathname.slice('/api/admin/complaints/'.length).split('?')[0];
+    try {
+      const body = await readBody(req);
+      const complaints = getStore('localkaam_complaints', INITIAL_COMPLAINTS);
+      const idx = complaints.findIndex(c => c.id === complaintId);
+      if (idx === -1) return sendJson(res, 404, { error: 'Complaint not found' });
+
+      const allowed = ['status', 'adminNotes', 'resolutionNotes'];
+      allowed.forEach(k => { if (body[k] !== undefined) complaints[idx][k] = body[k]; });
+      if (body.status) {
+        complaints[idx].statusHistory = [
+          ...(complaints[idx].statusHistory || []),
+          { status: body.status, timestamp: new Date().toISOString(), note: body.adminNotes || 'Updated by admin' }
+        ];
+        complaints[idx].updatedAt = new Date().toISOString();
+      }
+      setStore('localkaam_complaints', complaints);
+      broadcastEvent('COMPLAINTS_UPDATED', { key: 'localkaam_complaints', value: complaints });
+      return sendJson(res, 200, complaints[idx]);
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+
   // Reset Demo Data (Protected - Admin only)
   if (pathname === '/api/reset' && req.method === 'POST') {
     const user = await requireAuth(req, res);
@@ -1608,38 +1870,102 @@ Rules:
   }
 
   // ----------------------------------------------------
-  // STATIC FILE SERVING
+  // STATIC FILE SERVING (High-Performance with ETag & Gzip)
   // ----------------------------------------------------
   let filePath = path.join(__dirname, pathname === '/' ? 'index.html' : pathname);
 
   // Security: prevent directory traversal
   if (!filePath.startsWith(__dirname)) {
-    res.writeHead(403);
+    res.writeHead(403, { 'Content-Type': 'text/plain', 'X-Content-Type-Options': 'nosniff' });
     res.end('Access Denied');
     return;
   }
 
   fs.stat(filePath, (err, stats) => {
+    const hasExtension = path.extname(pathname).length > 0;
     if (err || !stats.isFile()) {
+      if (hasExtension) {
+        // Specific asset requested and not found: return clean 404
+        res.writeHead(404, { 'Content-Type': 'text/plain', 'X-Content-Type-Options': 'nosniff' });
+        res.end('Not Found');
+        return;
+      }
+      // SPA route fallback (e.g. /customer, /worker, /settings)
       filePath = path.join(__dirname, 'index.html');
     }
 
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-    fs.readFile(filePath, (readErr, content) => {
-      if (readErr) {
+    // HTTP 304 ETag Caching
+    fs.stat(filePath, (sErr, finalStats) => {
+      if (sErr || !finalStats.isFile()) {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Not Found');
         return;
       }
-      res.writeHead(200, {
-        'Content-Type': contentType,
-        'Cache-Control': 'no-cache'
+
+      const etag = `W/"${finalStats.size.toString(16)}-${Math.floor(finalStats.mtimeMs).toString(16)}"`;
+      const clientEtag = req.headers['if-none-match'];
+
+      if (clientEtag && clientEtag === etag) {
+        res.writeHead(304, {
+          'ETag': etag,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'X-Content-Type-Options': 'nosniff'
+        });
+        res.end();
+        return;
+      }
+
+      fs.readFile(filePath, (readErr, content) => {
+        if (readErr) {
+          res.writeHead(404, { 'Content-Type': 'text/plain' });
+          res.end('Not Found');
+          return;
+        }
+
+        const headers = {
+          'Content-Type': contentType,
+          'ETag': etag,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'X-Content-Type-Options': 'nosniff',
+          'X-Frame-Options': 'SAMEORIGIN',
+          'Referrer-Policy': 'strict-origin-when-cross-origin'
+        };
+
+        // Transparent gzip compression for text/js/css/json/svg assets (>1KB)
+        const isCompressible = contentType.includes('text/') ||
+                              contentType.includes('javascript') ||
+                              contentType.includes('json') ||
+                              contentType.includes('svg');
+        const acceptEncoding = req.headers['accept-encoding'] || '';
+
+        if (isCompressible && content.length > 1024 && acceptEncoding.includes('gzip')) {
+          try {
+            const gzipped = zlib.gzipSync(content, { level: 6 });
+            headers['Content-Encoding'] = 'gzip';
+            headers['Content-Length'] = String(gzipped.length);
+            res.writeHead(200, headers);
+            res.end(gzipped);
+            return;
+          } catch (zipErr) {
+            // Fallback uncompressed on compression error
+          }
+        }
+
+        headers['Content-Length'] = String(content.length);
+        res.writeHead(200, headers);
+        res.end(content);
       });
-      res.end(content);
     });
   });
+  } catch (fatalErr) {
+    console.error('[Server] Unhandled request error:', fatalErr);
+    if (!res.headersSent) {
+      sendJson(res, 500, { error: 'Internal Server Error' });
+    }
+  }
 });
 
 // Periodic SSE heartbeat (every 15s)
@@ -1660,7 +1986,12 @@ const sseInterval = setInterval(() => {
 if (sseInterval.unref) sseInterval.unref();
 
 // Start server if executed directly
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+const isDirectEntry = process.argv[1] && (
+  process.argv[1] === fileURLToPath(import.meta.url) ||
+  path.resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase() ||
+  process.argv[1].endsWith('server.js')
+);
+if (isDirectEntry) {
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`LocalKaam backend server running at http://localhost:${PORT}/ (and on local network)`);
   });

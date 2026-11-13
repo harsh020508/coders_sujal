@@ -76,7 +76,7 @@ export const AuthModal = {
           </div>
 
           <!-- Instant 1-Click Access Button -->
-          <button type="button" class="btn btn-primary" id="btn-quick-guest-top" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.6rem; padding: 0.75rem; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.85rem; border-radius: var(--radius-buttons); background: var(--color-forest-ink, #1a3300); color: #fff;">
+          <button type="button" class="btn btn-primary" id="btn-quick-guest-top" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.6rem; padding: 0.75rem; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.85rem; border-radius: var(--radius-buttons);">
             <i data-lucide="zap" class="lucide-xs"></i> Continue as ${isWorker ? 'Worker Pro (Instant Access)' : 'Customer (Instant Access)'}
           </button>
 

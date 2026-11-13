@@ -1,5 +1,5 @@
-import { prefersReducedMotion } from '../../animations/motion.js';
 import { StorageService } from '../../storage.js';
+import { initLandingMotion } from './motion.js';
 
 let gPending = false;
 let gTimer = 0;
@@ -18,6 +18,13 @@ export function bindLanding(root, { onCategory, onThemeToggle, onGetStarted, onS
   if (landingAbort) landingAbort.abort();
   landingAbort = new AbortController();
   const { signal } = landingAbort;
+
+  // Initialize Apple-grade fluid motion & interactive physics
+  try {
+    initLandingMotion(root, { signal });
+  } catch (err) {
+    console.warn('[Motion] Landing motion initialization note:', err);
+  }
 
   try {
     if (sessionStorage.getItem('lk_announce_dismissed') === '1') {
@@ -65,13 +72,20 @@ export function bindLanding(root, { onCategory, onThemeToggle, onGetStarted, onS
   root.querySelector('#nav-signin-btn')?.addEventListener('click', onSignin, { signal });
   root.querySelector('#get-started-btn')?.addEventListener('click', onGetStarted, { signal });
   root.querySelector('#hero-find-pro-btn')?.addEventListener('click', onGetStarted, { signal });
-  root.querySelector('#sp-cta-btn')?.addEventListener('click', onGetStarted, { signal });
   root.querySelector('#essential-cta')?.addEventListener('click', () => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' }), { signal });
   root.querySelector('#cta-find-pro-btn')?.addEventListener('click', onGetStarted, { signal });
   root.querySelector('#cta-demo-btn')?.addEventListener('click', onDemo || onGetStarted, { signal });
   root.querySelector('#cta-explore-btn')?.addEventListener('click', () => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' }), { signal });
   root.querySelector('#hero-explore-btn')?.addEventListener('click', () => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' }), { signal });
-  root.querySelector('#theme-toggle-btn')?.addEventListener('click', onThemeToggle, { signal });
+  root.querySelector('#theme-toggle-btn')?.addEventListener('click', () => {
+    if (document.startViewTransition) document.startViewTransition(() => onThemeToggle());
+    else onThemeToggle();
+  }, { signal });
+  root.querySelectorAll('#landing-lang-picker, #mobile-landing-lang-picker').forEach(el => {
+    el.addEventListener('change', (e) => {
+      import('../../i18n.js').then(({ i18n }) => i18n.setLanguage(e.target.value));
+    }, { signal });
+  });
 
   root.querySelectorAll('[data-locality]').forEach(chip => chip.addEventListener('click', () => {
     root.querySelectorAll('[data-locality]').forEach(c => { c.classList.remove('is-active'); c.setAttribute('aria-pressed', 'false'); });
@@ -91,55 +105,17 @@ export function bindLanding(root, { onCategory, onThemeToggle, onGetStarted, onS
     }
   } catch (e) {}
 
-  root.querySelectorAll('[data-category]').forEach(el => el.addEventListener('click', () => onCategory(el.getAttribute('data-category')), { signal }));
-
-  const tabWrap = root.querySelector('[data-tabs]');
-  if (tabWrap) {
-    const tabs = Array.from(tabWrap.querySelectorAll('[role="tab"]'));
-    const panels = Array.from(tabWrap.querySelectorAll('.lk-tabpanel'));
-    let idx = 0; let timer = 0; let interacted = false;
-    const show = (i) => {
-      idx = (i + tabs.length) % tabs.length;
-      tabs.forEach((t, j) => { t.setAttribute('aria-selected', String(j === idx)); t.classList.toggle('is-active', j === idx); });
-      panels.forEach((p, j) => { p.classList.toggle('is-active', j === idx); p.hidden = j !== idx; });
-      tabs.forEach((t, j) => { const bar = t.querySelector('.lk-tab-progress span'); if (bar) { bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = j === idx ? `lk-tab-prog 5s linear forwards` : 'none'; } });
-    };
-    const autoplay = () => { if (interacted || prefersReducedMotion()) return; timer = setInterval(() => show(idx + 1), 5000); };
-    tabs.forEach((t, i) => t.addEventListener('click', () => { interacted = true; clearInterval(timer); show(i); }, { signal }));
-    tabWrap.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-      interacted = true; clearInterval(timer);
-      show(idx + (e.key === 'ArrowRight' ? 1 : -1));
-      tabs[idx].focus(); e.preventDefault();
+  const categoryCards = root.querySelectorAll('[data-category]');
+  categoryCards.forEach(el => {
+    const go = () => onCategory(el.getAttribute('data-category'));
+    el.addEventListener('click', go, { signal });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
     }, { signal });
-    autoplay();
-    signal.addEventListener('abort', () => clearInterval(timer));
-  }
-
-  root.querySelectorAll('[data-filter]').forEach(chip => chip.addEventListener('click', () => {
-    root.querySelectorAll('[data-filter]').forEach(c => c.classList.remove('is-active'));
-    chip.classList.add('is-active');
-    const f = chip.dataset.filter;
-    root.querySelectorAll('.lk-logo').forEach(el => { el.hidden = f !== 'all' && el.dataset.group !== f; });
-  }, { signal }));
-
-  const car = root.querySelector('[data-carousel]');
-  if (car) {
-    const track = car.querySelector('.lk-track');
-    const slides = Array.from(track.children);
-    const dots = Array.from(car.querySelectorAll('[data-dot]'));
-    let ci = 0;
-    const go = (i) => { ci = (i + slides.length) % slides.length; track.style.transform = `translateX(-${ci * 100}%)`; dots.forEach((d, j) => d.classList.toggle('is-active', j === ci)); };
-    car.querySelector('[data-prev]')?.addEventListener('click', () => go(ci - 1), { signal });
-    car.querySelector('[data-next]')?.addEventListener('click', () => go(ci + 1), { signal });
-    dots.forEach(d => d.addEventListener('click', () => go(Number(d.dataset.dot)), { signal }));
-    let sx = 0;
-    car.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true, signal });
-    car.addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 40) go(ci + (dx < 0 ? 1 : -1)); }, { passive: true, signal });
-  }
+  });
 
   root.querySelectorAll('[data-faq]').forEach(faq => {
-    const items = Array.from(faq.querySelectorAll('.settings-faq'));
+    const items = Array.from(faq.querySelectorAll('.lk-faq-item'));
     items.forEach(item => item.querySelector('.lk-faq-q')?.addEventListener('click', () => {
       const panel = item.querySelector('.lk-faq-a');
       const btn = item.querySelector('.lk-faq-q');
@@ -147,10 +123,11 @@ export function bindLanding(root, { onCategory, onThemeToggle, onGetStarted, onS
       const isOpen = btn.getAttribute('aria-expanded') === 'true';
       items.forEach(it => {
         it.querySelector('.lk-faq-q')?.setAttribute('aria-expanded', 'false');
+        it.classList.remove('is-open');
         const a = it.querySelector('.lk-faq-a');
         if (a) a.hidden = true;
       });
-      if (!isOpen) { btn.setAttribute('aria-expanded', 'true'); panel.hidden = false; }
+      if (!isOpen) { btn.setAttribute('aria-expanded', 'true'); item.classList.add('is-open'); panel.hidden = false; }
     }, { signal }));
   });
 }

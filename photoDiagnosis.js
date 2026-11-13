@@ -116,12 +116,12 @@ export const PhotoDiagnosis = {
           </div>
 
           <!-- Error Alert -->
-          <div id="photo-error-container" style="${this.errorMessage ? 'display: block;' : 'display: none;'} margin-top: 1rem; padding: 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c;">
+          <div id="photo-error-container" style="${this.errorMessage ? 'display: block;' : 'display: none;'} margin-top: 1rem; padding: 1rem; background: var(--color-danger-bg); border: 1px solid var(--color-danger-border); border-radius: 8px; color: var(--color-danger-text);">
             <div style="font-weight: 700; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.35rem;">
               <span>⚠️</span> Analysis Notice
             </div>
             <div style="font-size: 0.85rem;" id="photo-error-message">${esc(this.errorMessage || '')}</div>
-            <button class="btn btn-outline btn-sm" id="btn-retry-diagnosis" style="margin-top: 0.5rem; font-size: 0.8rem; background: white;">
+            <button class="btn btn-outline btn-sm" id="btn-retry-diagnosis" style="margin-top: 0.5rem; font-size: 0.8rem; background: var(--bg-card); color: var(--text-primary);">
               Retry Analysis
             </button>
           </div>
@@ -141,11 +141,11 @@ export const PhotoDiagnosis = {
 
   renderDiagnosisCard(diag) {
     const urgencyBadge = {
-      emergency: { label: '🚨 EMERGENCY HAZARD', bg: '#fee2e2', color: '#dc2626', pulse: true },
-      high: { label: '⚠️ High Urgency', bg: '#ffedd5', color: '#c2410c', pulse: false },
-      medium: { label: '⚡ Medium Urgency', bg: '#e0f2fe', color: '#0369a1', pulse: false },
-      low: { label: 'ℹ️ Low Urgency', bg: '#f0fdf4', color: '#15803d', pulse: false }
-    }[diag.urgency] || { label: 'Normal', bg: '#f3f4f6', color: '#374151' };
+      emergency: { label: '🚨 EMERGENCY HAZARD', cls: 'urgency-emergency', pulse: true },
+      high: { label: '⚠️ High Urgency', cls: 'urgency-high', pulse: false },
+      medium: { label: '⚡ Medium Urgency', cls: 'urgency-medium', pulse: false },
+      low: { label: 'ℹ️ Low Urgency', cls: 'urgency-low', pulse: false }
+    }[diag.urgency] || { label: 'Normal', cls: '', pulse: false };
 
     const catObj = CATEGORIES.find(c => c.id === diag.service_category) || { name: diag.service_category, icon: '🛠️' };
 
@@ -155,13 +155,13 @@ export const PhotoDiagnosis = {
         <!-- Header with Urgency and Category -->
         <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem;">
           <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
-            <span class="badge" style="background: ${urgencyBadge.bg}; color: ${urgencyBadge.color}; font-weight: 700; font-size: 0.82rem; padding: 4px 10px; border-radius: 6px; ${urgencyBadge.pulse ? 'animation: pulseRing 1.5s infinite;' : ''}">
+            <span class="badge ${urgencyBadge.cls}" style="font-weight: 700; font-size: 0.82rem; padding: 4px 10px; border-radius: 6px; ${urgencyBadge.pulse ? 'animation: pulseRing 1.5s infinite;' : ''}">
               ${urgencyBadge.label}
             </span>
             <span style="font-size: 0.8rem; color: var(--text-secondary);">
               Confidence: <strong>${diag.confidence ? diag.confidence.toUpperCase() : 'HIGH'}</strong>
             </span>
-            ${diag.demo ? '<span class="badge" style="background:#fef9c3;color:#854d0e;font-size:0.7rem;font-weight:700;">DEMO ESTIMATE</span>' : ''}
+            ${diag.demo ? '<span class="badge" style="background:var(--color-warning-bg);color:var(--color-warning-text);font-size:0.7rem;font-weight:700;">DEMO ESTIMATE</span>' : ''}
           </div>
 
           <!-- Editable Detected Service Category -->
@@ -180,11 +180,11 @@ export const PhotoDiagnosis = {
 
         <!-- Prominent Safety Warning Alert Box (if present) -->
         ${diag.safety_warning ? `
-          <div style="background: #fef2f2; border: 1.5px solid #ef4444; border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1.25rem; display: flex; gap: 0.75rem; align-items: flex-start;">
+          <div style="background: var(--color-danger-bg, rgba(220,38,38,0.15)); border: 1.5px solid var(--color-danger-border, #ef4444); border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1.25rem; display: flex; gap: 0.75rem; align-items: flex-start;">
             <span style="font-size: 1.5rem; flex-shrink: 0;">⚡</span>
             <div>
-              <div style="font-weight: 800; color: #b91c1c; font-size: 0.92rem; margin-bottom: 2px;">CRITICAL SAFETY HAZARD DETECTED</div>
-              <div style="color: #991b1b; font-size: 0.85rem; line-height: 1.4;">${esc(diag.safety_warning)}</div>
+              <div style="font-weight: 800; color: var(--color-danger, #ef4444); font-size: 0.92rem; margin-bottom: 2px;">CRITICAL SAFETY HAZARD DETECTED</div>
+              <div style="color: var(--text-primary); font-size: 0.85rem; line-height: 1.4;">${esc(diag.safety_warning)}</div>
             </div>
           </div>
         ` : ''}
@@ -195,7 +195,7 @@ export const PhotoDiagnosis = {
             ${esc(diag.issue)}
           </h2>
           ${!diag.problem_found && diag.follow_up_question ? `
-            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.75rem; color: #92400e; font-size: 0.85rem; margin-top: 0.5rem;">
+            <div style="background: var(--color-warning-bg, rgba(245,158,11,0.15)); border: 1px solid var(--color-warning-border, #f59e0b); border-radius: 6px; padding: 0.75rem; color: var(--color-warning, #f59e0b); font-size: 0.85rem; margin-top: 0.5rem;">
               <strong>Clarification Needed:</strong> ${esc(diag.follow_up_question)}
             </div>
           ` : ''}
@@ -209,7 +209,7 @@ export const PhotoDiagnosis = {
             <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 0.25rem;">
               Estimated Labor Cost
             </div>
-            <div style="font-size: clamp(1.4rem, 4vw, 1.75rem); font-weight: 800; color: #15803d; line-height: 1.2;">
+            <div style="font-size: clamp(1.4rem, 4vw, 1.75rem); font-weight: 800; color: var(--color-success, #10b981); line-height: 1.2;">
               ₹${diag.price_min} – ₹${diag.price_max}
             </div>
             <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.25rem;">
@@ -347,6 +347,16 @@ export const PhotoDiagnosis = {
           } catch (pe) {
             console.warn('[PhotoDiagnosis] JSON parse warning, falling back:', pe);
           }
+        }
+
+        if (res.status === 429) {
+          const retryAfter = res.headers.get('retry-after') || '30';
+          const msg = (data && data.error) || `Rate limit reached. Please wait ${retryAfter} seconds before trying again.`;
+          Toast.show(msg, 'warning');
+          this.errorMessage = msg;
+          this.isLoading = false;
+          this.render(container);
+          return;
         }
       } catch (networkErr) {
         console.warn('[PhotoDiagnosis] Backend fetch notice, activating demo mode:', networkErr);

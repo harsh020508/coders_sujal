@@ -14,6 +14,9 @@ localkaam.db-shm
 *.log
 npm-debug.log*
 
+# Runtime state (written by server start scripts)
+active_port.txt
+
 # Node modules
 node_modules/
 

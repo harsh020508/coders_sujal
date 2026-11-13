@@ -69,6 +69,17 @@ export const NotificationService = {
   currentUserId: null,
   activePopups: new Map(), // notifId -> DOMElement
 
+  // SSE resilience: on hosts without the Node backend (e.g. the static Vercel
+  // deploy) /api/events 404s forever. An uncapped retry loop burns battery and
+  // spams the console. After sseMaxFailures consecutive failed connections we
+  // stop retrying ("downgrade") and rely on Supabase Realtime + local sync.
+  // A single retry is attempted when the network comes back or the tab is
+  // re-focused, so a locally started server is picked up automatically.
+  sseFailures: 0,
+  sseMaxFailures: 5,
+  sseDowngraded: false,
+  sseRetryBound: false,
+
   init() {
     if (this.initialized) return;
     this.initialized = true;
@@ -150,61 +161,102 @@ export const NotificationService = {
       this.reconnectTimeout = null;
     }
     this.reconnectDelay = 1000;
+    this.sseFailures = 0;
+    this.sseDowngraded = false;
+    this.sseRetryBound = false;
   },
 
   connectRealtime(userId) {
     if (typeof window === 'undefined') return;
 
     // 1. Server-Sent Events (SSE) via backend
-    const token = AuthService.getToken?.() || (typeof localStorage !== 'undefined' ? localStorage.getItem('sb-access-token') : null);
-    const sseUrl = token ? `/api/events?token=${encodeURIComponent(token)}` : '/api/events';
+    if (this.sseDowngraded) {
+      // Backend was unreachable on earlier attempts (static hosting). Do not
+      // restart the retry loop here; the network-retry listener handles it.
+      this._bindSseNetworkRetry(userId);
+    } else {
+      const token = AuthService.getToken?.() || (typeof localStorage !== 'undefined' ? localStorage.getItem('sb-access-token') : null);
+      const sseUrl = token ? `/api/events?token=${encodeURIComponent(token)}` : '/api/events';
 
-    try {
-      if (typeof EventSource !== 'undefined') {
-        if (this.eventSource) {
-          this.eventSource.close();
-        }
+      try {
+        if (typeof EventSource !== 'undefined') {
+          if (this.eventSource) {
+            this.eventSource.close();
+          }
 
-        const es = new EventSource(sseUrl);
-        this.eventSource = es;
+          const es = new EventSource(sseUrl);
+          this.eventSource = es;
 
-        es.onopen = () => {
-          this.reconnectDelay = 1000;
-          // Re-sync notifications in case any were missed during disconnect
-          StorageService.syncNotifications(userId).then(() => {
-            this.updateBadge();
-            this.renderDropdownContent();
-          });
-        };
+          es.onopen = () => {
+            this.reconnectDelay = 1000;
+            this.sseFailures = 0;
+            this.sseDowngraded = false;
+            // Re-sync notifications in case any were missed during disconnect
+            StorageService.syncNotifications(userId).then(() => {
+              this.updateBadge();
+              this.renderDropdownContent();
+            });
+          };
 
-        es.addEventListener('notification', (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data && data.notification) {
-              const notif = data.notification;
-              StorageService.addNotification(notif);
-              this.handleIncomingNotification(notif);
+          es.addEventListener('notification', (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              if (data && data.notification) {
+                const notif = data.notification;
+                StorageService.addNotification(notif);
+                this.handleIncomingNotification(notif);
+              }
+            } catch (err) {
+              console.error('[NotificationService] Failed to parse SSE notification:', err);
             }
-          } catch (err) {
-            console.error('[NotificationService] Failed to parse SSE notification:', err);
-          }
-        });
+          });
 
-        es.onerror = () => {
-          es.close();
-          this.eventSource = null;
-          // Reconnection with exponential backoff
-          if (!this.reconnectTimeout) {
-            this.reconnectTimeout = setTimeout(() => {
-              this.reconnectTimeout = null;
-              this.connectRealtime(userId);
-            }, this.reconnectDelay);
-            this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay);
-          }
-        };
+          // Shared dataset broadcasts (admin complaint triage / verification
+          // status changes) — refresh the local cache so every open view
+          // re-renders live via notifyChange, without a reload.
+          es.addEventListener('sync', (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              if (!data || typeof data.type !== 'string') return;
+              if (data.type === 'COMPLAINTS_UPDATED') {
+                StorageService.applyServerSync('complaints', data.value);
+              } else if (data.type === 'WORKERS_UPDATED') {
+                StorageService.applyServerSync('workers', data.value);
+              }
+            } catch (err) {}
+          });
+
+          es.onerror = () => {
+            es.close();
+            this.eventSource = null;
+            this.sseFailures += 1;
+
+            // Give up after repeated failures — the backend is not running
+            // (e.g. static hosting without /api/events). Stop the retry loop.
+            if (this.sseFailures >= this.sseMaxFailures) {
+              this.sseDowngraded = true;
+              console.warn(
+                `[NotificationService] /api/events unreachable after ${this.sseFailures} attempts — ` +
+                'stopping SSE retries. Live updates continue via Supabase Realtime / local sync. ' +
+                'Will retry once when the network returns or the tab is re-focused.'
+              );
+              this._bindSseNetworkRetry(userId);
+              return;
+            }
+
+            // Reconnection with exponential backoff
+            if (!this.reconnectTimeout) {
+              this.reconnectTimeout = setTimeout(() => {
+                this.reconnectTimeout = null;
+                this.connectRealtime(userId);
+              }, this.reconnectDelay);
+              this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay);
+            }
+          };
+        }
+      } catch (e) {
+        console.warn('[NotificationService] SSE connection error:', e);
       }
-    } catch (e) {
-      console.warn('[NotificationService] SSE connection error:', e);
     }
 
     // 2. Supabase Realtime channel subscription (if Supabase configured)
@@ -230,6 +282,33 @@ export const NotificationService = {
         this.realtimeUnsub = () => {
           client.removeChannel(channel);
         };
+      });
+    }
+  },
+
+  /**
+   * Bind one-time network/focus listeners that retry SSE after a downgrade.
+   * Used when the backend is unreachable (e.g. static hosting) so a locally
+   * started server is picked up as soon as the network or tab returns.
+   */
+  _bindSseNetworkRetry(userId) {
+    if (this.sseRetryBound || typeof window === 'undefined') return;
+    if (typeof window.addEventListener !== 'function') return;
+    this.sseRetryBound = true;
+    const retryOnce = () => {
+      if (!this.sseDowngraded) return;
+      console.info('[NotificationService] Network/focus change — retrying /api/events once.');
+      this.sseFailures = 0;
+      this.sseDowngraded = false;
+      this.sseRetryBound = false; // rebindable if the backend is still down
+      this.connectRealtime(this.currentUserId || userId);
+    };
+    window.addEventListener('online', retryOnce);
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      document.addEventListener('visibilitychange', () => {
+        try {
+          if (document.visibilityState === 'visible') retryOnce();
+        } catch (e) {}
       });
     }
   },

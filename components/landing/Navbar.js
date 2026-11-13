@@ -1,3 +1,4 @@
+import { i18n } from '../../i18n.js';
 // components/landing/Navbar.js — mega-menu nav + mobile drawer markup.
 // Keyboard: g then h = home, g then p = #services (Shift+? opens cheatsheet).
 export function navHTML(theme) {
@@ -33,7 +34,10 @@ export function navHTML(theme) {
       <a class="nav-link" href="#faq">Help</a>
     </nav>
     <div class="nav-actions">
-      <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle theme">
+      <div class="nav-lang-picker-wrapper">
+        ${i18n.renderLanguageSelector('landing-lang-picker', 'nav-lang-select')}
+      </div>
+      <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle colour theme" title="Toggle colour theme">
         <i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}" class="lucide-sm"></i>
       </button>
       <button class="btn btn-outline btn-sm" id="nav-signin-btn"><i data-lucide="user" class="lucide-xs"></i> Log in</button>
@@ -59,9 +63,12 @@ export function drawerHTML() {
       ['How it works', '#how-it-works'], ['Help', '#faq']
     ].map(x => `<a class="nav-link lk-drawer-link" href="${x[1]}">${x[0]}</a>`).join('')}
     <div class="lk-drawer-actions">
+      <div class="nav-lang-picker-wrapper" style="margin-bottom:8px;">
+        ${i18n.renderLanguageSelector('mobile-landing-lang-picker', 'nav-lang-select')}
+      </div>
       <button class="btn btn-outline btn-full" id="mobile-nav-signin-btn">Log in</button>
       <button class="btn btn-primary btn-full" id="mobile-get-started-btn">Get started</button>
-      <button class="theme-toggle" id="mobile-theme-toggle-btn" style="width:100%;justify-content:center;">Toggle theme</button>
+      <button class="theme-toggle btn-full" id="mobile-theme-toggle-btn"><i data-lucide="sun-moon" class="lucide-sm"></i>Switch theme</button>
     </div>
   </div>`;
 }

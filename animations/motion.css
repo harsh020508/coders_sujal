@@ -253,12 +253,13 @@ body.nav-hidden .navbar {
   .settings-page-body, .settings-panel { animation: none; }
 }
 
-/* High-performance GPU reveals (smooth 120fps lock) */
+/* High-performance GPU reveals (smooth 120fps lock).
+   Content is never hidden: the element only slides a few pixels, so the page
+   stays readable if the observer never fires (screenshots, print, edge cases). */
 .lk-reveal-init {
-  opacity: 0;
-  transform: translate3d(0, 16px, 0);
-  transition: opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1), transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
+  opacity: 1;
+  transform: translate3d(0, 10px, 0);
+  transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .lk-reveal-init.is-revealed {
   opacity: 1;
@@ -271,3 +272,95 @@ body.nav-hidden .navbar {
     transition: none !important;
   }
 }
+
+/* ================================================================
+   LANDING PAGE SCROLL REVEALS
+   ================================================================ */
+
+/* Reveal up — primary entrance animation */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-reveal="fade"] {
+  transform: none;
+}
+[data-reveal="scale"] {
+  transform: scale(0.96);
+}
+[data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Stagger delays for grids */
+[data-reveal-delay="1"] { transition-delay: 0.08s; }
+[data-reveal-delay="2"] { transition-delay: 0.16s; }
+[data-reveal-delay="3"] { transition-delay: 0.24s; }
+[data-reveal-delay="4"] { transition-delay: 0.32s; }
+[data-reveal-delay="5"] { transition-delay: 0.40s; }
+[data-reveal-delay="6"] { transition-delay: 0.48s; }
+
+/* Stat counter visual pulse */
+@keyframes lk-count-pop {
+  0%  { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  100%{ transform: scale(1); }
+}
+.lk-count-animated { animation: lk-count-pop 0.4s var(--ease-spring) both; }
+
+/* Hero floating card drift */
+@keyframes lk-card-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+.lk-pro-card {
+  animation: lk-card-float 5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lk-pro-card { animation: none; }
+}
+
+/* Service card icon pop on hover */
+.lk-service-card:hover .lk-service-icon {
+  transform: scale(1.1) rotate(-3deg);
+}
+.lk-service-icon {
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Feature card icon pop on hover */
+.lk-feature-card:hover .lk-feature-icon {
+  transform: scale(1.1);
+}
+.lk-feature-icon {
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Locality chip ripple */
+.lk-locality-chips button:active {
+  transform: scale(0.95);
+  transition-duration: 80ms;
+}
+
+/* FAQ chevron spring */
+.lk-faq-q svg {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+}
+
+/* Reduced motion: strip all reveals */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .lk-service-card:hover .lk-service-icon,
+  .lk-feature-card:hover .lk-feature-icon {
+    transform: none;
+  }
+}
+

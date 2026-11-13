@@ -37,16 +37,16 @@ test('photoDiagnosis.js uses fluid responsive layout without hardcoded inline gr
   assert.ok(js.includes('photo-dropzone-actions'), 'photoDiagnosis.js should use photo-dropzone-actions class');
 });
 
-test('landing-premium.css maintains compact 2-column grid on mobile viewports', () => {
-  const css = fs.readFileSync(path.join(__dirname, '../landing-premium.css'), 'utf8');
+test('landing.css maintains compact 2-column grid on mobile viewports', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../landing.css'), 'utf8');
 
   assert.ok(
-    css.includes('.lk-services-grid') && css.includes('repeat(2, 1fr)'),
-    'landing-premium.css should support 2-column mobile services grid'
+    css.includes('.lk-services-grid') && css.includes('repeat(2, minmax(0, 1fr))'),
+    'landing.css should support 2-column mobile services grid'
   );
   assert.ok(
     css.includes('max-width: 330px'),
-    'landing-premium.css should only fall back to 1-column on extreme narrow viewports <= 330px'
+    'landing.css should only fall back to 1-column on extreme narrow viewports <= 330px'
   );
 });
 

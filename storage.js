@@ -467,6 +467,27 @@ export const StorageService = {
     }
   },
 
+  /**
+   * Apply a server-pushed dataset (SSE `sync` broadcast, e.g. admin triage or
+   * verification changes) to the local cache. Deliberately local-only: no
+   * Supabase upserts and no transition side effects — the server is the
+   * source of truth here, so echoing the data back would be wasteful.
+   * Returns true when the dataset was applied.
+   */
+  applyServerSync(dataType, value) {
+    const keyMap = {
+      workers: STORAGE_KEYS.WORKERS,
+      complaints: STORAGE_KEYS.COMPLAINTS,
+      bookings: STORAGE_KEYS.BOOKINGS,
+      reviews: STORAGE_KEYS.REVIEWS
+    };
+    const key = keyMap[dataType];
+    if (!key || !Array.isArray(value)) return false;
+    safeSetLocal(key, value);
+    notifyChange(dataType, value);
+    return true;
+  },
+
   // --- NOTIFICATIONS ---
   getNotifications(userId = null) {
     const list = safeGet(STORAGE_KEYS.NOTIFICATIONS, []);
@@ -616,18 +637,49 @@ export const StorageService = {
 
   // --- SESSION STATE ---
   getCurrentRole() {
+    // 1. Explicit URL hash takes top priority for this tab
+    if (typeof window !== 'undefined' && window.location && window.location.hash) {
+      const h = window.location.hash.replace('#', '').trim();
+      const validRoles = ['landing', 'role-select', 'customer', 'worker', 'settings'];
+      if (validRoles.includes(h)) return h;
+    }
+    // 2. Tab-isolated session storage
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        const r = sessionStorage.getItem(STORAGE_KEYS.CURRENT_ROLE);
+        const validRoles = ['landing', 'role-select', 'customer', 'worker', 'settings'];
+        if (r && validRoles.includes(r)) return r;
+      }
+    } catch (_) {}
+    // 3. Fallback to localStorage / memoryStore
     return safeGet(STORAGE_KEYS.CURRENT_ROLE, 'landing');
   },
 
   setCurrentRole(role) {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(STORAGE_KEYS.CURRENT_ROLE, role);
+      }
+    } catch (_) {}
     safeSetLocal(STORAGE_KEYS.CURRENT_ROLE, role);
   },
 
   getSelectedWorkerId() {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        const id = sessionStorage.getItem(STORAGE_KEYS.SELECTED_WORKER_ID);
+        if (id) return id;
+      }
+    } catch (_) {}
     return safeGet(STORAGE_KEYS.SELECTED_WORKER_ID, 'w1');
   },
 
   setSelectedWorkerId(id) {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(STORAGE_KEYS.SELECTED_WORKER_ID, id);
+      }
+    } catch (_) {}
     safeSetLocal(STORAGE_KEYS.SELECTED_WORKER_ID, id);
   },
 

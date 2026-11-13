@@ -81,8 +81,9 @@ class SupabaseManager {
     if (typeof window !== 'undefined' && window.supabase && typeof window.supabase.createClient === 'function') {
       return window.supabase.createClient;
     }
-    // 2. Dynamic ESM import from CDN
-    if (typeof window !== 'undefined') {
+    // 2. Dynamic ESM import from CDN (browser-only, Node does not support https: scheme)
+    const isNode = typeof process !== 'undefined' && process.versions && Boolean(process.versions.node);
+    if (typeof window !== 'undefined' && !isNode) {
       try {
         const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
         if (module && typeof module.createClient === 'function') {
@@ -105,7 +106,10 @@ class SupabaseManager {
     try {
       const createClient = await this.getCreateClientFn();
       if (!createClient) {
-        console.warn('Supabase JS library is not yet available.');
+        const isNode = typeof process !== 'undefined' && process.versions && Boolean(process.versions.node);
+        if (!isNode) {
+          console.warn('Supabase JS library is not yet available.');
+        }
         return null;
       }
 

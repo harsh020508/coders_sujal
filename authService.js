@@ -27,8 +27,34 @@ class AuthServiceManager {
    * Loads non-authoritative display information.
    * NOTE: This does NOT establish authentication or populate currentUser.
    */
+  _restoreGuestSession() {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        const raw = sessionStorage.getItem('localkaam_guest_session');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.user && parsed.session && !this._isSessionExpired(parsed.session)) {
+            this.currentUser = parsed.user;
+            this.currentSession = parsed.session;
+            this.currentProfile = parsed.profile;
+            this.cachedProfile = parsed.profile;
+            return true;
+          }
+        }
+      }
+    } catch (_) {}
+    return false;
+  }
+
   loadCachedProfileDisplay() {
     try {
+      if (typeof sessionStorage !== 'undefined') {
+        const cached = sessionStorage.getItem(PROFILE_DISPLAY_CACHE_KEY);
+        if (cached) {
+          this.cachedProfile = JSON.parse(cached);
+          return;
+        }
+      }
       if (typeof localStorage !== 'undefined') {
         const cached = localStorage.getItem(PROFILE_DISPLAY_CACHE_KEY);
         if (cached) {
@@ -44,18 +70,21 @@ class AuthServiceManager {
   saveCachedProfileDisplay(profile) {
     this.cachedProfile = profile;
     try {
+      const dataStr = profile ? JSON.stringify({
+        id: profile.id,
+        full_name: profile.full_name,
+        email: profile.email,
+        role: profile.role,
+        locality: profile.locality,
+        avatar_url: profile.avatar_url
+      }) : null;
+      if (typeof sessionStorage !== 'undefined') {
+        if (dataStr) sessionStorage.setItem(PROFILE_DISPLAY_CACHE_KEY, dataStr);
+        else sessionStorage.removeItem(PROFILE_DISPLAY_CACHE_KEY);
+      }
       if (typeof localStorage !== 'undefined') {
-        if (profile) {
-          localStorage.setItem(PROFILE_DISPLAY_CACHE_KEY, JSON.stringify({
-            id: profile.id,
-            full_name: profile.full_name,
-            role: profile.role,
-            locality: profile.locality,
-            avatar_url: profile.avatar_url
-          }));
-        } else {
-          localStorage.removeItem(PROFILE_DISPLAY_CACHE_KEY);
-        }
+        if (dataStr) localStorage.setItem(PROFILE_DISPLAY_CACHE_KEY, dataStr);
+        else localStorage.removeItem(PROFILE_DISPLAY_CACHE_KEY);
       }
     } catch (e) {
       console.warn('[Auth] Error saving display profile cache:', e);
@@ -65,6 +94,9 @@ class AuthServiceManager {
   clearCachedProfile() {
     this.cachedProfile = null;
     try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(PROFILE_DISPLAY_CACHE_KEY);
+      }
       if (typeof localStorage !== 'undefined') {
         localStorage.removeItem(PROFILE_DISPLAY_CACHE_KEY);
         // Clear any old insecure cache keys from prior versions
@@ -109,10 +141,14 @@ class AuthServiceManager {
         await this.syncUserProfile(session.user);
         this.notifyListeners('SIGNED_IN', session);
       } else if (!this.currentSession || this._isSessionExpired(this.currentSession)) {
-        // Do not wipe state while an OAuth/PKCE callback is still being exchanged;
-        // handleOAuthCallback() will establish the session shortly.
-        if (!this._isOAuthCallbackUrl()) this.clearSessionState();
-        else console.log('[Auth] OAuth callback pending; keeping local state until exchange completes.');
+        // Check for tab-isolated guest session before wiping state
+        if (this._restoreGuestSession()) {
+          this.notifyListeners('SIGNED_IN', this.currentSession);
+        } else if (!this._isOAuthCallbackUrl()) {
+          this.clearSessionState();
+        } else {
+          console.log('[Auth] OAuth callback pending; keeping local state until exchange completes.');
+        }
       }
 
       // Avoid duplicate listener attachments
@@ -157,6 +193,11 @@ class AuthServiceManager {
     this.currentSession = null;
     this.currentProfile = null;
     this._roleOverride = null;
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('localkaam_guest_session');
+      }
+    } catch (_) {}
     this.clearCachedProfile();
   }
 
@@ -330,6 +371,15 @@ class AuthServiceManager {
       locality: 'andheri',
       avatar_url: ''
     };
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('localkaam_guest_session', JSON.stringify({
+          user: guestUser,
+          session: this.currentSession,
+          profile: this.currentProfile
+        }));
+      }
+    } catch (e) {}
     this.saveCachedProfileDisplay(this.currentProfile);
     this.notifyListeners('SIGNED_IN', this.currentSession);
     return { user: guestUser, profile: this.currentProfile };
