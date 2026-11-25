@@ -46,16 +46,16 @@
   --color-warning-border: #fde68a;
 
   /* Theme Surfaces (Light Mode) */
-  --bg-primary: #fbf9f4;
+  --bg-primary: #FAF9F5;
   --bg-secondary: #f4f0e6;
   --bg-card: #ffffff;
-  --text-primary: #1a3300;
-  --text-secondary: #44483d;
-  --text-muted: #5e6358;
-  --accent-primary: #1a3300;
-  --accent-hover: #264d00;
+  --text-primary: #141413;
+  --text-secondary: #5E5D59;
+  --text-muted: #9B968F;
+  --accent-primary: #D97757;
+  --accent-hover: #C6613F;
   --accent-light: #d5f5c2;
-  --border-color: #d6d3ca;
+  --border-color: #E8E6DC;
   --border-light: #e8e5dc;
 
   /* Shadows */
@@ -117,15 +117,15 @@
 /* ---- Dark Mode ---- */
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg-primary: #0f120e;
+  --bg-primary: #141413;
   --bg-secondary: #171b15;
   --bg-card: #1e231c;
   --text-primary: #f2efe8;
   --text-secondary: #b5bcaf;
   --text-muted: #adb8a6;
-  --accent-primary: #a8d879;
-  --accent-hover: #bded8b;
-  --accent-light: rgba(168, 216, 121, 0.14);
+  --accent-primary: #D97757;
+  --accent-hover: #C6613F;
+  --accent-light: rgba(217, 119, 87, 0.14);
   --accent-contrast: #121411;
   --border-color: #2e352b;
   --border-light: #242a21;
@@ -528,7 +528,7 @@ select, input, textarea { font-family: inherit; }
 .btn-primary:active { transform: translateY(0); }
 
 [data-theme="dark"] .btn-primary {
-  color: #0f120e;
+  color: #FAF9F5;
 }
 
 .btn-secondary {
@@ -1009,7 +1009,7 @@ select, input, textarea { font-family: inherit; }
   padding: var(--space-6) var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-2);
   position: sticky;
   top: calc(var(--navbar-height) + 20px);
   height: calc(100vh - var(--navbar-height) - 40px);
@@ -1031,14 +1031,14 @@ select, input, textarea { font-family: inherit; }
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 10px var(--space-3);
+  padding: 10px var(--space-4);
   min-height: 44px;
   border-radius: var(--radius-buttons);
   color: var(--text-secondary);
   font-weight: 600;
   font-size: var(--text-sm);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.18s var(--ease-out), color 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out);
   text-decoration: none;
   position: relative;
 }
@@ -1046,6 +1046,7 @@ select, input, textarea { font-family: inherit; }
 .sidebar-item:hover {
   background-color: var(--bg-secondary);
   color: var(--text-primary);
+  box-shadow: inset 1px 0 0 var(--border-light);
 }
 
 .sidebar-item:focus-visible {
@@ -1065,8 +1066,8 @@ select, input, textarea { font-family: inherit; }
   left: -8px;
   top: 8px;
   bottom: 8px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
   background: var(--accent-primary);
 }
 
@@ -1162,8 +1163,8 @@ select, input, textarea { font-family: inherit; }
 }
 
 .metric-card.accent {
-  border-color: var(--color-highlighter-yellow);
-  background: linear-gradient(135deg, var(--bg-card) 70%, rgba(255, 233, 92, 0.12));
+  border-color: var(--accent-primary);
+  background: var(--surface-raised);
 }
 
 /* ============================================================
@@ -1322,7 +1323,7 @@ select, input, textarea { font-family: inherit; }
 .workers-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--space-5);
+  gap: var(--space-6);
 }
 
 .worker-card {
@@ -3370,11 +3371,11 @@ select, input, textarea { font-family: inherit; }
 .theme-preview span:nth-child(2) { width: 88%; }
 .theme-preview span:last-child { width: 74%; }
 
-.theme-preview-light { background: #fcfaf5; color: #1a3300; }
-.theme-preview-dark { background: #121411; color: #f4f2ec; }
+.theme-preview-light { background: #FAF9F5; color: #141413; }
+.theme-preview-dark { background: #141413; color: #f4f2ec; }
 .theme-preview-system {
-  background: linear-gradient(135deg, #fcfaf5 0 50%, #121411 50% 100%);
-  color: #7d8a66;
+  background: #F5F5F4;
+  color: #52525B;
 }
 
 .theme-option-label {
@@ -3421,7 +3422,7 @@ select, input, textarea { font-family: inherit; }
 }
 
 .accent-swatch-dot.is-default {
-  background: linear-gradient(135deg, var(--accent-primary) 0 55%, var(--color-highlighter-yellow) 55% 100%);
+  background: var(--accent-primary);
   color: var(--bg-primary);
 }
 
@@ -4230,7 +4231,7 @@ body.density-compact .settings-page-body { gap: 12px; }
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+  background: var(--color-success-bg);
   border: 1.5px solid var(--color-success-border);
   border-radius: var(--radius-buttons);
   margin-bottom: 12px;
@@ -4575,31 +4576,23 @@ p { text-wrap: pretty; }
   margin: 8px 12px;
 }
 .sidebar-item.active {
-  background: linear-gradient(90deg, var(--accent-light) 0%, transparent 100%) !important;
-  color: var(--accent-primary) !important; font-weight: 700 !important;
+  background: var(--surface-raised);
+  color: var(--accent-primary); font-weight: 600;
 }
 
 /* DASH-03 · Worker Cards Premium Upgrades */
 .worker-card {
   position: relative; overflow: hidden;
-  transition: transform 0.22s var(--ease-out), box-shadow 0.22s, border-color 0.22s;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.worker-card::after {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(135deg, transparent 60%, rgba(255,233,92,0.06) 100%);
-  opacity: 0; transition: opacity 0.3s;
-  pointer-events: none;
-}
-.worker-card:hover::after { opacity: 1; }
 .worker-avatar-initials {
-  background: linear-gradient(135deg, var(--accent-light), var(--color-highlighter-yellow));
-  color: var(--color-forest-ink);
-  font-weight: 800; font-family: var(--font-display);
-  font-size: 1.1rem;
+  background: var(--accent-primary);
+  color: var(--accent-contrast, #ffffff);
+  font-weight: 600; font-family: var(--font-display);
+  font-size: 1.05rem;
 }
 .worker-price-tag {
-  font-size: 1.15rem; font-weight: 800; color: var(--text-primary);
+  font-size: 1.15rem; font-weight: 500; color: var(--text-primary);
 }
 
 /* DASH-04 · KPI Trend Indicators & Card Polish */
@@ -4608,8 +4601,7 @@ p { text-wrap: pretty; }
 .metric-trend--down { background: var(--color-danger-bg); color: var(--color-danger); }
 .metric-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; display: block; }
 .metric-card:first-child {
-  border-color: rgba(255, 233, 92, 0.4);
-  background: linear-gradient(135deg, var(--bg-card) 60%, rgba(255, 233, 92, 0.05) 100%);
+  border-color: var(--border-color);
 }
 
 /* DASH-05 · Toast Glass Polish */

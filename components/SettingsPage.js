@@ -782,7 +782,7 @@ export const SettingsPage = {
               </label>
             `).join('')}
             <label class="accent-swatch accent-swatch-custom" title="Custom colour">
-              <span class="accent-swatch-dot${accent && !ACCENT_COLORS.some((c) => c.value === accent) ? ' is-selected' : ''}" style="background:conic-gradient(#b5491f,#ffe95c,#0f6b62,#45439a,#b5491f)">
+              <span class="accent-swatch-dot${accent && !ACCENT_COLORS.some((c) => c.value === accent) ? ' is-selected' : ''}" style="background:var(--accent-primary)">
                 ${accent && !ACCENT_COLORS.some((c) => c.value === accent) ? icon('check', 13) : ''}
               </span>
               <span class="accent-swatch-name">Custom</span>

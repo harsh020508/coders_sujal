@@ -319,7 +319,7 @@ export const AdminDashboard = {
               <div class="nav-logo" style="width:30px;height:30px;font-size:0.8rem;" id="admin-logo-click">LK</div>
               <strong style="color:var(--ink);font-size:0.95rem;">LocalKaam</strong>
             </div>
-            <div style="font-size:0.7rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Admin Dashboard</div>
+            <div style="font-size:0.7rem;color:var(--text-muted);font-weight:500;">Admin Dashboard</div>
             <!-- Backend status indicator -->
             <div style="margin-top:6px;display:flex;align-items:center;gap:5px;font-size:0.68rem;">
               <span style="width:7px;height:7px;border-radius:50%;background:${this._backendOnline ? '#10b981' : '#f59e0b'};display:inline-block;flex-shrink:0;"></span>
@@ -328,14 +328,14 @@ export const AdminDashboard = {
           </div>
 
           <div style="padding:0 0.75rem;flex:1;">
-            <div style="font-size:0.68rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;padding-left:0.4rem;">Verification Queue</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);font-weight:500;margin-bottom:0.5rem;padding-left:0.4rem;">Verification Queue</div>
 
             ${this._sidebarItem('all',      'users',        'All Workers',    counts.all)}
             ${this._sidebarItem('Pending',  'clock',        'Pending Review', counts.Pending, '#f59e0b')}
             ${this._sidebarItem('Verified', 'badge-check',  'Verified',       counts.Verified, '#10b981')}
             ${this._sidebarItem('Rejected', 'x-circle',     'Rejected',       counts.Rejected, '#ef4444')}
 
-            <div style="font-size:0.68rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:1rem 0 0.5rem;padding-left:0.4rem;">Operations</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);font-weight:500;margin:1rem 0 0.5rem;padding-left:0.4rem;">Operations</div>
 
             ${this._tabItem('verification', 'badge-check', 'Worker Verification', counts.all)}
             ${this._tabItem('complaints', 'message-square-warning', 'Complaint Triage', openComplaints, openComplaints > 0 ? '#f59e0b' : null)}
@@ -367,13 +367,13 @@ export const AdminDashboard = {
                 <p class="ui-muted" style="margin:3px 0 0;font-size:0.82rem;">Triage, respond to and resolve customer complaints end-to-end.</p>
               </div>
               <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                <span style="display:inline-flex;align-items:center;gap:5px;background:#fef3c7;color:#92400e;border-radius:999px;padding:4px 12px;font-size:0.78rem;font-weight:700;">
+                <span style="display:inline-flex;align-items:center;gap:5px;background:var(--color-warning-bg);color:var(--color-warning-text);border-radius:8px;padding:4px 12px;font-size:0.78rem;font-weight:500;">
                   <i data-lucide="hourglass" class="lucide-xs"></i> ${openComplaints} Open
                 </span>
-                <span style="display:inline-flex;align-items:center;gap:5px;background:#e0e7ff;color:#3730a3;border-radius:999px;padding:4px 12px;font-size:0.78rem;font-weight:700;">
+                <span style="display:inline-flex;align-items:center;gap:5px;background:var(--color-info-bg);color:var(--color-info);border-radius:8px;padding:4px 12px;font-size:0.78rem;font-weight:500;">
                   <i data-lucide="search" class="lucide-xs"></i> ${complaintCounts['Under Review'] + complaintCounts['Awaiting Response']} In Progress
                 </span>
-                <span style="display:inline-flex;align-items:center;gap:5px;background:#d1fae5;color:#065f46;border-radius:999px;padding:4px 12px;font-size:0.78rem;font-weight:700;">
+                <span style="display:inline-flex;align-items:center;gap:5px;background:var(--color-success-bg);color:var(--color-success);border-radius:8px;padding:4px 12px;font-size:0.78rem;font-weight:500;">
                   <i data-lucide="check-circle" class="lucide-xs"></i> ${complaintCounts.Resolved + complaintCounts.Closed} Closed Out
                 </span>
               </div>
@@ -384,13 +384,13 @@ export const AdminDashboard = {
               </div>
               <!-- Stats pills -->
               <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                <span style="display:inline-flex;align-items:center;gap:5px;background:#fef3c7;color:#92400e;border-radius:999px;padding:4px 12px;font-size:0.78rem;font-weight:700;">
+                <span style="display:inline-flex;align-items:center;gap:5px;background:var(--color-warning-bg);color:var(--color-warning-text);border-radius:8px;padding:4px 12px;font-size:0.78rem;font-weight:500;">
                   <i data-lucide="clock" class="lucide-xs"></i> ${counts.Pending} Pending
                 </span>
-                <span style="display:inline-flex;align-items:center;gap:5px;background:#d1fae5;color:#065f46;border-radius:999px;padding:4px 12px;font-size:0.78rem;font-weight:700;">
+                <span style="display:inline-flex;align-items:center;gap:5px;background:var(--color-success-bg);color:var(--color-success);border-radius:8px;padding:4px 12px;font-size:0.78rem;font-weight:500;">
                   <i data-lucide="badge-check" class="lucide-xs"></i> ${counts.Verified} Verified
                 </span>
-                <span style="display:inline-flex;align-items:center;gap:5px;background:#fee2e2;color:#991b1b;border-radius:999px;padding:4px 12px;font-size:0.78rem;font-weight:700;">
+                <span style="display:inline-flex;align-items:center;gap:5px;background:var(--color-danger-bg);color:var(--color-danger);border-radius:8px;padding:4px 12px;font-size:0.78rem;font-weight:500;">
                   <i data-lucide="x-circle" class="lucide-xs"></i> ${counts.Rejected} Rejected
                 </span>
               </div>
@@ -424,7 +424,7 @@ export const AdminDashboard = {
               ${complaintFiltered.length === 0 ? `
                 <div class="ui-empty ui-card ui-card--pad" style="padding:3rem 1rem;text-align:center;max-width:500px;margin:3rem auto;">
                   <div class="ui-empty__icon"><i data-lucide="message-square-warning" class="lucide-md"></i></div>
-                  <h4 style="font-size:1rem;font-weight:700;margin:0.5rem 0 0.25rem;color:var(--ink);">No complaints found</h4>
+                  <h4 style="font-size:1rem;font-weight:500;margin:0.5rem 0 0.25rem;color:var(--ink);">No complaints found</h4>
                   <p class="ui-muted" style="font-size:0.85rem;margin:0;">${q ? 'Try a different search term.' : 'Try a different status filter.'}</p>
                 </div>
               ` : `
@@ -439,7 +439,7 @@ export const AdminDashboard = {
             ${filtered.length === 0 ? `
               <div class="ui-empty ui-card ui-card--pad" style="padding:3rem 1rem;text-align:center;max-width:500px;margin:3rem auto;">
                 <div class="ui-empty__icon"><i data-lucide="inbox" class="lucide-md"></i></div>
-                <h4 style="font-size:1rem;font-weight:700;margin:0.5rem 0 0.25rem;color:var(--ink);">No workers found</h4>
+                <h4 style="font-size:1rem;font-weight:500;margin:0.5rem 0 0.25rem;color:var(--ink);">No workers found</h4>
                 <p class="ui-muted" style="font-size:0.85rem;margin:0;">${q ? 'Try a different search term.' : 'Try a different filter from the sidebar.'}</p>
               </div>
             ` : `
@@ -487,7 +487,7 @@ export const AdminDashboard = {
         ${dot}<i data-lucide="${esc(icon)}" class="lucide-xs" style="flex-shrink:0;"></i>
         <span style="flex:1;">${esc(label)}</span>
         <span style="
-          font-size:0.7rem;font-weight:700;padding:2px 7px;border-radius:999px;
+          font-size:0.7rem;font-weight:500;padding:2px 7px;border-radius:6px;
           ${active ? 'background:var(--accent-primary);color:#fff;' : 'background:var(--border-color);color:var(--text-muted);'}
         ">${count}</span>
       </div>
@@ -512,7 +512,7 @@ export const AdminDashboard = {
         ${dot}<i data-lucide="${esc(icon)}" class="lucide-xs" style="flex-shrink:0;"></i>
         <span style="flex:1;">${esc(label)}</span>
         <span style="
-          font-size:0.7rem;font-weight:700;padding:2px 7px;border-radius:999px;
+          font-size:0.7rem;font-weight:500;padding:2px 7px;border-radius:6px;
           ${active ? 'background:var(--accent-primary);color:#fff;' : 'background:var(--border-color);color:var(--text-muted);'}
         ">${count}</span>
       </div>

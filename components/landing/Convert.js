@@ -1,8 +1,41 @@
-// components/landing/Convert.js — how it works, FAQ, final CTA, footer (v3).
+// components/landing/Convert.js — how it works, FAQ, final CTA, footer.
 // Kept contracts: #how-it-works, #faq with [data-faq] > .lk-faq-item >
 // .lk-faq-q / .lk-faq-a (aria-expanded + hidden), #cta-find-pro-btn,
-// #cta-explore-btn.
+// #cta-explore-btn, #cta-title.
 export function howHTML() {
+  const steps = [
+    {
+      num: '01',
+      icon: 'search',
+      title: 'Choose a service',
+      desc: 'Tell us what needs fixing and where you are. You\'ll see a clear starting price straight away — no estimate surprises.',
+      badge: 'Step 01 · Upfront Discovery',
+      headline: 'Clear Upfront Base Price',
+      chips: ['₹280 base rate', 'No platform fee', 'Mumbai rate card'],
+      snippet: 'View transparent pricing before entering any phone number or personal details.'
+    },
+    {
+      num: '02',
+      icon: 'list-filter',
+      title: 'Pick your professional',
+      desc: 'Browse local pros by rating, distance and completed jobs. Read real reviews, then choose with confidence.',
+      badge: 'Step 02 · Nearby Pro & Negotiation',
+      headline: 'Rajesh Kumar · Master Plumber',
+      chips: ['4.8 ★ (42 jobs)', '8 yrs exp', 'ETA ~18 min'],
+      snippet: 'Quote ₹350 → Agreed counter-offer ₹320. Connect directly without middleman call centres.'
+    },
+    {
+      num: '03',
+      icon: 'calendar-check',
+      title: 'Confirm a time',
+      desc: 'Agree the price, lock in a slot, and follow the job live from en-route to done.',
+      badge: 'Step 03 · Live Milestones & Direct Pay',
+      headline: 'Arrival OTP #5821 & Live Track',
+      chips: ['Today · 3:30 PM', 'En Route (1.2 km)', 'Pay ₹320 direct'],
+      snippet: 'Follow live arrival progress and pay 100% directly to your pro via UPI or cash after work is complete.'
+    }
+  ];
+
   return `
   <section class="lk-section" id="how-it-works">
     <div class="lk-section-inner">
@@ -13,19 +46,79 @@ export function howHTML() {
         </div>
         <p class="lk-section-sub">From search to invoice — everything happens in one place.</p>
       </div>
-      <ol class="lk-steps">
-        ${[
-          ['search', 'Choose a service', 'Tell us what needs fixing and where you are. You\'ll see a clear starting price straight away — no estimate surprises.'],
-          ['list-filter', 'Pick your professional', 'Browse local pros by rating, distance and completed jobs. Read real reviews, then choose with confidence.'],
-          ['calendar-check', 'Confirm a time', 'Agree the price, lock in a slot, and follow the job live from en-route to done.']
-        ].map((s, i) => `<li class="lk-step-card" style="--card-index: ${i};">
-          <span class="lk-card-spotlight" aria-hidden="true"></span>
-          <span class="lk-step-num">${String(i + 1).padStart(2, '0')}</span>
-          <span class="lk-step-icon"><i data-lucide="${s[0]}" class="lucide-md"></i></span>
-          <h3>${s[1]}</h3>
-          <p>${s[2]}</p>
-        </li>`).join('')}
-      </ol>
+
+      <div class="lk-how-layout">
+        <ol class="lk-steps" role="tablist" aria-label="How LocalKaam works">
+          ${steps.map((s, i) => `
+            <li class="lk-step-card ${i === 0 ? 'is-active' : ''}" role="tab" tabindex="0" data-how-step="${i}" aria-selected="${i === 0}" aria-controls="how-preview-${i}" id="how-step-tab-${i}" style="--card-index: ${i};">
+              <span class="lk-card-spotlight" aria-hidden="true"></span>
+              <span class="lk-step-num">${s.num}</span>
+              <span class="lk-step-icon"><i data-lucide="${s.icon}" class="lucide-md"></i></span>
+              <h3>${s.title}</h3>
+              <p>${s.desc}</p>
+              <span class="lk-step-nav-hint" aria-hidden="true">
+                <span>Preview step</span> <i data-lucide="chevron-right" class="lucide-xs"></i>
+              </span>
+            </li>
+          `).join('')}
+        </ol>
+
+        <div class="lk-how-preview-stage" id="how-preview-stage" aria-live="polite">
+          ${steps.map((s, i) => `
+            <div class="lk-how-preview-card ${i === 0 ? 'is-active' : ''}" id="how-preview-${i}" data-how-preview="${i}" role="tabpanel" aria-labelledby="how-step-tab-${i}" ${i === 0 ? '' : 'hidden'}>
+              <div class="lk-preview-header">
+                <span class="lk-preview-badge">${s.badge}</span>
+                <span class="lk-preview-step-indicator">Step ${s.num} of 03</span>
+              </div>
+              <h4 class="lk-preview-title">${s.headline}</h4>
+              <p class="lk-preview-desc">${s.snippet}</p>
+              <div class="lk-preview-chips">
+                ${s.chips.map(chip => `<span class="lk-preview-chip"><i data-lucide="check" class="lucide-xs"></i> ${chip}</span>`).join('')}
+              </div>
+              <div class="lk-preview-mockup">
+                ${i === 0 ? `
+                  <div class="lk-mock-rate-card">
+                    <div class="lk-mock-row"><span>Service category</span><strong>Plumbing &amp; Leak Repair</strong></div>
+                    <div class="lk-mock-row"><span>Base inspection &amp; diagnosis</span><strong>₹280</strong></div>
+                    <div class="lk-mock-row lk-mock-row-highlight"><span>Platform booking fee</span><strong>₹0 (Free)</strong></div>
+                  </div>
+                ` : i === 1 ? `
+                  <div class="lk-mock-pro-card">
+                    <div class="lk-mock-pro-meta">
+                      <div class="lk-mock-avatar">RK</div>
+                      <div>
+                        <strong>Rajesh Kumar</strong>
+                        <small>Plumbing Pro · Andheri West (1.4 km)</small>
+                      </div>
+                    </div>
+                    <div class="lk-mock-quote-pill">
+                      <span>Customer: ₹300</span>
+                      <span class="lk-pill-arrow">⇄</span>
+                      <span class="lk-pill-agreed">Agreed: ₹320</span>
+                    </div>
+                  </div>
+                ` : `
+                  <div class="lk-mock-tracking-card">
+                    <div class="lk-mock-progress-bar">
+                      <span class="lk-mock-dot is-done"></span>
+                      <span class="lk-mock-line is-done"></span>
+                      <span class="lk-mock-dot is-done"></span>
+                      <span class="lk-mock-line is-active"></span>
+                      <span class="lk-mock-dot is-active"></span>
+                      <span class="lk-mock-line"></span>
+                      <span class="lk-mock-dot"></span>
+                    </div>
+                    <div class="lk-mock-otp-box">
+                      <span class="lk-otp-label">Share with pro upon arrival:</span>
+                      <strong class="lk-otp-code">5 8 2 1</strong>
+                    </div>
+                  </div>
+                `}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
     </div>
   </section>`;
 }
@@ -33,7 +126,7 @@ export function howHTML() {
 export function faqHTML() {
   const qa = [
     ['How do I book a professional?', 'Simple — pick a service, enter your locality and choose a time slot. You can browse profiles and prices without even creating an account.'],
-    ['Are professionals properly verified?', 'Yes. Every pro on LocalKaam is ID-verified before their first job. Reviews only appear after a job is marked complete — so ratings you see are genuinely earned.'],
+    ['Are professionals properly verified?', 'Yes. Every pro on LocalKaam is ID-checked. Reviews only appear after a job is marked complete — so ratings you see are genuinely earned.'],
     ['How is pricing calculated?', 'Pros set their own base rates, and you agree the final price before confirming. There\'s no booking fee, no platform commission, no surprises.'],
     ['Can I choose the same professional again?', 'Absolutely. Save your favourite pros and rebook them in a couple of taps — they\'ll already know where you live.'],
     ['What if I need to reschedule?', 'No problem. Message your pro directly from the booking, or reschedule from the app. Life happens — we\'re flexible.'],
@@ -49,7 +142,7 @@ export function faqHTML() {
         <a class="lk-text-link" href="#how-it-works">See how a booking works <i data-lucide="arrow-right" class="lucide-xs"></i></a>
       </div>
       <div class="lk-faq" data-faq>
-        ${qa.map((x, i) => `<div class="lk-faq-item">
+        ${qa.map((x, i) => `<div class="lk-faq-item ${i === 0 ? 'is-open' : ''}">
           <button type="button" class="lk-faq-q" aria-expanded="${i === 0}" aria-controls="faq-a-${i}" id="faq-q-${i}">${x[0]}<i data-lucide="chevron-down" class="lucide-sm"></i></button>
           <div class="lk-faq-a" id="faq-a-${i}" role="region" aria-labelledby="faq-q-${i}" ${i === 0 ? '' : 'hidden'}><p>${x[1]}</p></div>
         </div>`).join('')}
@@ -66,8 +159,8 @@ export function finalCTAHTML() {
       <h2 class="lk-cta-title" id="cta-title">Your neighbourhood pro is waiting.</h2>
       <p class="lk-cta-sub">Tell us what needs fixing. We'll show you ID-verified pros near you, with upfront prices and no hidden fees.</p>
       <div class="lk-cta-actions">
-        <button class="btn lk-btn-yellow" id="cta-find-pro-btn">Find a professional <i data-lucide="arrow-right" class="lucide-sm"></i></button>
-        <button class="btn lk-btn-ghost-light" id="cta-explore-btn">Explore services</button>
+        <button type="button" class="btn lk-btn-yellow" id="cta-find-pro-btn">Find a professional <i data-lucide="arrow-right" class="lucide-sm"></i></button>
+        <button type="button" class="btn lk-btn-ghost-light" id="cta-explore-btn">Explore services</button>
       </div>
     </div>
   </section>`;

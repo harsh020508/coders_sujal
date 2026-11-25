@@ -69,7 +69,7 @@ export const CustomerFrontend = {
             <div class="sidebar-item" data-view="notifications">
               <span><i data-lucide="bell" class="lucide-xs"></i></span>
               <span>Notifications</span>
-              ${unreadNotifsCount > 0 ? `<span class="sidebar-badge" style="background:#ef4444;color:#fff;">${unreadNotifsCount}</span>` : ''}
+              ${unreadNotifsCount > 0 ? `<span class="sidebar-badge" style="background:var(--color-danger);color:#fff;">${unreadNotifsCount}</span>` : ''}
             </div>
             <div class="sidebar-item" data-view="compare" id="compare-sidebar-btn">
               <span><i data-lucide="scale" class="lucide-xs"></i></span>
@@ -142,66 +142,64 @@ export const CustomerFrontend = {
     return `
       <div class="dashboard-header">
         <div>
-          <h1>Find Verified Professionals</h1>
-          <p>Book expert electricians, plumbers, carpenters, and technicians in <strong>${esc(localityObj.name)}</strong> with upfront pricing.</p>
+          <h1>Workers in ${esc(localityObj.name)}</h1>
+          <p>Electricians, plumbers, carpenters and technicians with verified credentials and fixed rates.</p>
         </div>
       </div>
 
       <div class="metrics-grid">
         <div class="metric-card">
-          <div class="metric-card-header"><span>Workers Nearby</span><i data-lucide="users" class="lucide-xs"></i></div>
+          <div class="metric-card-header"><span>Available</span><i data-lucide="users" class="lucide-xs"></i></div>
           <h2>${eligibleWorkers.length}</h2>
         </div>
         <div class="metric-card">
-          <div class="metric-card-header"><span>Active Bookings</span><i data-lucide="calendar" class="lucide-xs"></i></div>
+          <div class="metric-card-header"><span>Scheduled</span><i data-lucide="calendar" class="lucide-xs"></i></div>
           <h2>${activeBookings}</h2>
         </div>
         <div class="metric-card">
-          <div class="metric-card-header"><span>Completed Jobs</span><i data-lucide="circle-check" class="lucide-xs"></i></div>
+          <div class="metric-card-header"><span>Completed</span><i data-lucide="circle-check" class="lucide-xs"></i></div>
           <h2>${completedBookings}</h2>
         </div>
       </div>
 
-      <!-- Quick Action Cards: AI Photo Diagnosis & Live Interactive Map -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 1rem; margin-bottom: 1.75rem;">
+      <!-- Quick Action Cards: Photo Diagnosis & Map -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 16px; margin-bottom: 24px;">
         <div class="quick-action-card">
           <div>
-            <div style="display: flex; align-items: center; gap: 0.4rem; font-weight: 800; font-size: 1.05rem; color: var(--text-primary); margin-bottom: 0.2rem;">
-              <i data-lucide="camera" class="lucide-sm"></i> AI Photo Diagnosis
-              <span class="badge" style="background: var(--accent-primary); color: white; font-size: 0.65rem;">Gemini</span>
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 1rem; color: var(--text-primary); margin-bottom: 4px;">
+              <i data-lucide="camera" class="lucide-sm"></i> Photo Diagnosis
             </div>
-            <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0; line-height: 1.3;">
-              Upload a picture of any broken fixture. AI identifies category, likely materials &amp; Mumbai rate estimate.
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+              Upload a picture of the issue. The system identifies the trade needed and estimates Mumbai market rates.
             </p>
           </div>
           <button class="btn btn-primary btn-sm" id="hero-btn-ai-photo" style="flex-shrink: 0; white-space: nowrap;">
-            Diagnose →
+            Upload photo
           </button>
         </div>
 
         <div class="quick-action-card quick-action-card--map">
           <div>
-            <div style="display: flex; align-items: center; gap: 0.4rem; font-weight: 800; font-size: 1.05rem; color: var(--text-primary); margin-bottom: 0.2rem;">
-              <i data-lucide="map" class="lucide-sm"></i> Interactive Live Map
-              <span class="badge" style="background: #2563eb; color: white; font-size: 0.65rem;">OSM Free</span>
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 1rem; color: var(--text-primary); margin-bottom: 4px;">
+              <i data-lucide="map" class="lucide-sm"></i> Live Map
             </div>
-            <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0; line-height: 1.3;">
-              Explore workers on map with live distance, Nominatim address search &amp; live OSRM turn-by-turn tracking.
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+              See workers on the map with distance circles and real-time location tracking.
             </p>
           </div>
           <button class="btn btn-outline btn-sm" id="hero-btn-live-map" style="flex-shrink: 0; white-space: nowrap;">
-            Open Map →
+            Open map
           </button>
         </div>
       </div>
 
-      <!-- Categories Shortcuts (Scrollable Pill Row) -->
-      <div style="margin-bottom: 1.5rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-          <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Browse by Category</span>
+      <!-- Categories -->
+      <div style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 0.875rem; font-weight: 500; color: var(--text-secondary);">Browse by trade</span>
         </div>
-        <div class="cat-scroll-row" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; -webkit-overflow-scrolling: touch;">
-          <button class="chip ${this.currentCategory === 'all' ? 'active' : ''} cat-shortcut-btn" data-cat="all"><i data-lucide="layout-grid" class="lucide-xs"></i> All Categories</button>
+        <div class="cat-scroll-row" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch;">
+          <button class="chip ${this.currentCategory === 'all' ? 'active' : ''} cat-shortcut-btn" data-cat="all"><i data-lucide="layout-grid" class="lucide-xs"></i> All</button>
           ${CATEGORIES.map(c => `
             <button class="chip ${this.currentCategory === c.id ? 'active' : ''} cat-shortcut-btn" data-cat="${esc(c.id)}">
               <i data-lucide="${esc(c.lucideIcon || 'wrench')}" class="lucide-xs"></i> ${esc(c.name)}
@@ -210,17 +208,17 @@ export const CustomerFrontend = {
         </div>
       </div>
 
-      <!-- Search & Filters -->
+      <!-- Search & Sort -->
       <div class="search-filter-bar">
         <div class="search-input-group">
-          <input type="text" id="service-search-input" class="form-control" placeholder="Search tasks: 'Wiring repair', 'Leaking tap', 'AC gas'..." value="${esc(this.searchQuery)}">
+          <input type="text" id="service-search-input" class="form-control" placeholder="Search: wiring repair, tap leak, AC gas" value="${esc(this.searchQuery)}">
         </div>
-        <div style="display: flex; gap: 0.5rem; align-items: center; width: auto; flex-shrink: 0;">
-          <select id="sort-by-select" class="form-select" style="min-width: 160px; font-size: 0.85rem;">
-            <option value="match" ${this.sortBy === 'match' ? 'selected' : ''}>Best Match</option>
-            <option value="rating" ${this.sortBy === 'rating' ? 'selected' : ''}>Highest Rated</option>
-            <option value="price_low" ${this.sortBy === 'price_low' ? 'selected' : ''}>Lowest Price</option>
-            <option value="distance" ${this.sortBy === 'distance' ? 'selected' : ''}>Nearest First</option>
+        <div style="display: flex; gap: 8px; align-items: center; width: auto; flex-shrink: 0;">
+          <select id="sort-by-select" class="form-select" style="min-width: 160px; font-size: 0.875rem;">
+            <option value="match" ${this.sortBy === 'match' ? 'selected' : ''}>Best match</option>
+            <option value="rating" ${this.sortBy === 'rating' ? 'selected' : ''}>Highest rated</option>
+            <option value="price_low" ${this.sortBy === 'price_low' ? 'selected' : ''}>Lowest price</option>
+            <option value="distance" ${this.sortBy === 'distance' ? 'selected' : ''}>Nearest</option>
           </select>
         </div>
       </div>
@@ -234,22 +232,22 @@ export const CustomerFrontend = {
   renderDiscoverResults(eligibleWorkers) {
     return `
       <!-- Workers Results Header -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-        <h3 style="font-size: 1.15rem; font-weight: 700;">
-          Available Professionals Nearby (${eligibleWorkers.length})
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+        <h3 style="font-size: 1rem; font-weight: 600;">
+          ${eligibleWorkers.length} available nearby
         </h3>
         ${this.comparedWorkers.length > 0 ? `
-          <button class="btn btn-outline btn-sm" id="open-comparison-modal" style="font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px;">
-            <i data-lucide="scale" class="lucide-xs"></i> View Comparison (${this.comparedWorkers.length})
+          <button class="btn btn-outline btn-sm" id="open-comparison-modal" style="font-size: 0.875rem; display: inline-flex; align-items: center; gap: 6px;">
+            <i data-lucide="scale" class="lucide-xs"></i> Compare (${this.comparedWorkers.length})
           </button>
         ` : ''}
       </div>
 
       ${eligibleWorkers.length === 0 ? emptyState({
         iconName: 'search-x',
-        title: 'No online professionals found',
-        text: 'Try selecting a different service category, expanding your location, or switching worker online in worker mode.',
-        actionHtml: '<button class="ui-btn ui-btn--secondary ui-btn--sm" id="reset-filter-btn" style="margin-top: 0.5rem;">Reset Filters</button>'
+        title: 'No workers available',
+        text: 'Try a different category or location, or switch a worker to online in worker mode.',
+        actionHtml: '<button class="ui-btn ui-btn--secondary ui-btn--sm" id="reset-filter-btn" style="margin-top: 8px;">Reset filters</button>'
       }) : (() => {
         const sortedWorkers = [...eligibleWorkers].sort((a, b) => {
           if (a.verificationStatus === 'Verified' && b.verificationStatus !== 'Verified') return -1;
@@ -272,7 +270,7 @@ export const CustomerFrontend = {
                     ${avatar(w, 56)}
                     <div style="flex:1;min-width:0;">
                       <div class="ui-worker__name" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                        <span style="font-weight:700;font-size:1.05rem;color:var(--ink);">${esc(w.name)}</span>
+                        <span style="font-weight:500;font-size:1rem;color:var(--ink);">${esc(w.name)}</span>
                         <label style="font-size: 0.75rem; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
                           <input type="checkbox" class="compare-checkbox" data-id="${esc(w.id)}" ${this.comparedWorkers.includes(w.id) ? 'checked' : ''}>
                           <span>Compare</span>
@@ -286,10 +284,10 @@ export const CustomerFrontend = {
                     </div>
                   </div>
 
-                  <div style="display:flex;gap:12px;font-size:0.8rem;background:var(--surface-2);padding:6px 10px;border-radius:8px;justify-content:space-between;align-items:center;">
-                    <span><i data-lucide="map-pin" class="lucide-xs"></i> <strong>${w.distance || '2.5'} km</strong> (~${w.eta || '25'}m)</span>
-                    <span><i data-lucide="award" class="lucide-xs"></i> <strong>${w.experience || 3} yrs</strong> exp</span>
-                    <span style="color:var(--ok);font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+                  <div style="display:flex;gap:12px;font-size:0.875rem;background:var(--surface-2);padding:8px 12px;border-radius:8px;justify-content:space-between;align-items:center;">
+                    <span><i data-lucide="map-pin" class="lucide-xs"></i> ${w.distance || '2.5'} km</span>
+                    <span><i data-lucide="award" class="lucide-xs"></i> ${w.experience || 3} yr</span>
+                    <span style="color:var(--success);font-weight:500;display:inline-flex;align-items:center;gap:4px;">
                       <span class="status-dot online"></span> Online
                     </span>
                   </div>
@@ -300,10 +298,10 @@ export const CustomerFrontend = {
                   </div>
 
                   <div class="ui-worker__foot">
-                    <span class="ui-price">₹${specInfo.startingPrice || 350} <small>${specInfo.pricingMethod === 'fixed' ? 'fixed' : '/ hr'}</small></span>
+                    <span class="ui-price">₹${specInfo.startingPrice || 350} <small>${specInfo.pricingMethod === 'fixed' ? 'fixed' : 'per hour'}</small></span>
                     <div style="display:flex;gap:8px;">
-                      <button type="button" class="ui-btn ui-btn--secondary ui-btn--sm view-worker-profile-btn" data-id="${esc(w.id)}">Profile</button>
-                      <button type="button" class="ui-btn ui-btn--accent ui-btn--sm book-worker-btn" data-id="${esc(w.id)}">Request a visit</button>
+                      <button type="button" class="ui-btn ui-btn--secondary ui-btn--sm view-worker-profile-btn" data-id="${esc(w.id)}">View</button>
+                      <button type="button" class="ui-btn ui-btn--accent ui-btn--sm book-worker-btn" data-id="${esc(w.id)}">Book visit</button>
                     </div>
                   </div>
                 </article>
@@ -322,17 +320,17 @@ export const CustomerFrontend = {
     return `
       <div class="dashboard-header">
         <div>
-          <h1>My Bookings &amp; Appointments</h1>
-          <p>Track your active appointments, review counter-offers, and view digital invoices.</p>
+          <h1>Appointments</h1>
+          <p>Scheduled visits, counter-offers and invoices.</p>
         </div>
       </div>
 
       ${bookings.length === 0 ? `
         <div class="empty-state">
           <div class="empty-state-icon"><i data-lucide="calendar" class="lucide-lg" style="color: var(--text-muted);"></i></div>
-          <h3>No bookings found yet</h3>
-          <p>Browse our verified home service experts and book your first service in minutes!</p>
-          <button class="btn btn-primary btn-sm" id="empty-discover-btn">Discover Services</button>
+          <h3>No bookings</h3>
+          <p>Browse workers and book your first visit.</p>
+          <button class="btn btn-primary btn-sm" id="empty-discover-btn">Browse services</button>
         </div>
       ` : `
         <div class="table-container">
@@ -395,7 +393,7 @@ export const CustomerFrontend = {
                       <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
                         <button class="btn btn-outline btn-xs view-booking-details-btn" data-id="${esc(b.id)}">Details</button>
                         ${['Confirmed', 'Worker en route', 'Worker arrived', 'Job in progress'].includes(b.status) ? `
-                          <button class="btn btn-primary btn-xs track-on-map-btn" data-id="${esc(b.id)}" style="background: #2563eb; border-color: #2563eb; color: white;">
+                          <button class="btn btn-primary btn-xs track-on-map-btn" data-id="${esc(b.id)}" style="background: var(--color-info); border-color: var(--color-info); color: white;">
                             🗺️ Live Track
                           </button>
                         ` : ''}
@@ -816,7 +814,7 @@ export const CustomerFrontend = {
         : 'align-self:flex-start; background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border-color);');
       div.textContent = text;
       const label = document.createElement('div');
-      label.style.cssText = 'font-size:0.7rem; font-weight:700; letter-spacing:0.04em; opacity:0.7; margin-bottom:2px;';
+      label.style.cssText = 'font-size:0.7rem; font-weight:500; opacity:0.7; margin-bottom:2px;';
       label.textContent = who.toUpperCase();
       const wrap = document.createElement('div');
       wrap.style.cssText = 'display:flex; flex-direction:column; gap:2px; ' + (role === 'user' ? 'align-items:flex-end;' : 'align-items:flex-start;');
@@ -1363,7 +1361,7 @@ export const CustomerFrontend = {
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
                   <span style="font-size: 0.8rem; width: 2rem;">${d.star}★</span>
                   <div style="flex: 1; background: var(--bg-primary); border-radius: 4px; height: 8px; overflow: hidden;">
-                    <div style="width: ${pct}%; background: #f59e0b; height: 100%; transition: width 0.5s;"></div>
+                    <div style="width: ${pct}%; background: var(--color-warning); height: 100%; transition: width 0.5s;"></div>
                   </div>
                   <span style="font-size: 0.8rem; width: 3rem;">${d.count}</span>
                 </div>
@@ -1469,13 +1467,13 @@ export const CustomerFrontend = {
         ${prefillOptions.photoUrl ? `
           <!-- Attached AI Photo Diagnosis Preview -->
           <div style="display: flex; gap: 0.85rem; align-items: center; background: rgba(37, 99, 235, 0.15); border: 1.5px solid rgba(37, 99, 235, 0.35); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 16px;">
-            <img src="${esc(prefillOptions.photoUrl)}" alt="Problem preview" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; border: 1.5px solid #3b82f6; flex-shrink: 0;" />
+            <img src="${esc(prefillOptions.photoUrl)}" alt="Problem preview" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; border: 1.5px solid var(--border-color); flex-shrink: 0;" />
             <div style="flex: 1; min-width: 0;">
               <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 2px; flex-wrap: wrap;">
-                <span class="badge" style="background: #2563eb; color: white; font-size: 0.7rem;">📸 AI Diagnosis Attached</span>
-                ${prefillOptions.aiDiagnosis?.urgency === 'emergency' ? '<span class="badge" style="background: #dc2626; color: white; font-size: 0.7rem;">🚨 Emergency</span>' : ''}
+                <span class="badge" style="background: var(--color-info); color: white; font-size: 0.7rem;">📸 AI Diagnosis Attached</span>
+                ${prefillOptions.aiDiagnosis?.urgency === 'emergency' ? '<span class="badge" style="background: var(--color-danger); color: white; font-size: 0.7rem;">🚨 Emergency</span>' : ''}
               </div>
-              <div style="font-weight: 700; font-size: 0.88rem; color: #1e40af; word-break: break-word;">
+              <div style="font-weight: 500; font-size: 0.88rem; color: var(--accent-primary); word-break: break-word;">
                 ${esc(prefillOptions.aiDiagnosis?.issue || prefillOptions.jobDescription || 'Household Issue')}
               </div>
               ${prefillOptions.aiDiagnosis ? `
@@ -1661,8 +1659,8 @@ export const CustomerFrontend = {
               ${esc(worker.name)} will review it and you'll be notified when they respond.
             </p>
             <div style="background:#ffe95c;border-radius:10px;padding:10px 16px;">
-              <div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);">YOUR ARRIVAL OTP</div>
-              <div style="font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:800;letter-spacing:0.12em;color:#1a3300;">${esc(plainOtp)}</div>
+              <div style="font-size:0.75rem;font-weight:500;color:var(--text-secondary);">Your arrival OTP</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:500;color:var(--brand-forest-ink);">${esc(plainOtp)}</div>
               <div style="font-size:0.75rem;color:var(--text-secondary);">Share this code verbally when the professional reaches your home.</div>
             </div>
             <div style="margin-top:12px;">
@@ -1778,15 +1776,15 @@ export const CustomerFrontend = {
         </div>
 
         <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.875rem; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.25rem;">
-          <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Booking Reference</strong><br><strong>${esc(booking.id)}</strong></div>
-          <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Professional</strong><br>${esc(worker.name)} (${esc(worker.phone || '+91 98211 44551')})</div>
-          <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Task &amp; Description</strong><br>${esc(booking.serviceTask)} — ${esc(booking.jobDescription)}</div>
-          <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Service Address</strong><br>${esc(booking.address)} (${esc(booking.locality?.toUpperCase())})</div>
-          <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Slot</strong><br>${esc(booking.appointmentDate)} @ ${esc(booking.appointmentTime)}</div>
-          <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Agreed Amount</strong><br><strong style="font-size: 1.1rem; color: var(--text-primary);">₹${booking.agreedPrice}</strong></div>
+          <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: none;">Booking Reference</strong><br><strong>${esc(booking.id)}</strong></div>
+          <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: none;">Professional</strong><br>${esc(worker.name)} (${esc(worker.phone || '+91 98211 44551')})</div>
+          <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: none;">Task &amp; Description</strong><br>${esc(booking.serviceTask)} — ${esc(booking.jobDescription)}</div>
+          <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: none;">Service Address</strong><br>${esc(booking.address)} (${esc(booking.locality?.toUpperCase())})</div>
+          <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: none;">Slot</strong><br>${esc(booking.appointmentDate)} @ ${esc(booking.appointmentTime)}</div>
+          <div><strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: none;">Agreed Amount</strong><br><strong style="font-size: 1.1rem; color: var(--text-primary);">₹${booking.agreedPrice}</strong></div>
           ${booking.photoUrl ? `
             <div style="margin-top: 4px;">
-              <strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Attached Problem Photo</strong><br>
+              <strong style="color: var(--text-muted); font-size: 0.75rem; text-transform: none;">Attached Problem Photo</strong><br>
               <img src="${esc(booking.photoUrl)}" alt="Problem photo" style="max-height: 140px; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 4px; object-fit: cover; max-width: 100%;">
             </div>
           ` : ''}
@@ -1805,7 +1803,7 @@ export const CustomerFrontend = {
         <!-- Counter Offer History if present -->
         ${Array.isArray(booking.counterOfferHistory) && booking.counterOfferHistory.length > 0 ? `
           <div style="margin-bottom: 1.25rem;">
-            <h4 style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase; color: var(--text-muted);">Negotiation History</h4>
+            <h4 style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; text-transform: none; color: var(--text-muted);">Negotiation History</h4>
             <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem;">
               ${booking.counterOfferHistory.map(h => `
                 <div style="background: var(--bg-card); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color); display: flex; justify-content: space-between;">
@@ -1837,7 +1835,7 @@ export const CustomerFrontend = {
         partsWrapper.className = 'parts-customer-panel-wrapper';
         partsWrapper.innerHTML = `
           <div style="margin-bottom:1.25rem;">
-            <h4 style="font-size:0.85rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <h4 style="font-size:0.85rem;font-weight:600;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
               <i data-lucide="package" style="width:14px;height:14px;"></i> Parts & Materials
             </h4>
             ${partsHtml}
@@ -1892,12 +1890,12 @@ export const CustomerFrontend = {
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; font-size: 0.85rem;">
           <div>
-            <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Customer</span><br>
+            <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: none;">Customer</span><br>
             <strong>${esc(booking.customerName || 'Aarav Mehta')}</strong><br>
             <small style="color: var(--text-secondary);">${esc(booking.address)}</small>
           </div>
           <div>
-            <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Professional</span><br>
+            <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: none;">Professional</span><br>
             <strong>${esc(worker.name)}</strong><br>
             <small style="color: var(--text-secondary);">${esc(worker.phone || '+91 98211 44551')}</small>
           </div>
@@ -2091,8 +2089,8 @@ export const CustomerFrontend = {
           ${booking.arrivalOtpUsed
             ? '<div style="font-size: 0.85rem; font-weight: 700; color: var(--color-success);">✅ Arrival verified — technician has checked in!</div>'
             : customerOtp
-              ? `<div style="margin:4px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="color:var(--text-secondary);font-weight:600;font-size:0.82rem;">Your arrival code:</span><strong style="font-family:'JetBrains Mono',monospace;font-size:1.4rem;letter-spacing:0.12em;color:#1a3300;background:#ffe95c;padding:2px 12px;border-radius:8px;">${esc(customerOtp)}</strong><span style="color:var(--text-secondary);font-size:0.78rem;">Share it verbally with the technician.</span></div>`
-              : '<div style="font-size: 0.78rem; color: #f59e0b; margin-bottom: 6px;">⏳ No code yet — tap Resend OTP below to generate your arrival code.</div>'}
+              ? `<div style="margin:4px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="color:var(--text-secondary);font-weight:600;font-size:0.82rem;">Your arrival code:</span><strong style="font-family:'JetBrains Mono',monospace;font-size:1.2rem;color:var(--brand-forest-ink);background:var(--brand-highlighter);padding:2px 12px;border-radius:8px;">${esc(customerOtp)}</strong><span style="color:var(--text-secondary);font-size:0.78rem;">Share it verbally with the technician.</span></div>`
+              : '<div style="font-size: 0.78rem; color: var(--color-warning); margin-bottom: 6px;">No code yet — tap Resend OTP below to generate your arrival code.</div>'}
           <div class="otp-panel-status-${esc(booking.id)}" style="font-size: 0.78rem; font-weight: 600; color: var(--color-success-text); margin-bottom: 6px;"></div>
           <button class="btn btn-outline btn-xs resend-arrival-otp-btn"
             data-booking-id="${esc(booking.id)}"
@@ -2124,9 +2122,9 @@ export const CustomerFrontend = {
       const booking = bookings.find(b => b.id === bookingId);
       if (!booking || booking.arrivalOtpUsed) { statusEl.textContent = ''; continue; }
       if (!(booking.arrivalOtpHash || booking.arrivalOtp || StorageService.getCustomerOtp(bookingId))) {
-        statusEl.innerHTML = '<span style="color:#f59e0b;">⏳ Tap Resend OTP below to generate your arrival code.</span>';
+        statusEl.innerHTML = '<span style="color: var(--color-warning);">Tap Resend OTP below to generate your arrival code.</span>';
       } else if (Date.now() > (booking.arrivalOtpExpiresAt || 0)) {
-        statusEl.innerHTML = '<span style="color:#dc2626;">⚠️ OTP expired. Click Resend OTP to get a new code in your app.</span>';
+        statusEl.innerHTML = '<span style="color: var(--color-danger);">OTP expired. Click Resend OTP to get a new code in your app.</span>';
       } else {
         const expiry = new Date(booking.arrivalOtpExpiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         statusEl.innerHTML = `<span style="color:var(--color-success-text);font-weight:normal;">Valid until ${expiry} · share verbally at your door.</span>`;
@@ -2139,9 +2137,9 @@ export const CustomerFrontend = {
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
     const configMap = {
-      ORDER_ACCEPTED: { icon: 'check-circle', color: '#10b981', bg: '#ecfdf5', label: 'Accepted' },
-      WORKER_ARRIVED: { icon: 'map-pin', color: '#2563eb', bg: '#eff6ff', label: 'Arrived' },
-      ORDER_COMPLETED: { icon: 'check-circle', color: '#7c3aed', bg: '#f5f3ff', label: 'Completed' }
+      ORDER_ACCEPTED: { icon: 'check-circle', color: 'var(--color-success)', bg: 'var(--color-success-bg)', label: 'Accepted' },
+      WORKER_ARRIVED: { icon: 'map-pin', color: 'var(--color-info)', bg: 'var(--color-info-bg)', label: 'Arrived' },
+      ORDER_COMPLETED: { icon: 'check-circle', color: 'var(--accent-primary)', bg: 'var(--bg-secondary)', label: 'Completed' }
     };
 
     return `

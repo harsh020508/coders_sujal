@@ -312,16 +312,28 @@ body.nav-hidden .navbar {
 }
 .lk-count-animated { animation: lk-count-pop 0.4s var(--ease-spring) both; }
 
-/* Hero floating card drift */
-@keyframes lk-card-float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-6px); }
+/* Hero pro card switcher swap micro-animation */
+@keyframes lk-card-swap {
+  0% {
+    opacity: 0.72;
+    transform: scale(0.978) translateY(4px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.006) translateY(-1px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
-.lk-pro-card {
-  animation: lk-card-float 5s ease-in-out infinite;
+.lk-pro-card.lk-card-swapped {
+  animation: lk-card-swap 0.32s var(--ease-spring) both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .lk-pro-card { animation: none; }
+  .lk-pro-card.lk-card-swapped {
+    animation: none !important;
+  }
 }
 
 /* Service card icon pop on hover */

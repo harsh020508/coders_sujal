@@ -66,7 +66,7 @@ export const WorkerFrontend = {
         <!-- Clean Modern Sidebar -->
         <aside class="sidebar" id="worker-sidebar">
           <div class="sidebar-worker-profile-box" style="padding-bottom: 14px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color);">
-            <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">ACTIVE PROFESSIONAL</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">Active professional</div>
             <select id="worker-profile-select" class="form-select" style="margin-top: 6px; font-size: 0.85rem; padding: 6px 10px; border-radius: 8px; width: 100%; font-weight: 600;">
               ${workers.map(w => `<option value="${esc(w.id)}" ${w.id === worker.id ? 'selected' : ''}>${esc(w.name)} (${Object.keys(w.specialities || {}).join(', ') || 'Pro'})</option>`).join('')}
             </select>
@@ -181,15 +181,15 @@ export const WorkerFrontend = {
           <p class="ui-muted" style="margin:6px 0 0;font-size:var(--fs-sm);">
             Service Area: <strong>${esc(worker.serviceArea || worker.baseLocality?.toUpperCase() || 'Mumbai')}</strong>
             &nbsp;·&nbsp;
-            Status: <span style="font-weight: 700; color: ${isOnline ? 'var(--ok)' : 'var(--bad)'}; display: inline-flex; align-items: center; gap: 4px;">
+            Status: <span style="font-weight: 600; color: ${isOnline ? 'var(--success)' : 'var(--text-muted)'}; display: inline-flex; align-items: center; gap: 4px;">
               <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
-              ${isOnline ? 'Online & Discoverable' : 'Offline / Paused'}
+              ${isOnline ? 'Online' : 'Offline'}
             </span>
           </p>
         </div>
         <div>
           <button class="ui-btn ${isOnline ? 'ui-btn--accent' : 'ui-btn--secondary'} ui-btn--sm" id="quick-toggle-online" role="switch" aria-checked="${isOnline ? 'true' : 'false'}">
-            <i data-lucide="power" class="lucide-xs"></i> ${isOnline ? 'Online (Accepting Jobs)' : 'Offline (Click to Go Online)'}
+            <i data-lucide="power" class="lucide-xs"></i> ${isOnline ? 'Online' : 'Go online'}
           </button>
         </div>
       </div>
@@ -220,43 +220,45 @@ export const WorkerFrontend = {
       <!-- Verification Stepper: Signature Feature from Section 6.7 -->
       <div class="ui-card ui-card--pad" style="margin-bottom: 24px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
           <div>
-            <h3 style="font-size:1.1rem;font-weight:700;margin:0;color:var(--ink);">Your Verification</h3>
-            <p class="ui-muted" style="font-size:var(--fs-xs);margin:2px 0 0;">Transparent security milestones for customer trust</p>
+            <h3 style="font-size:1rem;font-weight:600;margin:0;color:var(--text-primary);">Verification</h3>
+            <p class="ui-muted" style="font-size:0.875rem;margin:4px 0 0;">Security milestones for customer trust</p>
           </div>
           <span class="ui-badge ${isVerified ? 'ui-badge--ok' : 'ui-badge--warn'}">
             <i data-lucide="${isVerified ? 'badge-check' : 'clock'}" class="lucide-xs"></i>
-            ${isVerified ? 'Profile Verified' : 'In Review'}
+            ${isVerified ? 'Verified' : 'In review'}
           </span>
+        </div>
         </div>
 
         <ol class="ui-steps">
           <li class="ui-step is-done">
             <span class="ui-step__dot"><i data-lucide="check" class="lucide-xs"></i></span>
             <div>
-              <div class="ui-step__title">Phone Verified</div>
-              <div class="ui-step__sub">${esc(worker.phone || '+91 98211 44551')} confirmed via OTP</div>
+              <div class="ui-step__title">Phone verified</div>
+              <div class="ui-step__sub">${esc(worker.phone || '+91 98211 44551')} confirmed</div>
             </div>
           </li>
           <li class="ui-step is-done">
             <span class="ui-step__dot"><i data-lucide="check" class="lucide-xs"></i></span>
             <div>
-              <div class="ui-step__title">Government ID Checked</div>
-              <div class="ui-step__sub">Official identity documentation confirmed</div>
+              <div class="ui-step__title">ID checked</div>
+              <div class="ui-step__sub">Government document confirmed</div>
             </div>
           </li>
           <li class="ui-step ${isVerified ? 'is-done' : 'is-active'}">
             <span class="ui-step__dot"><i data-lucide="${isVerified ? 'check' : 'clock'}" class="lucide-xs"></i></span>
             <div>
-              <div class="ui-step__title">Trade Skill Review</div>
-              <div class="ui-step__sub">${isVerified ? 'Trade competence verified' : 'In progress by verification team'}</div>
+              <div class="ui-step__title">Skill review</div>
+              <div class="ui-step__sub">${isVerified ? 'Trade competence verified' : 'Review in progress'}</div>
             </div>
           </li>
           <li class="ui-step ${isVerified ? 'is-done' : ''}">
             <span class="ui-step__dot"><i data-lucide="${isVerified ? 'check' : 'badge-check'}" class="lucide-xs"></i></span>
             <div>
-              <div class="ui-step__title">Verified Pro Seal</div>
-              <div class="ui-step__sub">${isVerified ? 'Live on marketplace with trust ring' : 'Awaiting final activation'}</div>
+              <div class="ui-step__title">Verified seal</div>
+              <div class="ui-step__sub">${isVerified ? 'Live on marketplace' : 'Awaiting activation'}</div>
             </div>
           </li>
         </ol>
@@ -265,16 +267,16 @@ export const WorkerFrontend = {
       <!-- Pending Requests Section -->
       <div style="margin-bottom: 2rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <h3 style="font-size: 1.15rem; font-weight: 800; color:var(--ink);">
-            Incoming Requests (${pendingRequests.length})
+          <h3 style="font-size: 1rem; font-weight: 600; color:var(--text-primary);">
+            Incoming requests (${pendingRequests.length})
           </h3>
         </div>
 
         ${pendingRequests.length === 0 ? `
           <div class="ui-empty ui-card ui-card--pad" style="padding: 2.5rem 1rem;">
             <div class="ui-empty__icon"><i data-lucide="inbox" class="lucide-md"></i></div>
-            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; color:var(--ink);">No requests yet</h4>
-            <p class="ui-muted" style="font-size: 0.85rem; margin: 0;">Keep your availability on and new requests will show up here.</p>
+            <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 4px; color:var(--text-primary);">No requests</h4>
+            <p class="ui-muted" style="font-size: 0.875rem; margin: 0;">Go online to receive booking requests.</p>
           </div>
         ` : `
           <div style="display: flex; flex-direction: column; gap: 0.85rem;">
@@ -541,10 +543,10 @@ export const WorkerFrontend = {
           <!-- Net Revenue -->
           <div class="metric-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-              <span style="font-size:0.8rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Total Take-Home</span>
+              <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary);">Total Take-Home</span>
               <span class="worker-stat-badge stat-blue">💰</span>
             </div>
-            <div style="font-size:1.85rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.03em;">₹${Math.round(netTakeHome).toLocaleString('en-IN')}</div>
+            <div style="font-size:1.8rem;font-weight:500;color:var(--text-primary);">₹${Math.round(netTakeHome).toLocaleString('en-IN')}</div>
             <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;display:flex;align-items:center;gap:4px;">
               <span>Gross: ₹${Math.round(totalGross).toLocaleString('en-IN')}</span> &bull; <span>100% Payout Rate</span>
             </div>
@@ -553,10 +555,10 @@ export const WorkerFrontend = {
           <!-- This Month -->
           <div class="metric-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-              <span style="font-size:0.8rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">This Month</span>
+              <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary);">This Month</span>
               <span class="worker-stat-badge stat-amber">📅</span>
             </div>
-            <div style="font-size:1.85rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.03em;">₹${Math.round(thisMonth).toLocaleString('en-IN')}</div>
+            <div style="font-size:1.8rem;font-weight:500;color:var(--text-primary);">₹${Math.round(thisMonth).toLocaleString('en-IN')}</div>
             <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;">
               ${totalJobsCount} verified jobs completed
             </div>
@@ -565,10 +567,10 @@ export const WorkerFrontend = {
           <!-- Average Ticket -->
           <div class="metric-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-              <span style="font-size:0.8rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Avg. Ticket Value</span>
+              <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary);">Avg. Ticket Value</span>
               <span class="worker-stat-badge stat-green">⚡</span>
             </div>
-            <div style="font-size:1.85rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.03em;">₹${Math.round(avgJob).toLocaleString('en-IN')}</div>
+            <div style="font-size:1.8rem;font-weight:500;color:var(--text-primary);">₹${Math.round(avgJob).toLocaleString('en-IN')}</div>
             <div style="font-size:0.75rem;color:var(--color-success);font-weight:600;margin-top:0.5rem;">
               +12% vs Mumbai locality avg
             </div>
@@ -577,10 +579,10 @@ export const WorkerFrontend = {
           <!-- Quality Score -->
           <div class="metric-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-              <span style="font-size:0.8rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Client Rating</span>
+              <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary);">Client Rating</span>
               <span class="worker-stat-badge stat-purple">⭐</span>
             </div>
-            <div style="font-size:1.85rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.03em;">${ratingVal} <span style="font-size:1.1rem;color:#f59e0b;">★</span></div>
+            <div style="font-size:1.8rem;font-weight:500;color:var(--text-primary);">${ratingVal} <span style="font-size:1.1rem;color:var(--color-warning);">★</span></div>
             <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;">
               100% on-time arrival rate
             </div>
@@ -597,7 +599,7 @@ export const WorkerFrontend = {
                 <h3 style="font-size:1.05rem;font-weight:700;margin:0 0 2px 0;">7-Day Earnings Trend</h3>
                 <p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">Daily breakdown of verified completed service jobs</p>
               </div>
-              <span style="font-size:0.75rem;font-weight:700;color:var(--color-forest-ink,#1a3300);background:var(--color-highlighter-yellow,#ffe95c);padding:2px 8px;border-radius:4px;">Weekly Velocity</span>
+              <span style="font-size:0.75rem;font-weight:500;color:var(--text-secondary);background:var(--surface-raised);border:1px solid var(--border-light);padding:3px 9px;border-radius:8px;">Weekly Velocity</span>
             </div>
 
             <!-- SVG Responsive Bar Chart -->
@@ -702,7 +704,7 @@ export const WorkerFrontend = {
                 <h3 style="font-size:1.05rem;font-weight:700;margin:0 0 2px 0;">Last 30 Days</h3>
                 <p style="font-size:0.8rem;color:var(--text-secondary);margin:0;">Date-by-date earnings curve with daily totals</p>
               </div>
-              <span style="font-size:0.75rem;font-weight:700;color:var(--color-forest-ink,#1a3300);background:var(--color-highlighter-yellow,#ffe95c);padding:2px 8px;border-radius:4px;">
+              <span style="font-size:0.75rem;font-weight:500;color:var(--text-secondary);background:var(--surface-raised);border:1px solid var(--border-light);padding:3px 9px;border-radius:8px;">
                 ₹${Math.round(trendTotal).toLocaleString('en-IN')} / ${trendActiveDays}d
               </span>
             </div>
@@ -728,7 +730,7 @@ export const WorkerFrontend = {
             <div style="overflow-x:auto;">
               <table style="width:100%;border-collapse:collapse;font-size:0.875rem;text-align:left;">
                 <thead>
-                  <tr style="border-bottom:2px solid var(--border-color);color:var(--text-secondary);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">
+                  <tr style="border-bottom:2px solid var(--border-color);color:var(--text-secondary);font-size:0.75rem;font-size:0.8rem;font-weight:600;">
                     <th style="padding:0.75rem 0.5rem;">Reference</th>
                     <th style="padding:0.75rem 0.5rem;">Service Task</th>
                     <th style="padding:0.75rem 0.5rem;">Date</th>
@@ -753,7 +755,7 @@ export const WorkerFrontend = {
                         <td style="padding:0.85rem 0.5rem;text-align:right;font-weight:800;color:var(--color-success);">₹${Number(netAmt).toFixed(2)}</td>
                         <td style="padding:0.85rem 0.5rem;text-align:center;font-size:0.8rem;color:var(--text-secondary);">${t.paymentMethod || 'UPI Direct'}</td>
                         <td style="padding:0.85rem 0.5rem;text-align:center;">
-                          <span style="display:inline-block;padding:2px 8px;border-radius:9999px;font-size:0.75rem;font-weight:700;${isPaid ? 'background:rgba(16,185,129,0.18);color:var(--color-success, #10b981);' : 'background:rgba(217,119,6,0.18);color:var(--color-warning, #f59e0b);'}">
+                          <span style="display:inline-block;padding:2px 8px;border-radius:9999px;font-size:0.75rem;font-weight:700;${isPaid ? 'background:var(--color-success-bg);color:var(--color-success);' : 'background:var(--color-warning-bg);color:var(--color-warning);'}">
                             ${isPaid ? '✓ Paid' : '⏳ Pending'}
                           </span>
                         </td>
@@ -2440,7 +2442,7 @@ export const WorkerFrontend = {
             pattern="[0-9]{6}"
             maxlength="6"
             placeholder="000000"
-            style="width:100%;min-width:0;max-width:100%;box-sizing:border-box;display:block;font-size:1.75rem;font-weight:800;letter-spacing:0.35em;text-indent:0.35em;text-align:center;border:2px solid var(--border-color);border-radius:12px;padding:0.65rem 0.5rem;font-family:'JetBrains Mono',monospace;outline:none;background:var(--bg-card);color:var(--text-primary);transition:border-color 0.2s,box-shadow 0.2s;"
+            style="width:100%;min-width:0;max-width:100%;box-sizing:border-box;display:block;font-size:1.6rem;font-weight:500;text-align:center;border:2px solid var(--border-color);border-radius:12px;padding:0.65rem 0.5rem;font-family:'JetBrains Mono',monospace;outline:none;background:var(--bg-card);color:var(--text-primary);transition:border-color 0.2s,box-shadow 0.2s;"
             autocomplete="one-time-code"
           >
         </div>
@@ -2951,7 +2953,7 @@ export const WorkerFrontend = {
             <!-- Step 2: Manage Documents & Verification -->
             <div>
               <!-- Trust Status Overview Banner -->
-              <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(2, 132, 199, 0.08) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
+              <div style="background: var(--color-success-bg); border: 1px solid var(--color-success-border); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                   <div>
                     <h3 style="font-size: 1.15rem; font-weight: 800; margin-bottom: 0.25rem;">

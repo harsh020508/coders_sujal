@@ -7,7 +7,7 @@
 //   (SSE streams, Supabase, AI endpoints). Offline handling for data lives in
 //   StorageService (localStorage + Supabase hydration).
 
-const CACHE_VERSION = 'localkaam-v1';
+const CACHE_VERSION = 'localkaam-v2';
 const PRECACHE_URLS = [
   './',
   './index.html',

@@ -1,4 +1,4 @@
-// components/landing/Landing.js — landing page assembly (v3).
+// components/landing/Landing.js — landing page assembly (v4).
 // Kept contracts: all section ids, announcement ids, drawer, shortcuts modal.
 import { announcementBarHTML } from './AnnouncementBar.js';
 import { navHTML, drawerHTML, shortcutsModalHTML } from './Navbar.js';

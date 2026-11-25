@@ -25,29 +25,29 @@
      SEMANTIC COLOR TOKENS (Light Mode Default)
      ========================================================== */
   --surface: #ffffff;
-  --surface-raised: #fcfaf5;
+  --surface-raised: #FAF9F5;
   --surface-sunken: #f4f0e6;
-  --bg-primary: #fcfaf5;
+  --bg-primary: #FAF9F5;
   --bg-secondary: #f4f0e6;
   --bg-card: #ffffff;
 
-  --text-primary: #1a3300;
-  --text-secondary: #44483d;
-  --text-muted: #5e6358;
+  --text-primary: #141413;
+  --text-secondary: #5E5D59;
+  --text-muted: #9B968F;
   --ink: #1a3300;
   --muted: #5e6358;
 
-  --accent-primary: #1a3300;
-  --accent-hover: #264d00;
+  --accent-primary: #D97757;
+  --accent-hover: #C6613F;
   --accent-light: #d5f5c2;
   --accent-contrast: #ffffff;
-  --accent: #1a3300;
+  --accent: #D97757;
   --accent-strong: #122400;
 
   --color-highlighter-yellow: #ffe95c;
   --color-yellow-hover: #ffd60a;
 
-  --border-color: #d6d3ca;
+  --border-color: #E8E6DC;
   --border-light: #e8e5dc;
   --border-subtle: #eae4d3;
   --line: #e8e5dc;
@@ -182,7 +182,7 @@
   --surface: #1e231c;
   --surface-raised: #252b22;
   --surface-sunken: #141812;
-  --bg-primary: #0f120e;
+  --bg-primary: #141413;
   --bg-secondary: #171b15;
   --bg-card: #1e231c;
 
@@ -192,11 +192,11 @@
   --ink: #f2efe8;
   --muted: #adb8a6;
 
-  --accent-primary: #a8d879;
-  --accent-hover: #bded8b;
+  --accent-primary: #D97757;
+  --accent-hover: #C6613F;
   --accent-light: rgba(168, 216, 121, 0.16);
   --accent-contrast: #121411;
-  --accent: #a8d879;
+  --accent: #D97757;
   --accent-strong: #bded8b;
 
   --border-color: rgba(255, 255, 255, 0.14);
@@ -215,7 +215,7 @@
   --color-success-text: #34d399;
   --color-warning-text: #fbbf24;
   --color-danger-text: #f87171;
-  --accent-rgb: 168, 216, 121;
+  --accent-rgb: 217, 119, 87;
   --sidebar-width: 260px;
 
   --focus-ring: #a8d879;
