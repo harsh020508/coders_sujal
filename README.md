@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> **🏆 HACKATHON PROJECT** — LocalKaam was built for the **National Level Hackathon** (Track: Open Innovation & Hyperlocal Infrastructure). This repository is the team's hackathon submission, built and shipped under time pressure.
+
 <div align="center">
 
 <h1>LocalKaam &nbsp;·&nbsp; <sub>लोकल काम</sub></h1>
